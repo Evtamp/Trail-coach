@@ -120,7 +120,15 @@ const TYPES = {
   fonda:      { label: "Endurance fondamentale",color: "#7A8B5E" },
   recup:      { label: "Récupération",          color: "#5C7A99" },
   repos:      { label: "Repos",                 color: "#5A6259" },
+  // Activités complémentaires : comptées à part du volume course
+  renfo:      { label: "Renforcement",          color: "#A8845C", cross: true },
+  velo:       { label: "Vélo",                  color: "#4F7A8C", cross: true },
+  natation:   { label: "Natation",              color: "#5C8C9E", cross: true },
+  autre:      { label: "Autre sport",           color: "#6E7A6B", cross: true },
 };
+
+// true si la séance ne compte pas dans le volume de course à pied
+const isCross = t => !!(TYPES[t] && TYPES[t].cross);
 
 const SESSION_ADVICE = {
   longue: "Allure conversationnelle, régulière du début à la fin. C'est la séance qui construit l'endurance de fond et l'habitude de tenir sur la durée — ne cherche pas la performance, cherche la régularité.",
@@ -129,6 +137,10 @@ const SESSION_ADVICE = {
   seuil: "Échauffement 15 min, puis bloc(s) à l'allure visée pour la course, sans à-coups. Sensation : soutenu mais contrôlé, tu pourrais tenir la conversation en phrases courtes.",
   fonda: "Endurance fondamentale, allure facile (tu dois pouvoir parler sans être essoufflé). Séance de fond qui prépare/complète la sortie longue sans ajouter de fatigue excessive.",
   recup: "Footing très facile, voire trot. L'objectif est de faire circuler le sang et d'évacuer les tensions, pas de progresser à cette séance.",
+  renfo: "Gainage, chaîne postérieure, mollets et fessiers. Sur une prépa trail, c'est ce qui protège les descentes et retarde la casse musculaire en fin de course.",
+  velo: "Travail cardio sans impact. Utile pour ajouter du volume aérobie sans charger les jambes, surtout en semaine chargée en course.",
+  natation: "Récupération active et travail respiratoire, sans aucun impact articulaire.",
+  autre: "Activité complémentaire. Notée pour le suivi de charge globale.",
   repos: "Repos complet ou activité très légère (marche, étirements). Essentiel pour absorber la charge des jours précédents.",
 };
 
@@ -921,36 +933,90 @@ function ElevationHero({ goal, progress, daysLeft }) {
 // ======================================================================
 
 function SessionForm({ onAdd }) {
-  const [type, setType] = useState("fonda");
+  const [type, setType] = useState("recup");
   const [date, setDate] = useState(() => toISO(new Date()));
   const [distance, setDistance] = useState("");
   const [dplus, setDplus] = useState("");
   const [duree, setDuree] = useState("");
+  const [fc, setFc] = useState("");
+  const [feeling, setFeeling] = useState(3);
   const [notes, setNotes] = useState("");
+  const [alreadyDone, setAlreadyDone] = useState(true);
+  const [msg, setMsg] = useState("");
+
   const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
   const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
+  const cross = isCross(type);
 
   const submit = () => {
-    onAdd({ id: uid(), type, date, distance: distance ? Number(distance) : null, dplus: dplus ? Number(dplus) : null, duree: duree ? Number(duree) : null, notes, done: false, actual: null, generated: false });
-    setDistance(""); setDplus(""); setDuree(""); setNotes("");
+    const d = distance ? Number(distance) : null;
+    const dp = dplus ? Number(dplus) : null;
+    const du = duree ? Number(duree) : null;
+    onAdd({
+      id: uid(), type, date,
+      distance: d, dplus: dp, duree: du,
+      notes, generated: false,
+      done: alreadyDone,
+      actual: alreadyDone
+        ? { distance: d, dplus: dp, duree: du, feeling, fc: fc ? Number(fc) : null, laps: [] }
+        : null,
+    });
+    setDistance(""); setDplus(""); setDuree(""); setFc(""); setNotes("");
+    setMsg(alreadyDone ? "Séance ajoutée à l'historique" : "Séance ajoutée au plan");
+    setTimeout(() => setMsg(""), 3000);
   };
 
   return (
     <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
-      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Ajouter une séance manuelle</p>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+        Ajouter une séance hors plan
+      </p>
+      <p className="text-xs" style={{ color: "#9CAA9E" }}>
+        Footing improvisé, renfo, vélo, natation… Les activités hors course sont
+        suivies à part et n'entrent pas dans le volume de course à pied.
+      </p>
+
       <div className="grid grid-cols-2 gap-2">
         <select value={type} onChange={e => setType(e.target.value)} className={inputCls} style={inputStyle}>
-          {Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          <optgroup label="Course à pied">
+            {Object.entries(TYPES).filter(([k, v]) => !v.cross && k !== "repos")
+              .map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </optgroup>
+          <optgroup label="Complémentaire">
+            {Object.entries(TYPES).filter(([, v]) => v.cross)
+              .map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </optgroup>
         </select>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} style={inputStyle} />
-        <input type="number" placeholder="Distance (km)" value={distance} onChange={e => setDistance(e.target.value)} className={inputCls} style={inputStyle} />
-        <input type="number" placeholder="D+ (m)" value={dplus} onChange={e => setDplus(e.target.value)} className={inputCls} style={inputStyle} />
+
+        {type !== "renfo" && (
+          <input type="number" placeholder="Distance (km)" value={distance} onChange={e => setDistance(e.target.value)} className={inputCls} style={inputStyle} />
+        )}
+        {!cross && (
+          <input type="number" placeholder="D+ (m)" value={dplus} onChange={e => setDplus(e.target.value)} className={inputCls} style={inputStyle} />
+        )}
         <input type="number" placeholder="Durée (min)" value={duree} onChange={e => setDuree(e.target.value)} className={inputCls} style={inputStyle} />
-        <input type="text" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} className={inputCls} style={inputStyle} />
+        <input type="number" placeholder="FC moy" value={fc} onChange={e => setFc(e.target.value)} className={inputCls} style={inputStyle} />
       </div>
-      <button onClick={submit} className="w-full rounded-lg py-2 text-sm font-medium hover:opacity-90" style={{ background: "#C1622B", color: "#14201C" }}>
+
+      <input type="text" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} className={inputCls} style={inputStyle} />
+
+      <label className="flex items-center gap-2 text-sm" style={{ color: "#9CAA9E" }}>
+        <input type="checkbox" checked={alreadyDone} onChange={e => setAlreadyDone(e.target.checked)} />
+        Séance déjà réalisée
+      </label>
+
+      {alreadyDone && (
+        <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Ressenti : {feeling}/5</label>
+          <input type="range" min="1" max="5" value={feeling} onChange={e => setFeeling(Number(e.target.value))} className="w-full" />
+        </div>
+      )}
+
+      <button onClick={submit} className="w-full rounded-lg py-2.5 text-sm font-medium hover:opacity-90" style={{ background: "#C1622B", color: "#14201C" }}>
         Ajouter
       </button>
+      {msg && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{msg}</p>}
     </div>
   );
 }
@@ -1625,9 +1691,12 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma 
 // ======================================================================
 
 function Stats({ sessions }) {
+  const runSessions = sessions.filter(s => !isCross(s.type));
+  const crossSessions = sessions.filter(s => isCross(s.type) && s.done);
+
   const weekly = useMemo(() => {
     const map = new Map();
-    sessions.forEach(s => {
+    runSessions.forEach(s => {
       const wk = sessionWeek(s);
       if (!map.has(wk)) map.set(wk, { week: wk, planifie: 0, realise: 0 });
       const e = map.get(wk);
@@ -1638,10 +1707,11 @@ function Stats({ sessions }) {
       .map(e => ({ ...e, label: fmtDate(e.week), planifie: Math.round(e.planifie), realise: Math.round(e.realise) }));
   }, [sessions]);
 
-  const totalPlanned = sessions.length;
-  const totalDone = sessions.filter(s => s.done).length;
+  const planned = sessions.filter(s => s.generated);
+  const totalPlanned = planned.length;
+  const totalDone = planned.filter(s => s.done).length;
   const compliance = totalPlanned ? Math.round((totalDone / totalPlanned) * 100) : 0;
-  const dplusDone = sessions.filter(s => s.done).reduce((a, s) => a + (s.dplus || 0), 0);
+  const dplusDone = runSessions.filter(s => s.done).reduce((a, s) => a + (s.actual?.dplus ?? s.dplus ?? 0), 0);
   const cardStyle = { background: "#182420", border: "1px solid #2C3A32" };
 
   return (
@@ -1661,7 +1731,7 @@ function Stats({ sessions }) {
         </div>
       </div>
       <div className="rounded-xl p-4" style={cardStyle}>
-        <p className="text-xs uppercase tracking-wider mb-3" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Volume hebdo (km)</p>
+        <p className="text-xs uppercase tracking-wider mb-3" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Volume hebdo course (km)</p>
         {!CHARTS_OK ? (
           <div className="space-y-1">
             {weekly.map(w => (
