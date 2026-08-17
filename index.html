@@ -901,6 +901,14 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
   const [cadence, setCadence] = useState(a.cadence ?? "");
   const [paste, setPaste] = useState("");
   const [pasteErr, setPasteErr] = useState("");
+  const [lapsText, setLapsText] = useState(
+    (a.laps || []).map(l => `${l.sec} ; ${Math.round(l.m)} ; ${l.fc ?? ""}`).join("\n")
+  );
+
+  const parseLaps = () => lapsText.split("\n").map(x => x.trim()).filter(Boolean).map(line => {
+    const [sec, m, fc] = line.split(";").map(v => v.trim());
+    return { sec: Number(sec) || 0, m: Number(m) || 0, fc: fc ? Number(fc) : null };
+  }).filter(l => l.sec > 0);
 
   const inputCls = "w-full rounded-lg px-2 py-1.5 text-sm outline-none";
   const inputStyle = { background: "#14201C", color: "#EDE7D9", border: "1px solid #2C3A32" };
@@ -975,6 +983,16 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
         <input type="range" min="1" max="5" value={feeling} onChange={e => setFeeling(Number(e.target.value))} className="w-full" />
       </div>
 
+      <div>
+        <label className="text-xs" style={{ color: "#5A6259" }}>
+          Détail des tours (optionnel) — une ligne par tour : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>secondes ; mètres ; FC</span>
+        </label>
+        <textarea value={lapsText} onChange={e => setLapsText(e.target.value)} rows={4}
+          className="w-full rounded-lg px-2 py-1.5 text-xs outline-none mt-1"
+          style={{ ...inputStyle, fontFamily: "'JetBrains Mono', monospace" }}
+          placeholder={"1200 ; 4000 ; 128\n30 ; 142 ; 131\n30 ; 60 ; 118"} />
+      </div>
+
       <div className="flex gap-2">
         <button
           onClick={() => onSubmit({
@@ -985,6 +1003,7 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
             fc: Number(fc) || null,
             fcMax: Number(fcMax) || null,
             cadence: Number(cadence) || null,
+            laps: parseLaps(),
           }, date)}
           className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#7A8B5E", color: "#14201C" }}>
           {defaults.done ? "Mettre à jour" : "Valider cette séance"}
@@ -1051,6 +1070,136 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma }) {
 // ======================================================================
 // Compte rendu de séance : prévu vs réalisé
 // ======================================================================
+
+// ======================================================================
+// Analyse par intervalle (laps de la montre)
+// ======================================================================
+
+// Pourcentages de VMA visés pour chaque phase de la séance
+function sessionTargets(session) {
+  const ph = session.phase || "build";
+  if (session.type === "fractionne") {
+    const work = { base: 100, build: 102, peak: 100, taper: 100 }[ph];
+    return { warmup: 68, work, rest: 50, cooldown: 65 };
+  }
+  if (session.type === "seuil") {
+    const work = { base: 85, build: 87, peak: 88, taper: 87 }[ph];
+    return { warmup: 68, work, rest: 55, cooldown: 65 };
+  }
+  if (session.type === "cotes") {
+    return { warmup: 68, work: 95, rest: 45, cooldown: 65 };
+  }
+  const cont = { longue: 70, fonda: 68, recup: 62 }[session.type] || 68;
+  return { warmup: cont, work: cont, rest: cont, cooldown: cont };
+}
+
+/**
+ * Classe chaque lap : échauffement, effort, récup ou retour au calme.
+ * On se base sur l'allure rapportée à la VMA plutôt que sur l'ordre des
+ * tours, car les montres mélangent tours automatiques (km) et tours manuels.
+ */
+function classifyLaps(laps, vma, session) {
+  if (!laps || !laps.length || !vma) return [];
+  const t = sessionTargets(session);
+  const isInterval = ["fractionne", "seuil", "cotes"].includes(session.type);
+
+  const enriched = laps.map((l, i) => {
+    const speed = l.sec > 0 ? (l.m / l.sec) * 3.6 : 0;
+    const pct = vma ? (speed / vma) * 100 : 0;
+    return { ...l, i, speed, pct, pace: speed > 0 ? 60 / speed : null };
+  });
+
+  const longIdx = enriched.filter(l => l.sec >= 150).map(l => l.i);
+  const firstLong = longIdx.length ? Math.min(...longIdx) : -1;
+  const lastLong = longIdx.length ? Math.max(...longIdx) : -1;
+
+  return enriched.map(l => {
+    let kind;
+    if (!isInterval) kind = "continu";
+    else if (l.i === firstLong && l.sec >= 150) kind = "echauffement";
+    else if (l.i === lastLong && l.sec >= 150 && lastLong !== firstLong) kind = "calme";
+    else if (l.pct >= (t.work - 12)) kind = "effort";
+    else if (l.sec <= 120) kind = "recup";
+    else kind = "endurance";
+
+    const targetPct = { echauffement: t.warmup, calme: t.cooldown, effort: t.work, recup: t.rest, endurance: t.warmup, continu: t.work }[kind];
+    return { ...l, kind, targetPct };
+  });
+}
+
+const KIND_LABEL = { echauffement: "Échauffement", effort: "Effort", recup: "Récup", calme: "Retour au calme", endurance: "Endurance", continu: "Séance" };
+const KIND_COLOR = { echauffement: "#7A8B5E", effort: "#C1622B", recup: "#5C7A99", calme: "#7A8B5E", endurance: "#7A8B5E", continu: "#C1622B" };
+
+function fmtPace(p) {
+  if (!p || !isFinite(p)) return "—";
+  const m = Math.floor(p);
+  const s = Math.round((p - m) * 60);
+  return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, "0")}`;
+}
+
+function LapAnalysis({ session, vma }) {
+  const laps = classifyLaps(session.actual?.laps, vma, session);
+  if (!laps.length) return null;
+
+  // Regroupe par phase, dans l'ordre d'apparition
+  const order = ["echauffement", "effort", "recup", "endurance", "calme", "continu"];
+  const groups = order
+    .map(k => ({ kind: k, items: laps.filter(l => l.kind === k) }))
+    .filter(g => g.items.length);
+
+  return (
+    <div className="rounded-lg p-3 space-y-3" style={{ background: "#1C2B24", border: "1px solid #2C3A32" }}>
+      <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#C1622B" }}>
+        Analyse par intervalle
+      </p>
+
+      {groups.map(g => {
+        const n = g.items.length;
+        const totSec = g.items.reduce((a, l) => a + l.sec, 0);
+        const totM = g.items.reduce((a, l) => a + l.m, 0);
+        const avgPace = totM > 0 ? (totSec / 60) / (totM / 1000) : null;
+        const fcs = g.items.filter(l => l.fc).map(l => l.fc);
+        const avgFc = fcs.length ? Math.round(fcs.reduce((a, b) => a + b, 0) / fcs.length) : null;
+        const targetPace = vma ? 60 / (vma * g.items[0].targetPct / 100) : null;
+        const delta = avgPace && targetPace ? Math.round((avgPace - targetPace) * 60) : null;
+
+        return (
+          <div key={g.kind} className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs" style={{ color: KIND_COLOR[g.kind] }}>
+                {KIND_LABEL[g.kind]}{n > 1 ? ` ×${n}` : ""}
+              </span>
+              <span className="text-xs" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
+                {fmtPace(avgPace)} <span style={{ color: "#5A6259" }}>/ {fmtPace(targetPace)} /km</span>
+                {delta !== null && (
+                  <span style={{ color: Math.abs(delta) <= 15 ? "#7A8B5E" : "#D9793C", marginLeft: 5 }}>
+                    {delta > 0 ? "+" : ""}{delta}s
+                  </span>
+                )}
+                {avgFc && <span style={{ color: "#5C7A99", marginLeft: 6 }}>{avgFc} bpm</span>}
+              </span>
+            </div>
+
+            {/* détail répétition par répétition */}
+            {n > 1 && (
+              <div className="pl-2 space-y-0.5" style={{ borderLeft: `2px solid ${KIND_COLOR[g.kind]}33` }}>
+                {g.items.map((l, idx) => (
+                  <div key={l.i} className="flex justify-between text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                    <span style={{ color: "#5A6259" }}>#{idx + 1} · {l.sec}s · {Math.round(l.m)} m</span>
+                    <span style={{ color: "#9CAA9E" }}>
+                      {l.speed.toFixed(1)} km/h · {Math.round(l.pct)}% VMA
+                      {l.fc ? <span style={{ color: "#5C7A99" }}> · {Math.round(l.fc)}</span> : null}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function paceStr(distanceKm, dureeMin) {
   if (!distanceKm || !dureeMin) return null;
@@ -1322,6 +1471,7 @@ function SessionDetail({ s, onClose, onSaveNotes, vma }) {
         </div>
 
         {s.done && s.actual && <SessionReport s={s} vma={vma} />}
+        {s.done && s.actual?.laps?.length > 0 && <LapAnalysis session={s} vma={vma} />}
 
         <button onClick={onClose} className="w-full rounded-lg py-2 text-sm" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
           Replier
