@@ -542,10 +542,11 @@ function expandWorkout(session, vma) {
   const rMin = /(\d+) min/.exec(b.rest);
   const restSec = rSec ? Number(rSec[1]) : (rMin ? Number(rMin[1]) * 60 : 60);
 
+  const isHill = session.type === "cotes";
   const segs = [{ kind: "echauffement", sec: 20 * 60, pct: t.warmup }];
   for (let set = 0; set < sets; set++) {
     for (let r = 0; r < reps; r++) {
-      segs.push({ kind: "effort", sec: workSec, pct: workPct });
+      segs.push({ kind: "effort", sec: workSec, pct: workPct, hill: isHill });
       segs.push({ kind: "recup", sec: restSec, pct: t.rest });
     }
     if (b.between && set < sets - 1) segs.push({ kind: "recup", sec: 5 * 60, pct: t.rest, serie: true });
@@ -560,7 +561,19 @@ function structuredTotals(session, vma) {
   if (!segs) return null;
   const sec = segs.reduce((a, s) => a + s.sec, 0);
   const km = segs.reduce((a, s) => a + (vma * s.pct / 100) * (s.sec / 3600), 0);
-  return { distance: Math.round(km * 10) / 10, duree: Math.round(sec / 60) };
+
+  // Dénivelé réellement produit par les montées : en côte, ce qui compte est
+  // la vitesse ascensionnelle (~900 m/h sur des montées courtes à haute
+  // intensité, ~800 m/h au-delà de 90s), pas la distance parcourue.
+  const dplus = segs
+    .filter(s => s.hill)
+    .reduce((a, s) => a + (s.sec <= 90 ? 900 : 800) * (s.sec / 3600), 0);
+
+  return {
+    distance: Math.round(km * 10) / 10,
+    duree: Math.round(sec / 60),
+    dplus: dplus > 0 ? Math.round(dplus) : null,
+  };
 }
 
 // ======================================================================
@@ -679,10 +692,47 @@ function generatePlan(goal) {
     const contShare = contTypes.reduce((a, t) => a + shareByType[t], 0) || 1;
     const remaining = Math.max(targetVolume * 0.35, targetVolume - qualityKm);
 
+    // --- Répartition du dénivelé de la semaine ---------------------------
+    // Les séances de côtes produisent le D+ dicté par leurs montées (calculé
+    // ci-dessus), et le fractionné/seuil se court quasiment à plat. Le reste
+    // du D+ hebdomadaire doit donc être porté par les sorties sur le terrain,
+    // sortie longue en tête — c'est là qu'on accumule vraiment du dénivelé.
+    const weeklyDPlus = goal.type === "trail"
+      ? Math.round(targetVolume * raceGradient * phaseDPlusFactor) : 0;
+
+    const distanceFor = type => {
+      const t = totalsByType[type];
+      return t ? t.distance : Math.round(remaining * (shareByType[type] / contShare) * 10) / 10;
+    };
+
+    let structuralDPlus = 0;
+    template.forEach(type => {
+      const t = totalsByType[type];
+      if (!t) return;
+      structuralDPlus += t.dplus != null ? t.dplus : Math.round(distanceFor(type) * raceGradient * 0.15);
+    });
+
+    // ce qu'il reste à répartir sur les séances continues, plafonné à une
+    // densité crédible (2× le gradient de la course) pour ne pas prescrire
+    // des sorties impossibles à trouver sur le terrain
+    const contDistance = contTypes.reduce((a, t) => a + distanceFor(t), 0) || 1;
+    const restDPlus = Math.max(0, weeklyDPlus - structuralDPlus);
+    const contWeights = { longue: 1.5, fonda: 0.8, recup: 0.3 };
+    const weightSum = contTypes.reduce((a, t) => a + distanceFor(t) * (contWeights[t] ?? 0.8), 0) || 1;
+
     template.forEach((type, i) => {
       const tot = totalsByType[type];
-      const distance = tot ? tot.distance : Math.round(remaining * (shareByType[type] / contShare) * 10) / 10;
-      const dplus = goal.type === "trail" ? Math.round(distance * raceGradient * climbDensity[type] * phaseDPlusFactor) : null;
+      const distance = distanceFor(type);
+
+      let dplus = null;
+      if (goal.type === "trail") {
+        if (tot) {
+          dplus = tot.dplus != null ? tot.dplus : Math.round(distance * raceGradient * 0.15);
+        } else {
+          const share = (distance * (contWeights[type] ?? 0.8)) / weightSum;
+          dplus = Math.round(Math.min(restDPlus * share, distance * raceGradient * 2));
+        }
+      }
 
       let duree;
       if (tot) {
