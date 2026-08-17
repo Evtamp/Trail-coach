@@ -4,7 +4,6 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Trail Coach</title>
-<meta name="build" content="2026-08-17-laps" />
 <meta name="theme-color" content="#14201C" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
@@ -507,6 +506,51 @@ function workoutToText(session, vma) {
   return L.join("\n");
 }
 
+/**
+ * Déplie une séance structurée en segments élémentaires (échauffement,
+ * chaque effort, chaque récup, retour au calme). Sert à la fois au calcul
+ * des totaux prévus et à l'analyse chronologique.
+ */
+function expandWorkout(session, vma) {
+  const w = buildStructuredWorkout(session, vma);
+  if (!w) return null;
+  const t = sessionTargets(session);
+  const b = w.blocks[0];
+
+  const sets = Number((/^(\d+)/.exec(b.repeats) || [])[1]) || 1;
+  const reps = Number((/de (\d+)/.exec(b.repeats) || [])[1]) || 1;
+
+  const wSec = /(\d+)s/.exec(b.work);
+  const wMin = /(\d+) min/.exec(b.work);
+  const workSec = wSec ? Number(wSec[1]) : (wMin ? Number(wMin[1]) * 60 : 60);
+  const pctM = /(\d+)(?:-\d+)?% VMA/.exec(b.work);
+  const workPct = pctM ? Number(pctM[1]) : t.work;
+
+  const rSec = /(\d+)s/.exec(b.rest);
+  const rMin = /(\d+) min/.exec(b.rest);
+  const restSec = rSec ? Number(rSec[1]) : (rMin ? Number(rMin[1]) * 60 : 60);
+
+  const segs = [{ kind: "echauffement", sec: 20 * 60, pct: t.warmup }];
+  for (let set = 0; set < sets; set++) {
+    for (let r = 0; r < reps; r++) {
+      segs.push({ kind: "effort", sec: workSec, pct: workPct });
+      segs.push({ kind: "recup", sec: restSec, pct: t.rest });
+    }
+    if (b.between && set < sets - 1) segs.push({ kind: "recup", sec: 5 * 60, pct: t.rest, serie: true });
+  }
+  segs.push({ kind: "calme", sec: 12 * 60, pct: t.cooldown });
+  return segs;
+}
+
+// Distance et durée réellement impliquées par une séance structurée
+function structuredTotals(session, vma) {
+  const segs = expandWorkout(session, vma);
+  if (!segs) return null;
+  const sec = segs.reduce((a, s) => a + s.sec, 0);
+  const km = segs.reduce((a, s) => a + (vma * s.pct / 100) * (s.sec / 3600), 0);
+  return { distance: Math.round(km * 10) / 10, duree: Math.round(sec / 60) };
+}
+
 // ======================================================================
 // Plan generator
 // ======================================================================
@@ -603,15 +647,38 @@ function generatePlan(goal) {
 
     const template = sessionTemplateForDays(goal.daysPerWeek, goal.type);
     const shareByType = { longue: 0.38, fractionne: 0.16, seuil: 0.18, cotes: 0.2, fonda: 0.16, recup: 0.12 };
-    const totalShare = template.reduce((s, t) => s + shareByType[t], 0);
+
+    // Les séances de qualité ont une distance et une durée dictées par leur
+    // structure (échauffement + séries + récup + retour au calme) : on les
+    // calcule d'abord, puis on répartit le volume restant sur les séances
+    // continues. Sans ça, la durée prévue supposait toute la séance courue
+    // à l'allure des fractions — cible impossible et comparaison faussée.
+    const QUALITY = ["fractionne", "seuil", "cotes"];
+    const totalsByType = {};
+    let qualityKm = 0;
+    template.forEach(type => {
+      if (QUALITY.includes(type) && !totalsByType[type]) {
+        const tot = structuredTotals({ type, phase }, goal.vma);
+        if (tot) { totalsByType[type] = tot; qualityKm += tot.distance; }
+      }
+    });
+
+    const contTypes = template.filter(t => !totalsByType[t]);
+    const contShare = contTypes.reduce((a, t) => a + shareByType[t], 0) || 1;
+    const remaining = Math.max(targetVolume * 0.35, targetVolume - qualityKm);
 
     template.forEach((type, i) => {
-      const share = shareByType[type] / totalShare;
-      const distance = Math.round(targetVolume * share * 10) / 10;
+      const tot = totalsByType[type];
+      const distance = tot ? tot.distance : Math.round(remaining * (shareByType[type] / contShare) * 10) / 10;
       const dplus = goal.type === "trail" ? Math.round(distance * raceGradient * climbDensity[type] * phaseDPlusFactor) : null;
-      const paceFactor = { longue: goal.type === "trail" ? 0.6 : 0.75, fractionne: 0.95, seuil: 0.85, cotes: 0.65, fonda: 0.7, recup: 0.65 }[type];
-      const paceKmH = goal.vma * paceFactor;
-      const duree = Math.round((distance / paceKmH) * 60);
+
+      let duree;
+      if (tot) {
+        duree = tot.duree;
+      } else {
+        const paceFactor = { longue: goal.type === "trail" ? 0.6 : 0.75, fonda: 0.7, recup: 0.65 }[type] || 0.7;
+        duree = Math.round((distance / (goal.vma * paceFactor)) * 60);
+      }
 
       sessions.push({
         id: uid(),
@@ -1142,62 +1209,83 @@ function LapAnalysis({ session, vma }) {
   const laps = classifyLaps(session.actual?.laps, vma, session);
   if (!laps.length) return null;
 
-  // Regroupe par phase, dans l'ordre d'apparition
+  // Moyennes par phase, affichées en synthèse sous le détail
   const order = ["echauffement", "effort", "recup", "endurance", "calme", "continu"];
   const groups = order
     .map(k => ({ kind: k, items: laps.filter(l => l.kind === k) }))
     .filter(g => g.items.length);
 
+  const counters = {};
+
   return (
     <div className="rounded-lg p-3 space-y-3" style={{ background: "#1C2B24", border: "1px solid #2C3A32" }}>
       <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#C1622B" }}>
-        Analyse par intervalle
+        Déroulé de la séance
       </p>
 
-      {groups.map(g => {
-        const n = g.items.length;
-        const totSec = g.items.reduce((a, l) => a + l.sec, 0);
-        const totM = g.items.reduce((a, l) => a + l.m, 0);
-        const avgPace = totM > 0 ? (totSec / 60) / (totM / 1000) : null;
-        const fcs = g.items.filter(l => l.fc).map(l => l.fc);
-        const avgFc = fcs.length ? Math.round(fcs.reduce((a, b) => a + b, 0) / fcs.length) : null;
-        const targetPace = vma ? 60 / (vma * g.items[0].targetPct / 100) : null;
-        const delta = avgPace && targetPace ? Math.round((avgPace - targetPace) * 60) : null;
+      {/* ordre chronologique : chaque tour tel qu'il s'est enchaîné */}
+      <div className="space-y-1">
+        {laps.map(l => {
+          counters[l.kind] = (counters[l.kind] || 0) + 1;
+          const n = counters[l.kind];
+          const target = vma ? 60 / (vma * l.targetPct / 100) : null;
+          const delta = l.pace && target ? Math.round((l.pace - target) * 60) : null;
+          const label = KIND_LABEL[l.kind] + (["effort", "recup"].includes(l.kind) ? ` ${n}` : "");
 
-        return (
-          <div key={g.kind} className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs" style={{ color: KIND_COLOR[g.kind] }}>
-                {KIND_LABEL[g.kind]}{n > 1 ? ` ×${n}` : ""}
+          return (
+            <div key={l.i} className="flex items-baseline justify-between text-xs py-0.5"
+              style={{ borderBottom: "1px solid #22302A" }}>
+              <span className="shrink-0" style={{ color: KIND_COLOR[l.kind], minWidth: "5.5rem" }}>{label}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5A6259" }}>
+                {l.sec}s·{Math.round(l.m)}m
               </span>
-              <span className="text-xs" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
-                {fmtPace(avgPace)} <span style={{ color: "#5A6259" }}>/ {fmtPace(targetPace)} /km</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
+                {fmtPace(l.pace)}<span style={{ color: "#5A6259" }}>/{fmtPace(target)}</span>
+              </span>
+              {delta !== null && (
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: Math.abs(delta) <= 15 ? "#7A8B5E" : "#D9793C", minWidth: "2.6rem", textAlign: "right" }}>
+                  {delta > 0 ? "+" : ""}{delta}s
+                </span>
+              )}
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99", minWidth: "2.2rem", textAlign: "right" }}>
+                {l.fc ? Math.round(l.fc) : "—"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* synthèse par phase */}
+      <div className="pt-2 space-y-1" style={{ borderTop: "1px solid #2C3A32" }}>
+        <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          Moyennes
+        </p>
+        {groups.map(g => {
+          const totSec = g.items.reduce((a, l) => a + l.sec, 0);
+          const totM = g.items.reduce((a, l) => a + l.m, 0);
+          const avgPace = totM > 0 ? (totSec / 60) / (totM / 1000) : null;
+          const fcs = g.items.filter(l => l.fc).map(l => l.fc);
+          const avgFc = fcs.length ? Math.round(fcs.reduce((a, b) => a + b, 0) / fcs.length) : null;
+          const target = vma ? 60 / (vma * g.items[0].targetPct / 100) : null;
+          const delta = avgPace && target ? Math.round((avgPace - target) * 60) : null;
+          return (
+            <div key={g.kind} className="flex justify-between text-xs">
+              <span style={{ color: KIND_COLOR[g.kind] }}>
+                {KIND_LABEL[g.kind]}{g.items.length > 1 ? ` ×${g.items.length}` : ""}
+              </span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
+                {fmtPace(avgPace)}<span style={{ color: "#5A6259" }}>/{fmtPace(target)}</span>
                 {delta !== null && (
                   <span style={{ color: Math.abs(delta) <= 15 ? "#7A8B5E" : "#D9793C", marginLeft: 5 }}>
                     {delta > 0 ? "+" : ""}{delta}s
                   </span>
                 )}
-                {avgFc && <span style={{ color: "#5C7A99", marginLeft: 6 }}>{avgFc} bpm</span>}
+                {avgFc && <span style={{ color: "#5C7A99", marginLeft: 6 }}>{avgFc}</span>}
               </span>
             </div>
-
-            {/* détail répétition par répétition */}
-            {n > 1 && (
-              <div className="pl-2 space-y-0.5" style={{ borderLeft: `2px solid ${KIND_COLOR[g.kind]}33` }}>
-                {g.items.map((l, idx) => (
-                  <div key={l.i} className="flex justify-between text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                    <span style={{ color: "#5A6259" }}>#{idx + 1} · {l.sec}s · {Math.round(l.m)} m</span>
-                    <span style={{ color: "#9CAA9E" }}>
-                      {l.speed.toFixed(1)} km/h · {Math.round(l.pct)}% VMA
-                      {l.fc ? <span style={{ color: "#5C7A99" }}> · {Math.round(l.fc)}</span> : null}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
