@@ -1388,11 +1388,12 @@ function LapAnalysis({ session, vma }) {
               <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5A6259" }}>
                 {l.sec}s·{Math.round(l.m)}m
               </span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
-                {fmtPace(l.pace)}<span style={{ color: "#5A6259" }}>/{fmtPace(target)}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                <span style={{ color: "#C1622B" }}>{fmtPace(l.pace)}</span>
+                <span style={{ color: "#5A6259" }}>/{fmtPace(target)}</span>
               </span>
               {delta !== null && (
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: Math.abs(delta) <= 15 ? "#7A8B5E" : "#D9793C", minWidth: "2.6rem", textAlign: "right" }}>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: Math.abs(delta) <= 15 ? "#7A8B5E" : "#B0863C", minWidth: "2.6rem", textAlign: "right" }}>
                   {delta > 0 ? "+" : ""}{delta}s
                 </span>
               )}
@@ -1422,10 +1423,11 @@ function LapAnalysis({ session, vma }) {
               <span style={{ color: KIND_COLOR[g.kind] }}>
                 {KIND_LABEL[g.kind]}{g.items.length > 1 ? ` ×${g.items.length}` : ""}
               </span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
-                {fmtPace(avgPace)}<span style={{ color: "#5A6259" }}>/{fmtPace(target)}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                <span style={{ color: "#C1622B" }}>{fmtPace(avgPace)}</span>
+                <span style={{ color: "#5A6259" }}>/{fmtPace(target)}</span>
                 {delta !== null && (
-                  <span style={{ color: Math.abs(delta) <= 15 ? "#7A8B5E" : "#D9793C", marginLeft: 5 }}>
+                  <span style={{ color: Math.abs(delta) <= 15 ? "#7A8B5E" : "#B0863C", marginLeft: 5 }}>
                     {delta > 0 ? "+" : ""}{delta}s
                   </span>
                 )}
@@ -1459,10 +1461,12 @@ function CompareRow({ label, planned, actual, unit, lowerIsBetter = false }) {
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
         <span style={{ color: "#9CAA9E" }}>{label}</span>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
-          {actual ?? "—"} <span style={{ color: "#5A6259" }}>/ {planned ?? "—"} {unit}</span>
+        {/* les chiffres reprennent la couleur de leur barre : gris = prévu, orange = réalisé */}
+        <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+          <span style={{ color: "#C1622B" }}>{actual ?? "—"}</span>
+          <span style={{ color: "#5A6259" }}> / {planned ?? "—"} {unit}</span>
           {delta !== null && (
-            <span style={{ color: good ? "#7A8B5E" : "#D9793C", marginLeft: 6 }}>
+            <span style={{ color: good ? "#7A8B5E" : "#B0863C", marginLeft: 6 }}>
               {delta > 0 ? "+" : ""}{Math.round(delta)}%
             </span>
           )}
@@ -1513,8 +1517,8 @@ function SessionReport({ s, vma }) {
         </p>
       </div>
 
-      <div className="flex gap-3 text-xs" style={{ color: "#5A6259" }}>
-        <span>▬ prévu</span>
+      <div className="flex gap-3 text-xs">
+        <span style={{ color: "#5A6259" }}>▬ prévu</span>
         <span style={{ color: "#C1622B" }}>▬ réalisé</span>
       </div>
 
@@ -1528,12 +1532,13 @@ function SessionReport({ s, vma }) {
         <div className="pt-2" style={{ borderTop: "1px solid #2C3A32" }}>
           <div className="flex justify-between text-xs">
             <span style={{ color: "#9CAA9E" }}>Allure moyenne</span>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
-              {realPace || "—"} <span style={{ color: "#5A6259" }}>/ {planPace || "—"} /km</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+              <span style={{ color: "#C1622B" }}>{realPace || "—"}</span>
+              <span style={{ color: "#5A6259" }}> / {planPace || "—"} /km</span>
             </span>
           </div>
           {paceDeltaSec !== null && (
-            <p className="text-xs mt-1" style={{ color: Math.abs(paceDeltaSec) <= 15 ? "#7A8B5E" : "#D9793C" }}>
+            <p className="text-xs mt-1" style={{ color: Math.abs(paceDeltaSec) <= 15 ? "#7A8B5E" : "#B0863C" }}>
               {paceDeltaSec === 0 ? "pile sur l'allure prévue"
                 : paceDeltaSec > 0 ? `${paceDeltaSec}s/km plus lent que prévu`
                 : `${-paceDeltaSec}s/km plus rapide que prévu`}
@@ -1545,8 +1550,9 @@ function SessionReport({ s, vma }) {
       {(gradPlan || gradReal) && (
         <div className="flex justify-between text-xs">
           <span style={{ color: "#9CAA9E" }}>Densité D+</span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
-            {gradReal ?? "—"} <span style={{ color: "#5A6259" }}>/ {gradPlan ?? "—"} m/km</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+            <span style={{ color: "#C1622B" }}>{gradReal ?? "—"}</span>
+            <span style={{ color: "#5A6259" }}> / {gradPlan ?? "—"} m/km</span>
           </span>
         </div>
       )}
