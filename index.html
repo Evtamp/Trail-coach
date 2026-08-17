@@ -940,6 +940,99 @@ function ElevationHero({ goal, progress, daysLeft }) {
 // Session form (manual add) & row
 // ======================================================================
 
+// ======================================================================
+// Anneaux de progression de la semaine en cours
+// ======================================================================
+
+function Ring({ value, target, unit, label, color, format }) {
+  const R = 26, STROKE = 6, SIZE = 68;
+  const C = 2 * Math.PI * R;
+  const ratio = target > 0 ? value / target : 0;
+  const filled = Math.min(1, ratio);
+  const done = ratio >= 1;
+  const fmt = format || (v => Math.round(v));
+
+  return (
+    <div className="flex flex-col items-center">
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+        {/* piste = objectif de la semaine */}
+        <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="#2C3A32" strokeWidth={STROKE} />
+        {/* arc = réalisé */}
+        <circle
+          cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none"
+          stroke={color} strokeWidth={STROKE} strokeLinecap="round"
+          strokeDasharray={`${C * filled} ${C}`}
+          transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+        />
+        {/* liseré si l'objectif est dépassé */}
+        {done && (
+          <circle cx={SIZE / 2} cy={SIZE / 2} r={R - STROKE} fill="none" stroke={color} strokeWidth="1" opacity="0.5" />
+        )}
+        <text x={SIZE / 2} y={SIZE / 2 + 1} textAnchor="middle"
+          fontSize="15" fill="#EDE7D9" fontFamily="'JetBrains Mono', monospace">
+          {fmt(value)}
+        </text>
+        <text x={SIZE / 2} y={SIZE / 2 + 12} textAnchor="middle"
+          fontSize="7.5" fill="#5A6259" fontFamily="'JetBrains Mono', monospace">
+          / {fmt(target)}
+        </text>
+      </svg>
+      <p className="text-xs mt-1" style={{ color: "#9CAA9E" }}>{label}</p>
+      <p className="text-xs" style={{ color: done ? color : "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
+        {target > 0 ? `${Math.round(ratio * 100)}%` : "—"} {unit}
+      </p>
+    </div>
+  );
+}
+
+function WeekRings({ sessions }) {
+  const wk = toISO(isoWeekStart(new Date()));
+
+  // Objectif = ce que le plan prévoit cette semaine
+  const planned = sessions.filter(s => s.generated && s.weekStart === wk);
+  // Réalisé = toute la course à pied faite cette semaine, plan ou hors plan
+  const doneRun = sessions.filter(s => s.done && !isCross(s.type) && sessionWeek(s) === wk);
+  const doneCross = sessions.filter(s => s.done && isCross(s.type) && sessionWeek(s) === wk);
+
+  const sum = (arr, f) => arr.reduce((a, s) => a + (f(s) || 0), 0);
+  const targetKm = sum(planned, s => s.distance);
+  const targetD = sum(planned, s => s.dplus);
+  const targetMin = sum(planned, s => s.duree);
+  const realKm = sum(doneRun, s => s.actual?.distance ?? s.distance);
+  const realD = sum(doneRun, s => s.actual?.dplus ?? s.dplus);
+  const realMin = sum(doneRun, s => s.actual?.duree ?? s.duree);
+  const crossMin = sum(doneCross, s => s.actual?.duree ?? s.duree);
+
+  if (!targetKm && !realKm) return null;
+
+  const hrs = v => (v >= 60 ? `${Math.floor(v / 60)}h${String(Math.round(v % 60)).padStart(2, "0")}` : `${Math.round(v)}′`);
+
+  return (
+    <div className="rounded-xl p-4" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+      <div className="flex items-baseline justify-between mb-3">
+        <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          Semaine en cours
+        </p>
+        <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
+          {doneRun.length}/{planned.length} séances
+        </p>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <Ring value={realKm} target={targetKm} label="Distance" unit="km" color="#C1622B" format={v => Math.round(v)} />
+        <Ring value={realD} target={targetD} label="Dénivelé" unit="m D+" color="#B0863C" format={v => Math.round(v)} />
+        <Ring value={realMin} target={targetMin} label="Temps" unit="" color="#7A8B5E" format={hrs} />
+      </div>
+
+      {crossMin > 0 && (
+        <p className="text-xs mt-3 text-center" style={{ color: "#5C7A99" }}>
+          + {hrs(crossMin)} d'activité complémentaire (hors objectifs course)
+        </p>
+      )}
+    </div>
+  );
+}
+
 function SessionForm({ onAdd }) {
   const [type, setType] = useState("recup");
   const [date, setDate] = useState(() => toISO(new Date()));
@@ -2100,6 +2193,8 @@ function App() {
             <span className="text-xs" style={{ color: "#D9793C" }}>pense à sauvegarder à la main</span>
           )}
         </div>
+
+        {goal && !editingGoal && <WeekRings sessions={sessions} />}
 
         {goal && !editingGoal && (
           <button onClick={() => setEditingGoal(true)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
