@@ -893,6 +893,9 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
   const [dplus, setDplus] = useState(defaults.dplus || "");
   const [duree, setDuree] = useState(defaults.duree || "");
   const [feeling, setFeeling] = useState(3);
+  const [fc, setFc] = useState("");
+  const [fcMax, setFcMax] = useState("");
+  const [cadence, setCadence] = useState("");
   const [paste, setPaste] = useState("");
   const [pasteErr, setPasteErr] = useState("");
 
@@ -911,6 +914,9 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
     if (parts[2]) setDplus(parts[2]);
     if (parts[3]) setDuree(parts[3]);
     if (parts[4]) setFeeling(Number(parts[4]));
+    if (parts[5]) setFc(parts[5]);
+    if (parts[6]) setFcMax(parts[6]);
+    if (parts[7]) setCadence(parts[7]);
     setPaste(""); setPasteErr("");
   };
 
@@ -918,7 +924,7 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
     <div className="mt-3 pt-3 space-y-2" style={{ borderTop: "1px solid #2C3A32" }}>
       <div className="flex gap-2">
         <input type="text" value={paste} onChange={e => setPaste(e.target.value)}
-          placeholder="coller : 2026-08-17 ; 8.2 ; 56 ; 46 ;"
+          placeholder="coller : date ; km ; D+ ; min ; ressenti ; FC ; FCmax ; cad"
           className="flex-1 rounded-lg px-2 py-1.5 text-xs outline-none"
           style={{ ...inputStyle, fontFamily: "'JetBrains Mono', monospace" }} />
         <button onClick={applyPaste} className="rounded-lg px-3 text-xs" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
@@ -946,6 +952,21 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
         </div>
       </div>
 
+      <div className="grid grid-cols-3 gap-2">
+        <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>FC moy</label>
+          <input type="number" value={fc} onChange={e => setFc(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>FC max</label>
+          <input type="number" value={fcMax} onChange={e => setFcMax(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Cadence</label>
+          <input type="number" value={cadence} onChange={e => setCadence(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+      </div>
+
       <div>
         <label className="text-xs" style={{ color: "#5A6259" }}>Ressenti : {feeling}/5</label>
         <input type="range" min="1" max="5" value={feeling} onChange={e => setFeeling(Number(e.target.value))} className="w-full" />
@@ -958,6 +979,9 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
             dplus: Number(dplus) || null,
             duree: Number(duree) || null,
             feeling,
+            fc: Number(fc) || null,
+            fcMax: Number(fcMax) || null,
+            cadence: Number(cadence) || null,
           }, date)}
           className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#7A8B5E", color: "#14201C" }}>
           Valider cette séance
@@ -987,7 +1011,7 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma }) {
           </p>
           {s.done && s.actual && (
             <p className="text-xs mt-1" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>
-              réel: {s.actual.distance || "—"} km{s.actual.dplus ? ` · ${s.actual.dplus} m D+` : ""}{s.actual.duree ? ` · ${s.actual.duree} min` : ""}{s.actual.feeling ? ` · ressenti ${s.actual.feeling}/5` : ""}
+              réel: {s.actual.distance || "—"} km{s.actual.dplus ? ` · ${s.actual.dplus} m D+` : ""}{s.actual.duree ? ` · ${s.actual.duree} min` : ""}{s.actual.fc ? ` · ${s.actual.fc} bpm` : ""}{s.actual.feeling ? ` · ressenti ${s.actual.feeling}/5` : ""}
             </p>
           )}
         </div>
@@ -1007,6 +1031,138 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma }) {
       {showActual && <ActualForm defaults={s} onSubmit={complete} onCancel={() => setShowActual(false)} />}
       {expanded && (
         <SessionDetail s={s} vma={vma} onSaveNotes={onSaveNotes} onClose={() => setExpanded(false)} />
+      )}
+    </div>
+  );
+}
+
+// ======================================================================
+// Compte rendu de séance : prévu vs réalisé
+// ======================================================================
+
+function paceStr(distanceKm, dureeMin) {
+  if (!distanceKm || !dureeMin) return null;
+  const p = dureeMin / distanceKm;
+  const m = Math.floor(p);
+  const sec = Math.round((p - m) * 60);
+  return sec === 60 ? `${m + 1}:00` : `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+// Une ligne = deux barres proportionnelles (prévu en gris, réalisé en orange)
+function CompareRow({ label, planned, actual, unit, lowerIsBetter = false }) {
+  const max = Math.max(planned || 0, actual || 0) || 1;
+  const pctP = ((planned || 0) / max) * 100;
+  const pctA = ((actual || 0) / max) * 100;
+  const delta = planned && actual ? ((actual - planned) / planned) * 100 : null;
+  const good = delta === null ? null : (lowerIsBetter ? delta <= 2 : delta >= -10);
+
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs">
+        <span style={{ color: "#9CAA9E" }}>{label}</span>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
+          {actual ?? "—"} <span style={{ color: "#5A6259" }}>/ {planned ?? "—"} {unit}</span>
+          {delta !== null && (
+            <span style={{ color: good ? "#7A8B5E" : "#D9793C", marginLeft: 6 }}>
+              {delta > 0 ? "+" : ""}{Math.round(delta)}%
+            </span>
+          )}
+        </span>
+      </div>
+      <div className="space-y-0.5">
+        <div className="h-1.5 rounded-full" style={{ width: `${pctP}%`, background: "#2C3A32", minWidth: 2 }} />
+        <div className="h-1.5 rounded-full" style={{ width: `${pctA}%`, background: "#C1622B", minWidth: 2 }} />
+      </div>
+    </div>
+  );
+}
+
+function SessionReport({ s, vma }) {
+  const a = s.actual || {};
+  const planPace = paceStr(s.distance, s.duree);
+  const realPace = paceStr(a.distance, a.duree);
+
+  // écart d'allure en secondes/km, pour un commentaire utile
+  const paceDeltaSec = (s.distance && s.duree && a.distance && a.duree)
+    ? Math.round(((a.duree / a.distance) - (s.duree / s.distance)) * 60)
+    : null;
+
+  const gradPlan = s.distance && s.dplus ? Math.round(s.dplus / s.distance) : null;
+  const gradReal = a.distance && a.dplus ? Math.round(a.dplus / a.distance) : null;
+
+  // % de VMA estimé sur la séance, à partir de l'allure moyenne réelle
+  const vmaPct = (vma && a.distance && a.duree)
+    ? Math.round((a.distance / (a.duree / 60)) / vma * 100)
+    : null;
+
+  return (
+    <div className="rounded-lg p-3 space-y-3" style={{ background: "#1C2B24", border: "1px solid #2C3A32" }}>
+      <div className="flex items-center justify-between">
+        <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#C1622B" }}>Compte rendu</p>
+        <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
+          {a.feeling ? `ressenti ${a.feeling}/5` : ""}
+        </p>
+      </div>
+
+      <div className="flex gap-3 text-xs" style={{ color: "#5A6259" }}>
+        <span>▬ prévu</span>
+        <span style={{ color: "#C1622B" }}>▬ réalisé</span>
+      </div>
+
+      <div className="space-y-2.5">
+        <CompareRow label="Distance" planned={s.distance} actual={a.distance} unit="km" />
+        {(s.dplus || a.dplus) && <CompareRow label="Dénivelé" planned={s.dplus} actual={a.dplus} unit="m" />}
+        <CompareRow label="Durée" planned={s.duree} actual={a.duree} unit="min" />
+      </div>
+
+      {(planPace || realPace) && (
+        <div className="pt-2" style={{ borderTop: "1px solid #2C3A32" }}>
+          <div className="flex justify-between text-xs">
+            <span style={{ color: "#9CAA9E" }}>Allure moyenne</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
+              {realPace || "—"} <span style={{ color: "#5A6259" }}>/ {planPace || "—"} /km</span>
+            </span>
+          </div>
+          {paceDeltaSec !== null && (
+            <p className="text-xs mt-1" style={{ color: Math.abs(paceDeltaSec) <= 15 ? "#7A8B5E" : "#D9793C" }}>
+              {paceDeltaSec === 0 ? "pile sur l'allure prévue"
+                : paceDeltaSec > 0 ? `${paceDeltaSec}s/km plus lent que prévu`
+                : `${-paceDeltaSec}s/km plus rapide que prévu`}
+            </p>
+          )}
+        </div>
+      )}
+
+      {(gradPlan || gradReal) && (
+        <div className="flex justify-between text-xs">
+          <span style={{ color: "#9CAA9E" }}>Densité D+</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
+            {gradReal ?? "—"} <span style={{ color: "#5A6259" }}>/ {gradPlan ?? "—"} m/km</span>
+          </span>
+        </div>
+      )}
+
+      {(a.fc || a.fcMax || a.cadence) && (
+        <div className="pt-2 grid grid-cols-3 gap-2" style={{ borderTop: "1px solid #2C3A32" }}>
+          <div className="text-center">
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: a.fc ? "#EDE7D9" : "#5A6259" }}>{a.fc ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>FC moy</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: a.fcMax ? "#EDE7D9" : "#5A6259" }}>{a.fcMax ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>FC max</p>
+          </div>
+          <div className="text-center">
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: a.cadence ? "#EDE7D9" : "#5A6259" }}>{a.cadence ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>cadence</p>
+          </div>
+        </div>
+      )}
+
+      {vmaPct && (
+        <p className="text-xs" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>
+          allure moyenne ≈ {vmaPct}% VMA
+        </p>
       )}
     </div>
   );
@@ -1153,14 +1309,7 @@ function SessionDetail({ s, onClose, onSaveNotes, vma }) {
           </button>
         </div>
 
-        {s.done && s.actual && (
-          <div>
-            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Réalisé</p>
-            <p className="text-sm" style={{ color: "#5C7A99" }}>
-              {s.actual.distance ?? "—"} km {s.actual.feeling ? `· ressenti ${s.actual.feeling}/5` : ""}
-            </p>
-          </div>
-        )}
+        {s.done && s.actual && <SessionReport s={s} vma={vma} />}
 
         <button onClick={onClose} className="w-full rounded-lg py-2 text-sm" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
           Replier
@@ -1407,7 +1556,7 @@ function App() {
 
     for (const line of lines) {
       const parts = line.split(";").map(p => p.trim());
-      const [dateStr, distStr, dplusStr, dureeStr, feelStr] = parts;
+      const [dateStr, distStr, dplusStr, dureeStr, feelStr, fcStr, fcMaxStr, cadStr] = parts;
       if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) { skipped++; continue; }
 
       const actual = {
@@ -1415,6 +1564,9 @@ function App() {
         dplus: dplusStr ? Number(dplusStr) : null,
         duree: dureeStr ? Number(dureeStr) : null,
         feeling: feelStr ? Number(feelStr) : null,
+        fc: fcStr ? Number(fcStr) : null,
+        fcMax: fcMaxStr ? Number(fcMaxStr) : null,
+        cadence: cadStr ? Number(cadStr) : null,
       };
 
       // Cherche dans la MÊME semaine une séance planifiée non encore validée.
@@ -1559,9 +1711,9 @@ function App() {
                   <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
                     Une séance par ligne :<br />
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>
-                      date ; km ; D+ ; minutes ; ressenti
+                      date ; km ; D+ ; minutes ; ressenti ; FC moy ; FC max ; cadence
                     </span><br />
-                    Exemple : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>2026-08-12 ; 12.4 ; 380 ; 78 ; 3</span><br />
+                    Exemple : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>2026-08-12 ; 12.4 ; 380 ; 78 ; 3 ; 148 ; 172 ; 80</span><br />
                     Les champs vides sont acceptés. Une séance planifiée à ±2 jours est automatiquement rapprochée.
                   </p>
                   <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6}
