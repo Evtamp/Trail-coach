@@ -32,10 +32,6 @@
 <body>
 <div id="root"><div id="boot">Chargement…</div></div>
 
-<!-- ================================================================
-     CONFIGURATION FIREBASE — à remplir (voir README, étape 2)
-     Laisse tel quel pour utiliser le stockage local du navigateur.
-     ================================================================ -->
 <script>
 // Affiche les erreurs à l'écran : sans ça, un plantage laisse "Chargement…" indéfiniment
 function showFatal(msg) {
@@ -45,8 +41,12 @@ function showFatal(msg) {
     + '<b>Erreur au démarrage</b><br><br>' + String(msg).replace(/</g, "&lt;") + '</div>';
 }
 window.addEventListener("error", function (e) { showFatal(e.message + (e.filename ? "\n" + e.filename + ":" + e.lineno : "")); });
-window.addEventListener("unhandledrejection", function (e) { showFatal("Promesse rejetée : " + (e.reason && e.reason.message || e.reason)); });
+window.addEventListener("unhandledrejection", function (e) { showFatal("Promesse rejetee : " + (e.reason && e.reason.message || e.reason)); });
 
+/* ================================================================
+   CONFIGURATION FIREBASE — a remplir (voir README, etape 2)
+   Laisse vide pour utiliser le stockage local du navigateur.
+   ================================================================ */
 const FIREBASE_CONFIG = {
   apiKey: "",
   authDomain: "",
@@ -57,7 +57,6 @@ const FIREBASE_CONFIG = {
   appId: ""
 };
 
-// --- Couche de stockage : Firebase si configuré, sinon localStorage ---
 let _fbRef = null;
 let STORAGE_MODE = "local";
 
@@ -93,12 +92,12 @@ window.storage = {
   },
 };
 window.STORAGE_MODE = () => STORAGE_MODE;
-
-// Promesse attendue par l'app avant la première lecture
 window.__storageReady = initStorage();
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  });
 }
 </script>
 
@@ -996,7 +995,13 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma }) {
         {!s.done ? (
           <button onClick={() => setShowActual(v => !v)} className="text-xs px-3 py-1.5 rounded-lg shrink-0" style={{ background: "#C1622B", color: "#14201C" }}>Importer</button>
         ) : (
-          <span className="text-xs px-2 py-1 rounded-lg shrink-0" style={{ color: "#7A8B5E" }}>✓</span>
+          <button
+            onClick={() => onToggle(s.id, { done: false, actual: null, date: s.generated ? null : s.date })}
+            title="Annuler la validation — la séance retourne dans le planning"
+            className="text-xs px-3 py-1.5 rounded-lg shrink-0"
+            style={{ background: "#2C3A32", color: "#7A8B5E" }}>
+            ✓ annuler
+          </button>
         )}
       </div>
       {showActual && <ActualForm defaults={s} onSubmit={complete} onCancel={() => setShowActual(false)} />}
