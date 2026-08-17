@@ -888,14 +888,17 @@ function SessionForm({ onAdd }) {
 }
 
 function ActualForm({ defaults, onSubmit, onCancel }) {
+  // Si la séance a déjà été validée, on repart de ce qui a été saisi ;
+  // sinon on pré-remplit avec les valeurs prévues.
+  const a = defaults.actual || {};
   const [date, setDate] = useState(defaults.date || toISO(new Date()));
-  const [distance, setDistance] = useState(defaults.distance || "");
-  const [dplus, setDplus] = useState(defaults.dplus || "");
-  const [duree, setDuree] = useState(defaults.duree || "");
-  const [feeling, setFeeling] = useState(3);
-  const [fc, setFc] = useState("");
-  const [fcMax, setFcMax] = useState("");
-  const [cadence, setCadence] = useState("");
+  const [distance, setDistance] = useState(a.distance ?? defaults.distance ?? "");
+  const [dplus, setDplus] = useState(a.dplus ?? defaults.dplus ?? "");
+  const [duree, setDuree] = useState(a.duree ?? defaults.duree ?? "");
+  const [feeling, setFeeling] = useState(a.feeling ?? 3);
+  const [fc, setFc] = useState(a.fc ?? "");
+  const [fcMax, setFcMax] = useState(a.fcMax ?? "");
+  const [cadence, setCadence] = useState(a.cadence ?? "");
   const [paste, setPaste] = useState("");
   const [pasteErr, setPasteErr] = useState("");
 
@@ -984,7 +987,7 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
             cadence: Number(cadence) || null,
           }, date)}
           className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#7A8B5E", color: "#14201C" }}>
-          Valider cette séance
+          {defaults.done ? "Mettre à jour" : "Valider cette séance"}
         </button>
         <button onClick={onCancel} className="rounded-lg py-2 px-3 text-sm" style={{ color: "#5A6259" }}>Annuler</button>
       </div>
@@ -1019,13 +1022,22 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma }) {
         {!s.done ? (
           <button onClick={() => setShowActual(v => !v)} className="text-xs px-3 py-1.5 rounded-lg shrink-0" style={{ background: "#C1622B", color: "#14201C" }}>Importer</button>
         ) : (
-          <button
-            onClick={() => onToggle(s.id, { done: false, actual: null, date: s.generated ? null : s.date })}
-            title="Annuler la validation — la séance retourne dans le planning"
-            className="text-xs px-3 py-1.5 rounded-lg shrink-0"
-            style={{ background: "#2C3A32", color: "#7A8B5E" }}>
-            ✓ annuler
-          </button>
+          <div className="flex gap-1 shrink-0">
+            <button
+              onClick={() => setShowActual(v => !v)}
+              title="Corriger ou compléter les données réalisées"
+              className="text-xs px-3 py-1.5 rounded-lg"
+              style={{ background: "#C1622B", color: "#14201C" }}>
+              Modifier
+            </button>
+            <button
+              onClick={() => onToggle(s.id, { done: false, actual: null, date: s.generated ? null : s.date })}
+              title="Annuler la validation — la séance retourne dans le planning"
+              className="text-xs px-2 py-1.5 rounded-lg"
+              style={{ background: "#2C3A32", color: "#7A8B5E" }}>
+              ↺
+            </button>
+          </div>
         )}
       </div>
       {showActual && <ActualForm defaults={s} onSubmit={complete} onCancel={() => setShowActual(false)} />}
