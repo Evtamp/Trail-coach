@@ -1269,6 +1269,20 @@ function classifyLaps(laps, vma, session) {
   });
 }
 
+/**
+ * Un écart ne se juge pas de la même façon selon la phase :
+ * - sur un EFFORT, aller plus vite que la cible est bon, être trop lent alerte
+ * - sur une RÉCUP / un échauffement / un retour au calme, c'est l'inverse :
+ *   aller trop vite signifie qu'on ne récupère pas vraiment
+ * Vert = conforme à l'intention de la phase, ambre = s'en écarte.
+ */
+const FASTER_IS_BETTER = { effort: true, continu: true };
+function deltaOk(kind, delta) {
+  if (delta === null) return true;
+  return FASTER_IS_BETTER[kind] ? delta <= 15 : delta >= -15;
+}
+const deltaColor = (kind, delta) => (deltaOk(kind, delta) ? "#7A8B5E" : "#B0863C");
+
 const KIND_LABEL = { echauffement: "Échauffement", effort: "Effort", recup: "Récup", calme: "Retour au calme", endurance: "Endurance", continu: "Séance" };
 const KIND_COLOR = { echauffement: "#7A8B5E", effort: "#C1622B", recup: "#5C7A99", calme: "#7A8B5E", endurance: "#7A8B5E", continu: "#C1622B" };
 
@@ -1372,6 +1386,14 @@ function LapAnalysis({ session, vma }) {
 
       <HeartRateChart laps={laps} />
 
+      <p className="text-xs leading-relaxed" style={{ color: "#5A6259" }}>
+        Écart à l'allure cible : <span style={{ color: "#EDE7D9" }}>−</span> plus rapide,
+        <span style={{ color: "#EDE7D9" }}> +</span> plus lent.
+        <span style={{ color: "#7A8B5E" }}> Vert</span> = conforme à l'intention de la phase
+        (vite sur les efforts, lent sur les récups),
+        <span style={{ color: "#B0863C" }}> ambre</span> = s'en écarte.
+      </p>
+
       {/* ordre chronologique : chaque tour tel qu'il s'est enchaîné */}
       <div className="space-y-1">
         {laps.map(l => {
@@ -1393,7 +1415,7 @@ function LapAnalysis({ session, vma }) {
                 <span style={{ color: "#5A6259" }}>/{fmtPace(target)}</span>
               </span>
               {delta !== null && (
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: Math.abs(delta) <= 15 ? "#7A8B5E" : "#B0863C", minWidth: "2.6rem", textAlign: "right" }}>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: deltaColor(l.kind, delta), minWidth: "2.6rem", textAlign: "right" }}>
                   {delta > 0 ? "+" : ""}{delta}s
                 </span>
               )}
@@ -1427,7 +1449,7 @@ function LapAnalysis({ session, vma }) {
                 <span style={{ color: "#C1622B" }}>{fmtPace(avgPace)}</span>
                 <span style={{ color: "#5A6259" }}>/{fmtPace(target)}</span>
                 {delta !== null && (
-                  <span style={{ color: Math.abs(delta) <= 15 ? "#7A8B5E" : "#B0863C", marginLeft: 5 }}>
+                  <span style={{ color: deltaColor(g.kind, delta), marginLeft: 5 }}>
                     {delta > 0 ? "+" : ""}{delta}s
                   </span>
                 )}
