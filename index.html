@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Trail Coach</title>
+<meta name="theme-color" content="#14201C" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  html, body { background: #14201C; margin: 0; }
+  * { font-family: 'IBM Plex Sans', sans-serif; }
+  input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
+  #boot { color: #7A8B5E; font-family: 'JetBrains Mono', monospace; padding: 2rem; text-align: center; }
+</style>
+</head>
+<body>
+<div id="root"><div id="boot">Chargement…</div></div>
+
+<!-- ================================================================
+     CONFIGURATION FIREBASE — à remplir (voir README, étape 2)
+     Laisse tel quel pour utiliser le stockage local du navigateur.
+     ================================================================ -->
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  databaseURL: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+
+// --- Couche de stockage : Firebase si configuré, sinon localStorage ---
+let _fbRef = null;
+let STORAGE_MODE = "local";
+
+async function initStorage() {
+  if (!FIREBASE_CONFIG.databaseURL) return;
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const cred = await firebase.auth().signInAnonymously();
+    _fbRef = firebase.database().ref("trailcoach/" + cred.user.uid);
+    STORAGE_MODE = "firebase";
+  } catch (e) {
+    console.error("Firebase indisponible, bascule en local :", e);
+    _fbRef = null;
+  }
+}
+
+window.storage = {
+  async get(key) {
+    if (_fbRef) {
+      const snap = await _fbRef.child(key).get();
+      return snap.exists() ? { key, value: snap.val() } : null;
+    }
+    const v = localStorage.getItem("trailcoach:" + key);
+    return v ? { key, value: v } : null;
+  },
+  async set(key, value) {
+    if (_fbRef) {
+      await _fbRef.child(key).set(value);
+      return { key, value };
+    }
+    localStorage.setItem("trailcoach:" + key, value);
+    return { key, value };
+  },
+};
+window.STORAGE_MODE = () => STORAGE_MODE;
+
+// Promesse attendue par l'app avant la première lecture
+window.__storageReady = initStorage();
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo } = React;
+const { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } = Recharts;
+
+
+// ======================================================================
+// Constants
+// ======================================================================
+
+const TYPES = {
+  longue:     { label: "Sortie longue",         color: "#C1622B" },
+  fractionne: { label: "Fractionné",            color: "#D9793C" },
+  cotes:      { label: "Côtes / renfo dénivelé",color: "#B8562A" },
+  seuil:      { label: "Seuil / allure course", color: "#D9793C" },
+  fonda:      { label: "Endurance fondamentale",color: "#7A8B5E" },
+  recup:      { label: "Récupération",          color: "#5C7A99" },
+  repos:      { label: "Repos",                 color: "#5A6259" },
+};
+
+const SESSION_ADVICE = {
+  longue: "Allure conversationnelle, régulière du début à la fin. C'est la séance qui construit l'endurance de fond et l'habitude de tenir sur la durée — ne cherche pas la performance, cherche la régularité.",
+  fractionne: "Échauffement 15-20 min facile, puis les intervalles à allure vive avec récupération active entre chaque. Termine par un retour au calme de 10 min. Vise une intensité soutenue mais tenable jusqu'au dernier répétition.",
+  cotes: "Échauffement puis répétitions en côte à effort soutenu (marche ou trot en descente pour récupérer). Travaille la propulsion et le renforcement spécifique dénivelé — pas besoin d'aller vite, l'important est l'intensité de la montée.",
+  seuil: "Échauffement 15 min, puis bloc(s) à l'allure visée pour la course, sans à-coups. Sensation : soutenu mais contrôlé, tu pourrais tenir la conversation en phrases courtes.",
+  fonda: "Endurance fondamentale, allure facile (tu dois pouvoir parler sans être essoufflé). Séance de fond qui prépare/complète la sortie longue sans ajouter de fatigue excessive.",
+  recup: "Footing très facile, voire trot. L'objectif est de faire circuler le sang et d'évacuer les tensions, pas de progresser à cette séance.",
+  repos: "Repos complet ou activité très légère (marche, étirements). Essentiel pour absorber la charge des jours précédents.",
+};
+
+const SPORT_IMPACT = {
+  "Basket":     0.7, "Football":  0.7, "Badminton": 0.6, "Tennis": 0.5,
+  "Vélo":       0.2, "Natation":  0.1, "Musculation": 0.3, "Autre": 0.4,
+};
+const SPORT_OPTIONS = Object.keys(SPORT_IMPACT);
+
+const PHASE_LABEL = { base: "Base", build: "Développement", peak: "Spécifique", taper: "Affûtage" };
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+function isoWeekStart(d) {
+  const date = new Date(d);
+  const day = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - day);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function fmtDate(d) { return new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "short" }); }
+// Attention : ne PAS utiliser toISOString() ici — il convertit en UTC, et
+// minuit lundi en heure locale (UTC+2) devient dimanche 22h UTC, ce qui
+// décalait toutes les étiquettes de semaine d'un jour en arrière.
+function toISO(d) {
+  if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  const x = new Date(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+}
+
+// Semaine d'appartenance d'une séance : soit sa semaine de plan (séance
+// non encore placée), soit la semaine de la date à laquelle elle a été faite.
+function sessionWeek(s) {
+  if (s.date) return toISO(isoWeekStart(s.date));
+  return s.weekStart;
+}
+
+// ======================================================================
+// Allures et séances structurées basées sur la VMA
+// ======================================================================
+
+// Allure (min/km) correspondant à un pourcentage de VMA
+function paceAtPct(vma, pct) {
+  const speed = vma * pct / 100;
+  const minPerKm = 60 / speed;
+  const m = Math.floor(minPerKm);
+  const s = Math.round((minPerKm - m) * 60);
+  return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, "0")}`;
+}
+
+// Distance parcourue en X secondes à Y% de VMA
+function metersIn(vma, pct, seconds) {
+  return Math.round(vma * pct / 100 * 1000 / 3600 * seconds / 5) * 5;
+}
+
+const ZONES = [
+  { key: "ef",     label: "Endurance fondamentale", pct: [65, 70] },
+  { key: "ea",     label: "Endurance active",       pct: [75, 80] },
+  { key: "seuil",  label: "Seuil",                  pct: [85, 90] },
+  { key: "vo2",    label: "VO2max / VMA",           pct: [95, 105] },
+];
+
+/**
+ * Construit une séance structurée (échauffement / blocs / retour au calme)
+ * pour les séances de qualité, selon le type et la phase du plan.
+ * Renvoie null pour les séances continues (longue, fonda, récup).
+ */
+function buildStructuredWorkout(session, vma) {
+  if (!vma) return null;
+  const { type, phase } = session;
+  const ph = phase || "build";
+
+  if (type === "fractionne") {
+    const plans = {
+      base:  { name: "30/30", sets: 2, reps: 8,  workSec: 30, restSec: 30, pct: 100, restPct: 50 },
+      build: { name: "30/30", sets: 2, reps: 10, workSec: 30, restSec: 30, pct: 102, restPct: 50 },
+      peak:  { name: "400 m", sets: 3, reps: 5,  workSec: 90, restSec: 75, pct: 100, restPct: 50 },
+      taper: { name: "30/30", sets: 1, reps: 8,  workSec: 30, restSec: 30, pct: 100, restPct: 50 },
+    };
+    const p = plans[ph];
+    return {
+      title: `${p.sets} × ${p.reps} × ${p.name}`,
+      warmup: { text: "20 min en endurance fondamentale + 3-4 lignes droites progressives", pace: paceAtPct(vma, 68) },
+      blocks: [{
+        repeats: `${p.sets} série(s) de ${p.reps} répétitions`,
+        work: `${p.workSec}s à ${p.pct}% VMA (~${metersIn(vma, p.pct, p.workSec)} m)`,
+        workPace: paceAtPct(vma, p.pct),
+        rest: `${p.restSec}s en trot très lent`,
+        restPace: paceAtPct(vma, p.restPct),
+        between: p.sets > 1 ? "5 min de récupération entre les séries" : null,
+      }],
+      cooldown: { text: "10-15 min en endurance fondamentale", pace: paceAtPct(vma, 65) },
+    };
+  }
+
+  if (type === "seuil") {
+    const plans = {
+      base:  { sets: 2, minutes: 8,  pct: 85, rest: 3 },
+      build: { sets: 3, minutes: 8,  pct: 87, rest: 3 },
+      peak:  { sets: 2, minutes: 15, pct: 88, rest: 4 },
+      taper: { sets: 2, minutes: 6,  pct: 87, rest: 3 },
+    };
+    const p = plans[ph];
+    return {
+      title: `${p.sets} × ${p.minutes} min au seuil`,
+      warmup: { text: "20 min en endurance fondamentale", pace: paceAtPct(vma, 68) },
+      blocks: [{
+        repeats: `${p.sets} blocs`,
+        work: `${p.minutes} min à ${p.pct}% VMA (~${(vma * p.pct / 100 * p.minutes / 60).toFixed(1)} km)`,
+        workPace: paceAtPct(vma, p.pct),
+        rest: `${p.rest} min en trot`,
+        restPace: paceAtPct(vma, 60),
+        between: null,
+      }],
+      cooldown: { text: "10 min en endurance fondamentale", pace: paceAtPct(vma, 65) },
+    };
+  }
+
+  if (type === "cotes") {
+    const plans = {
+      base:  { sets: 2, reps: 6, workSec: 45, effort: "95-100% VMA" },
+      build: { sets: 3, reps: 6, workSec: 60, effort: "95-100% VMA" },
+      peak:  { sets: 3, reps: 5, workSec: 120, effort: "90-95% VMA" },
+      taper: { sets: 1, reps: 6, workSec: 45, effort: "95% VMA" },
+    };
+    const p = plans[ph];
+    return {
+      title: `${p.sets} × ${p.reps} × ${p.workSec}s en côte`,
+      warmup: { text: "20 min en endurance fondamentale jusqu'au pied de la côte", pace: paceAtPct(vma, 68) },
+      blocks: [{
+        repeats: `${p.sets} série(s) de ${p.reps} montées`,
+        work: `${p.workSec}s en montée à ${p.effort} — pente 6-10%`,
+        workPace: "à l'effort, pas au chrono",
+        rest: "descente en trot souple (récupération complète)",
+        restPace: paceAtPct(vma, 55),
+        between: p.sets > 1 ? "4-5 min de récupération entre les séries" : null,
+      }],
+      cooldown: { text: "10-15 min en endurance fondamentale", pace: paceAtPct(vma, 65) },
+    };
+  }
+
+  return null;
+}
+
+// ======================================================================
+// Export FIT (fichier d'entraînement structuré pour montre Garmin)
+// ======================================================================
+
+const CRC_TABLE = [0x0000, 0xCC01, 0xD801, 0x1400, 0xF001, 0x3C00, 0x2800, 0xE401,
+                   0xA001, 0x6C00, 0x7800, 0xB401, 0x5000, 0x9C01, 0x8801, 0x4400];
+
+function fitCrc(bytes) {
+  let crc = 0;
+  for (const b of bytes) {
+    let tmp = CRC_TABLE[crc & 0xF];
+    crc = (crc >> 4) & 0x0FFF;
+    crc = crc ^ tmp ^ CRC_TABLE[b & 0xF];
+    tmp = CRC_TABLE[crc & 0xF];
+    crc = (crc >> 4) & 0x0FFF;
+    crc = crc ^ tmp ^ CRC_TABLE[(b >> 4) & 0xF];
+  }
+  return crc & 0xFFFF;
+}
+
+// Petit writer binaire little-endian
+function makeWriter() {
+  const bytes = [];
+  return {
+    bytes,
+    u8: v => bytes.push(v & 0xFF),
+    u16: v => { bytes.push(v & 0xFF, (v >> 8) & 0xFF); },
+    u32: v => { bytes.push(v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >>> 24) & 0xFF); },
+    str: (v, len) => {
+      const enc = new TextEncoder().encode(v).slice(0, len - 1);
+      for (let i = 0; i < len; i++) bytes.push(i < enc.length ? enc[i] : 0);
+    },
+  };
+}
+
+const NAME_LEN = 16;
+const FIT_EPOCH = Date.UTC(1989, 11, 31) / 1000;
+
+// Constantes FIT
+const DUR_TIME = 0, DUR_DISTANCE = 1, DUR_OPEN = 5, DUR_REPEAT = 6;
+const TGT_SPEED = 0, TGT_OPEN = 2;
+const INT_ACTIVE = 0, INT_REST = 1, INT_WARMUP = 2, INT_COOLDOWN = 3;
+
+function speedMs(vma, pct) { return vma * pct / 100 / 3.6; }
+
+/**
+ * Traduit une séance structurée en liste d'étapes FIT.
+ * Les séries sont dépliées (une boucle "repeat" par série) : les répétitions
+ * imbriquées ne sont pas supportées par toutes les montres.
+ */
+function workoutToFitSteps(session, vma) {
+  const w = buildStructuredWorkout(session, vma);
+  const steps = [];
+
+  if (!w) {
+    // Séance continue (longue, EF, récup) : une seule étape sur la distance
+    const pct = { longue: 70, fonda: 68, recup: 62 }[session.type] || 68;
+    steps.push({
+      name: TYPES[session.type].label.slice(0, NAME_LEN - 1),
+      durType: DUR_DISTANCE, durValue: Math.round((session.distance || 10) * 100000), // cm
+      tgtType: TGT_SPEED, lo: speedMs(vma, pct - 4), hi: speedMs(vma, pct + 4),
+      intensity: INT_ACTIVE,
+    });
+    return steps;
+  }
+
+  // Échauffement (20 min par défaut)
+  steps.push({
+    name: "Echauffement", durType: DUR_TIME, durValue: 20 * 60 * 1000,
+    tgtType: TGT_SPEED, lo: speedMs(vma, 63), hi: speedMs(vma, 72), intensity: INT_WARMUP,
+  });
+
+  const b = w.blocks[0];
+  const setsMatch = /^(\d+)/.exec(b.repeats);
+  const sets = setsMatch ? Number(setsMatch[1]) : 1;
+  const repsMatch = /de (\d+)/.exec(b.repeats);
+  const reps = repsMatch ? Number(repsMatch[1]) : 1;
+
+  // Durée et intensité du travail, extraites de la séance structurée
+  const secMatch = /(\d+)s/.exec(b.work);
+  const minMatch = /(\d+) min/.exec(b.work);
+  const workMs = secMatch ? Number(secMatch[1]) * 1000 : (minMatch ? Number(minMatch[1]) * 60000 : 60000);
+  const pctMatch = /(\d+)(?:-\d+)?% VMA/.exec(b.work);
+  const workPct = pctMatch ? Number(pctMatch[1]) : 100;
+
+  const restSecMatch = /(\d+)s/.exec(b.rest);
+  const restMinMatch = /(\d+) min/.exec(b.rest);
+  const restMs = restSecMatch ? Number(restSecMatch[1]) * 1000
+               : (restMinMatch ? Number(restMinMatch[1]) * 60000 : 60000);
+  const isHill = session.type === "cotes";
+
+  for (let set = 0; set < sets; set++) {
+    const loopStart = steps.length;
+    steps.push({
+      name: isHill ? "Montee" : "Effort", durType: DUR_TIME, durValue: workMs,
+      tgtType: isHill ? TGT_OPEN : TGT_SPEED,
+      lo: speedMs(vma, workPct - 3), hi: speedMs(vma, workPct + 3), intensity: INT_ACTIVE,
+    });
+    steps.push({
+      name: isHill ? "Descente" : "Recup", durType: DUR_TIME, durValue: restMs,
+      tgtType: TGT_OPEN, lo: 0, hi: 0, intensity: INT_REST,
+    });
+    if (reps > 1) {
+      steps.push({ name: "", durType: DUR_REPEAT, durValue: loopStart, tgtType: null, repeatCount: reps });
+    }
+    if (b.between && set < sets - 1) {
+      steps.push({
+        name: "Recup serie", durType: DUR_TIME, durValue: 5 * 60 * 1000,
+        tgtType: TGT_OPEN, lo: 0, hi: 0, intensity: INT_REST,
+      });
+    }
+  }
+
+  steps.push({
+    name: "Retour au calme", durType: DUR_TIME, durValue: 12 * 60 * 1000,
+    tgtType: TGT_SPEED, lo: speedMs(vma, 60), hi: speedMs(vma, 70), intensity: INT_COOLDOWN,
+  });
+
+  return steps;
+}
+
+function buildFitFile(session, vma) {
+  const steps = workoutToFitSteps(session, vma);
+  const wktName = `${TYPES[session.type].label} ${session.weekStart || ""}`.slice(0, NAME_LEN - 1);
+  const w = makeWriter();
+
+  // --- file_id (global 0), local type 0
+  w.u8(0x40); w.u8(0); w.u8(0); w.u16(0); w.u8(4);
+  w.u8(0); w.u8(1); w.u8(0x00);           // type: enum
+  w.u8(1); w.u8(2); w.u8(0x84);           // manufacturer: uint16
+  w.u8(2); w.u8(2); w.u8(0x84);           // product: uint16
+  w.u8(4); w.u8(4); w.u8(0x86);           // time_created: uint32
+  w.u8(0x00);                              // data record
+  w.u8(5);                                 // type = workout
+  w.u16(255);                              // manufacturer = development
+  w.u16(0);
+  w.u32(Math.floor(Date.now() / 1000) - FIT_EPOCH);
+
+  // --- workout (global 26), local type 1
+  w.u8(0x41); w.u8(0); w.u8(0); w.u16(26); w.u8(4);
+  w.u8(4); w.u8(1); w.u8(0x00);           // sport: enum
+  w.u8(5); w.u8(4); w.u8(0x8C);           // capabilities: uint32z
+  w.u8(6); w.u8(2); w.u8(0x84);           // num_valid_steps: uint16
+  w.u8(8); w.u8(NAME_LEN); w.u8(0x07);    // wkt_name: string
+  w.u8(0x01);
+  w.u8(1);                                 // sport = running
+  w.u32(32);                               // capabilities
+  w.u16(steps.length);
+  w.str(wktName, NAME_LEN);
+
+  // --- workout_step (global 27), local type 2
+  w.u8(0x42); w.u8(0); w.u8(0); w.u16(27); w.u8(8);
+  w.u8(254); w.u8(2); w.u8(0x84);         // message_index: uint16
+  w.u8(0);   w.u8(NAME_LEN); w.u8(0x07);  // wkt_step_name: string
+  w.u8(1);   w.u8(1); w.u8(0x00);         // duration_type: enum
+  w.u8(2);   w.u8(4); w.u8(0x86);         // duration_value: uint32
+  w.u8(3);   w.u8(1); w.u8(0x00);         // target_type: enum
+  w.u8(4);   w.u8(4); w.u8(0x86);         // target_value: uint32
+  w.u8(5);   w.u8(4); w.u8(0x86);         // custom_target_value_low: uint32
+  w.u8(6);   w.u8(4); w.u8(0x86);         // custom_target_value_high: uint32
+
+  steps.forEach((st, i) => {
+    w.u8(0x02);
+    w.u16(i);
+    w.str(st.name || "", NAME_LEN);
+    w.u8(st.durType);
+    w.u32(st.durValue);
+    if (st.durType === DUR_REPEAT) {
+      w.u8(0xFF);                          // target_type invalide
+      w.u32(st.repeatCount);               // target_value = nb de répétitions
+      w.u32(0xFFFFFFFF); w.u32(0xFFFFFFFF);
+    } else if (st.tgtType === TGT_SPEED) {
+      w.u8(TGT_SPEED);
+      w.u32(0);                            // 0 => on utilise la plage custom
+      w.u32(Math.round(st.lo * 1000));
+      w.u32(Math.round(st.hi * 1000));
+    } else {
+      w.u8(TGT_OPEN);
+      w.u32(0); w.u32(0xFFFFFFFF); w.u32(0xFFFFFFFF);
+    }
+  });
+
+  const data = Uint8Array.from(w.bytes);
+
+  // --- en-tête 14 octets + CRC
+  const h = makeWriter();
+  h.u8(14); h.u8(0x20); h.u16(2140); h.u32(data.length);
+  h.bytes.push(0x2E, 0x46, 0x49, 0x54);   // ".FIT"
+  const header = Uint8Array.from(h.bytes);
+  const headerCrc = fitCrc(header);
+
+  const out = new Uint8Array(14 + data.length + 2);
+  out.set(header, 0);
+  out[12] = headerCrc & 0xFF; out[13] = (headerCrc >> 8) & 0xFF;
+  out.set(data, 14);
+  const fileCrc = fitCrc(out.slice(0, 14 + data.length));
+  out[14 + data.length] = fileCrc & 0xFF;
+  out[15 + data.length] = (fileCrc >> 8) & 0xFF;
+  return out;
+}
+
+function downloadBlob(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// Version texte, pour recréer la séance à la main dans Garmin Connect
+function workoutToText(session, vma) {
+  const w = buildStructuredWorkout(session, vma);
+  const L = [`${TYPES[session.type].label}${session.weekStart ? ` — semaine du ${session.weekStart}` : ""}`];
+  if (session.distance) L.push(`Cible : ${session.distance} km${session.dplus ? ` / ${session.dplus} m D+` : ""}`);
+  if (!w) {
+    L.push("", SESSION_ADVICE[session.type]);
+    return L.join("\n");
+  }
+  L.push("", w.title, "");
+  L.push(`1. Échauffement — ${w.warmup.text} (~${w.warmup.pace}/km)`);
+  w.blocks.forEach(b => {
+    L.push(`2. ${b.repeats}`);
+    L.push(`   • ${b.work}${b.workPace.includes(":") ? ` (~${b.workPace}/km)` : ""}`);
+    L.push(`   • récup : ${b.rest} (~${b.restPace}/km)`);
+    if (b.between) L.push(`   • ${b.between}`);
+  });
+  L.push(`3. Retour au calme — ${w.cooldown.text} (~${w.cooldown.pace}/km)`);
+  return L.join("\n");
+}
+
+// ======================================================================
+// Plan generator
+// ======================================================================
+
+/**
+ * goal = {
+ *   type: 'trail' | 'route', raceDate: 'YYYY-MM-DD', distanceKm, dPlus,
+ *   daysPerWeek, vma, startVolumeKm, otherSports: [{name, freq}]
+ * }
+ */
+function buildPhases(totalWeeks) {
+  if (totalWeeks <= 3) return Array(totalWeeks).fill("taper");
+  const taperWeeks = totalWeeks >= 10 ? 3 : 2;
+  const baseWeeks = Math.max(1, Math.round((totalWeeks - taperWeeks) * 0.45));
+  const buildWeeks = Math.max(1, Math.round((totalWeeks - taperWeeks) * 0.4));
+  const peakWeeks = Math.max(0, totalWeeks - taperWeeks - baseWeeks - buildWeeks);
+  const phases = [
+    ...Array(baseWeeks).fill("base"),
+    ...Array(buildWeeks).fill("build"),
+    ...Array(peakWeeks).fill("peak"),
+    ...Array(taperWeeks).fill("taper"),
+  ];
+  return phases.slice(0, totalWeeks);
+}
+
+function crossTrainingPenaltyKm(otherSports) {
+  return (otherSports || []).reduce((sum, s) => {
+    const impact = SPORT_IMPACT[s.name] ?? SPORT_IMPACT.Autre;
+    return sum + s.freq * impact * 2.5;
+  }, 0);
+}
+
+function weekVolumeTarget(weekIdx, phase, startVolumeKm, phaseWeekIdx) {
+  const isCutback = phase !== "taper" && (phaseWeekIdx + 1) % 4 === 0;
+  let growthRate = phase === "base" ? 0.045 : phase === "build" ? 0.06 : phase === "peak" ? 0.02 : -0.25;
+  if (phase === "taper") {
+    // décroissance forte les 2-3 dernières semaines
+    return startVolumeKm; // handled by caller via explicit taper curve
+  }
+  let vol = startVolumeKm * Math.pow(1 + growthRate, weekIdx);
+  if (isCutback) vol *= 0.75;
+  return vol;
+}
+
+function sessionTemplateForDays(daysPerWeek, raceType) {
+  const quality = raceType === "trail" ? "cotes" : "seuil";
+  const templates = {
+    2: ["fractionne", "longue"],
+    3: [quality, "fonda", "longue"],
+    4: ["fractionne", quality, "fonda", "longue"],
+    5: ["fractionne", quality, "fonda", "recup", "longue"],
+    6: ["fractionne", quality, "fonda", "fonda", "recup", "longue"],
+  };
+  return templates[Math.min(6, Math.max(2, daysPerWeek))];
+}
+
+function generatePlan(goal) {
+  const today = new Date();
+  const race = new Date(goal.raceDate);
+  const totalWeeks = Math.max(1, Math.ceil((race - isoWeekStart(today)) / (7 * 24 * 60 * 60 * 1000)));
+  const phases = buildPhases(totalWeeks);
+  const penalty = crossTrainingPenaltyKm(goal.otherSports);
+  const minVolume = goal.daysPerWeek * 5;
+
+  const peakVolume = goal.startVolumeKm * Math.pow(1.045, phases.filter(p => p === "base").length)
+    * Math.pow(1.06, phases.filter(p => p === "build").length);
+
+  const sessions = [];
+  let phaseWeekIdx = 0, prevPhase = null;
+
+  phases.forEach((phase, weekIdx) => {
+    phaseWeekIdx = phase === prevPhase ? phaseWeekIdx + 1 : 0;
+    prevPhase = phase;
+
+    const weekStart = addDays(isoWeekStart(today), weekIdx * 7);
+    let targetVolume;
+    if (phase === "taper") {
+      const weeksToRace = phases.length - weekIdx;
+      const frac = weeksToRace <= 1 ? 0.35 : weeksToRace === 2 ? 0.6 : 0.75;
+      targetVolume = peakVolume * frac;
+    } else {
+      targetVolume = weekVolumeTarget(weekIdx, phase, goal.startVolumeKm, phaseWeekIdx);
+    }
+    targetVolume = Math.max(minVolume, targetVolume - penalty);
+
+    // Gradient de la course (m de D+ par km) — sert de référence pour calibrer
+    // le dénivelé de chaque séance, chacune avec sa propre "densité" de D+ :
+    // les côtes concentrent bien plus de D+/km que la course elle-même
+    // (répétitions denses), la longue s'en rapproche, les séances rapides
+    // (fractionné/seuil) restent quasi plates.
+    const raceGradient = goal.type === "trail" ? goal.dPlus / goal.distanceKm : 0;
+    const climbDensity = { longue: 0.8, fractionne: 0.1, seuil: 0.1, cotes: 3.5, fonda: 0.5, recup: 0.2 };
+    const phaseDPlusFactor = { base: 0.7, build: 1.0, peak: 1.3, taper: 0.5 }[phase];
+
+    const template = sessionTemplateForDays(goal.daysPerWeek, goal.type);
+    const shareByType = { longue: 0.38, fractionne: 0.16, seuil: 0.18, cotes: 0.2, fonda: 0.16, recup: 0.12 };
+    const totalShare = template.reduce((s, t) => s + shareByType[t], 0);
+
+    template.forEach((type, i) => {
+      const share = shareByType[type] / totalShare;
+      const distance = Math.round(targetVolume * share * 10) / 10;
+      const dplus = goal.type === "trail" ? Math.round(distance * raceGradient * climbDensity[type] * phaseDPlusFactor) : null;
+      const paceFactor = { longue: goal.type === "trail" ? 0.6 : 0.75, fractionne: 0.95, seuil: 0.85, cotes: 0.65, fonda: 0.7, recup: 0.65 }[type];
+      const paceKmH = goal.vma * paceFactor;
+      const duree = Math.round((distance / paceKmH) * 60);
+
+      sessions.push({
+        id: uid(),
+        type,
+        date: null,          // libre : tu places la séance le jour qui t'arrange
+        order: i,            // ordre conseillé dans la semaine (longue en dernier)
+        distance,
+        dplus: goal.type === "trail" ? dplus : null,
+        duree,
+        notes: "",
+        done: false,
+        actual: null,
+        generated: true,
+        phase,
+        weekStart: toISO(weekStart),
+      });
+    });
+  });
+
+  return sessions;
+}
+
+// ======================================================================
+// Adaptive adjustment engine
+// ======================================================================
+
+function evaluateAndAdjust(sessions, evaluations) {
+  const today = new Date();
+  const generated = sessions.filter(s => s.generated);
+  const weeks = [...new Set(generated.map(s => s.weekStart))].sort();
+
+  let newSessions = [...sessions];
+  let newEvaluations = { ...evaluations };
+
+  for (const weekStart of weeks) {
+    const weekEnd = addDays(weekStart, 6);
+    if (weekEnd >= today) continue; // semaine pas encore terminée
+    if (newEvaluations[weekStart]) continue; // déjà évaluée
+
+    const weekSessions = generated.filter(s => s.weekStart === weekStart);
+    const plannedKm = weekSessions.reduce((a, s) => a + (s.distance || 0), 0);
+    const realizedKm = weekSessions.filter(s => s.done).reduce((a, s) => a + (s.actual?.distance ?? s.distance ?? 0), 0);
+    const complianceRatio = plannedKm > 0 ? realizedKm / plannedKm : 1;
+    const missedKey = weekSessions.filter(s => ["longue", "fractionne", "seuil", "cotes"].includes(s.type) && !s.done).length;
+    const feelings = weekSessions.filter(s => s.done && s.actual?.feeling).map(s => s.actual.feeling);
+    const avgFeeling = feelings.length ? feelings.reduce((a, b) => a + b, 0) / feelings.length : null;
+
+    let multiplier = 1, reason = "Progression normale.";
+    if (complianceRatio < 0.6 || missedKey >= 2) {
+      multiplier = 0.75;
+      reason = "Charge réduite : plusieurs séances manquées cette semaine.";
+    } else if (complianceRatio < 0.85) {
+      multiplier = 0.9;
+      reason = "Charge maintenue : quelques séances manquées.";
+    } else if (avgFeeling !== null && avgFeeling >= 4.3) {
+      multiplier = 0.9;
+      reason = "Charge légèrement réduite : ressenti élevé la semaine passée.";
+    }
+
+    newEvaluations[weekStart] = { complianceRatio, missedKey, avgFeeling, multiplier, reason };
+
+    if (multiplier !== 1) {
+      const nextWeekStart = toISO(addDays(weekStart, 7));
+      newSessions = newSessions.map(s => {
+        if (s.generated && s.weekStart === nextWeekStart && !s.done) {
+          return {
+            ...s,
+            distance: Math.round(s.distance * multiplier * 10) / 10,
+            dplus: s.dplus != null ? Math.round(s.dplus * multiplier) : null,
+            duree: Math.round(s.duree * multiplier),
+          };
+        }
+        return s;
+      });
+    }
+  }
+
+  return { sessions: newSessions, evaluations: newEvaluations };
+}
+
+// ======================================================================
+// Goal wizard
+// ======================================================================
+
+function GoalWizard({ initial, onSave }) {
+  const [type, setType] = useState(initial?.type || "trail");
+  const [raceDate, setRaceDate] = useState(initial?.raceDate || "");
+  const [distanceKm, setDistanceKm] = useState(initial?.distanceKm || "");
+  const [dPlus, setDPlus] = useState(initial?.dPlus || "");
+  const [daysPerWeek, setDaysPerWeek] = useState(initial?.daysPerWeek || 4);
+  const [vma, setVma] = useState(initial?.vma || "");
+  const [startVolumeKm, setStartVolumeKm] = useState(initial?.startVolumeKm || "");
+  const [otherSports, setOtherSports] = useState(initial?.otherSports || []);
+  const [newSport, setNewSport] = useState(SPORT_OPTIONS[0]);
+  const [newFreq, setNewFreq] = useState(1);
+
+  const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
+  const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
+  const labelCls = "text-xs mb-1 block";
+
+  const addSport = () => {
+    setOtherSports(prev => [...prev, { name: newSport, freq: Number(newFreq) }]);
+  };
+  const removeSport = (i) => setOtherSports(prev => prev.filter((_, idx) => idx !== i));
+
+  const canSave = raceDate && distanceKm && daysPerWeek && vma && startVolumeKm && (type === "route" || dPlus);
+
+  return (
+    <div className="rounded-xl p-4 space-y-4" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+        Objectif
+      </p>
+
+      <div className="flex gap-2">
+        {["trail", "route"].map(t => (
+          <button key={t} onClick={() => setType(t)}
+            className="flex-1 py-2 rounded-lg text-sm"
+            style={{ background: type === t ? "#C1622B" : "#1C2B24", color: type === t ? "#14201C" : "#9CAA9E" }}>
+            {t === "trail" ? "Trail" : "Route"}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className={labelCls} style={{ color: "#5A6259" }}>Date de la course</label>
+          <input type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label className={labelCls} style={{ color: "#5A6259" }}>Distance (km)</label>
+          <input type="number" value={distanceKm} onChange={e => setDistanceKm(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+        {type === "trail" && (
+          <div>
+            <label className={labelCls} style={{ color: "#5A6259" }}>D+ (m)</label>
+            <input type="number" value={dPlus} onChange={e => setDPlus(e.target.value)} className={inputCls} style={inputStyle} />
+          </div>
+        )}
+        <div>
+          <label className={labelCls} style={{ color: "#5A6259" }}>VMA (km/h)</label>
+          <input type="number" value={vma} onChange={e => setVma(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label className={labelCls} style={{ color: "#5A6259" }}>Volume actuel (km/semaine)</label>
+          <input type="number" value={startVolumeKm} onChange={e => setStartVolumeKm(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label className={labelCls} style={{ color: "#5A6259" }}>Jours dispo/semaine</label>
+          <select value={daysPerWeek} onChange={e => setDaysPerWeek(Number(e.target.value))} className={inputCls} style={inputStyle}>
+            {[2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} jours</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className={labelCls} style={{ color: "#5A6259" }}>Autres sports pratiqués</label>
+        <div className="flex gap-2 mb-2">
+          <select value={newSport} onChange={e => setNewSport(e.target.value)} className={inputCls} style={inputStyle}>
+            {SPORT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <input type="number" min="1" max="7" value={newFreq} onChange={e => setNewFreq(e.target.value)}
+            className="w-20 rounded-lg px-2 py-2 text-sm" style={inputStyle} />
+          <button onClick={addSport} className="px-3 rounded-lg text-sm" style={{ background: "#2C3A32", color: "#EDE7D9" }}>+</button>
+        </div>
+        {otherSports.map((s, i) => (
+          <div key={i} className="flex items-center justify-between text-sm py-1" style={{ color: "#9CAA9E" }}>
+            <span>{s.name} · {s.freq}×/sem</span>
+            <button onClick={() => removeSport(i)} style={{ color: "#5A6259" }}>✕</button>
+          </div>
+        ))}
+      </div>
+
+      <button
+        disabled={!canSave}
+        onClick={() => onSave({ type, raceDate, distanceKm: Number(distanceKm), dPlus: Number(dPlus) || 0, daysPerWeek, vma: Number(vma), startVolumeKm: Number(startVolumeKm), otherSports })}
+        className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
+        style={{ background: "#C1622B", color: "#14201C" }}
+      >
+        Générer le plan
+      </button>
+    </div>
+  );
+}
+
+// ======================================================================
+// Elevation hero
+// ======================================================================
+
+function ElevationHero({ goal, progress, daysLeft }) {
+  const pts = [[0, 92], [6, 78], [12, 82], [18, 55], [24, 62], [30, 30], [38, 40], [46, 14], [54, 24], [62, 8], [70, 20], [78, 38], [86, 30], [94, 55], [100, 70]];
+  const path = "M " + pts.map(([x, y]) => `${x},${y}`).join(" L ");
+  const areaPath = path + ` L 100,100 L 0,100 Z`;
+  const markerX = Math.min(100, Math.max(0, progress * 100));
+  let markerY = 92;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[i + 1];
+    if (markerX >= x1 && markerX <= x2) { const t = x2 === x1 ? 0 : (markerX - x1) / (x2 - x1); markerY = y1 + (y2 - y1) * t; break; }
+  }
+  return (
+    <div className="relative w-full overflow-hidden rounded-2xl" style={{ background: "linear-gradient(180deg, #1C2B24 0%, #14201C 100%)" }}>
+      <div className="px-6 pt-6 flex items-baseline justify-between">
+        <div>
+          <p className="uppercase tracking-[0.2em] text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+            {goal ? (goal.type === "trail" ? "Objectif trail" : "Objectif route") : "Aucun objectif"}
+          </p>
+          <h1 className="text-2xl sm:text-3xl mt-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#EDE7D9" }}>
+            {goal ? `${goal.distanceKm} km${goal.type === "trail" ? ` · ${goal.dPlus} m D+` : ""}` : "—"}
+          </h1>
+        </div>
+        <div className="text-right">
+          <p className="uppercase tracking-[0.2em] text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Départ</p>
+          <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{goal ? `${daysLeft} j` : "—"}</p>
+        </div>
+      </div>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-40 sm:h-48 mt-4">
+        <defs>
+          <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#7A8B5E" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#7A8B5E" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path d={areaPath} fill="url(#fillGrad)" />
+        <path d={path} fill="none" stroke="#9CAA9E" strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
+        {goal && (<>
+          <circle cx={markerX} cy={markerY} r="1.6" fill="#EDE7D9" stroke="#C1622B" strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+          <line x1={markerX} y1={markerY} x2={markerX} y2="100" stroke="#C1622B" strokeWidth="0.3" strokeDasharray="1,1" vectorEffect="non-scaling-stroke" />
+        </>)}
+      </svg>
+      <div className="px-6 pb-5 -mt-2 flex justify-between text-xs" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5A6259" }}>
+        <span>Bloc en cours</span>
+        {goal && <span style={{ color: "#C1622B" }}>vous êtes ici</span>}
+        <span>{goal ? fmtDate(goal.raceDate) : ""}</span>
+      </div>
+    </div>
+  );
+}
+
+// ======================================================================
+// Session form (manual add) & row
+// ======================================================================
+
+function SessionForm({ onAdd }) {
+  const [type, setType] = useState("fonda");
+  const [date, setDate] = useState(() => toISO(new Date()));
+  const [distance, setDistance] = useState("");
+  const [dplus, setDplus] = useState("");
+  const [duree, setDuree] = useState("");
+  const [notes, setNotes] = useState("");
+  const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
+  const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
+
+  const submit = () => {
+    onAdd({ id: uid(), type, date, distance: distance ? Number(distance) : null, dplus: dplus ? Number(dplus) : null, duree: duree ? Number(duree) : null, notes, done: false, actual: null, generated: false });
+    setDistance(""); setDplus(""); setDuree(""); setNotes("");
+  };
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Ajouter une séance manuelle</p>
+      <div className="grid grid-cols-2 gap-2">
+        <select value={type} onChange={e => setType(e.target.value)} className={inputCls} style={inputStyle}>
+          {Object.entries(TYPES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+        </select>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} style={inputStyle} />
+        <input type="number" placeholder="Distance (km)" value={distance} onChange={e => setDistance(e.target.value)} className={inputCls} style={inputStyle} />
+        <input type="number" placeholder="D+ (m)" value={dplus} onChange={e => setDplus(e.target.value)} className={inputCls} style={inputStyle} />
+        <input type="number" placeholder="Durée (min)" value={duree} onChange={e => setDuree(e.target.value)} className={inputCls} style={inputStyle} />
+        <input type="text" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} className={inputCls} style={inputStyle} />
+      </div>
+      <button onClick={submit} className="w-full rounded-lg py-2 text-sm font-medium hover:opacity-90" style={{ background: "#C1622B", color: "#14201C" }}>
+        Ajouter
+      </button>
+    </div>
+  );
+}
+
+function ActualForm({ defaults, onSubmit, onCancel }) {
+  const [date, setDate] = useState(defaults.date || toISO(new Date()));
+  const [distance, setDistance] = useState(defaults.distance || "");
+  const [dplus, setDplus] = useState(defaults.dplus || "");
+  const [duree, setDuree] = useState(defaults.duree || "");
+  const [feeling, setFeeling] = useState(3);
+  const [paste, setPaste] = useState("");
+  const [pasteErr, setPasteErr] = useState("");
+
+  const inputCls = "w-full rounded-lg px-2 py-1.5 text-sm outline-none";
+  const inputStyle = { background: "#14201C", color: "#EDE7D9", border: "1px solid #2C3A32" };
+
+  // Colle une ligne "date ; km ; D+ ; min ; ressenti" -> remplit les champs
+  const applyPaste = () => {
+    const parts = paste.split(";").map(x => x.trim());
+    if (!parts[0] || !/^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
+      setPasteErr("Format attendu : date ; km ; D+ ; min ; ressenti");
+      return;
+    }
+    setDate(parts[0]);
+    if (parts[1]) setDistance(parts[1]);
+    if (parts[2]) setDplus(parts[2]);
+    if (parts[3]) setDuree(parts[3]);
+    if (parts[4]) setFeeling(Number(parts[4]));
+    setPaste(""); setPasteErr("");
+  };
+
+  return (
+    <div className="mt-3 pt-3 space-y-2" style={{ borderTop: "1px solid #2C3A32" }}>
+      <div className="flex gap-2">
+        <input type="text" value={paste} onChange={e => setPaste(e.target.value)}
+          placeholder="coller : 2026-08-17 ; 8.2 ; 56 ; 46 ;"
+          className="flex-1 rounded-lg px-2 py-1.5 text-xs outline-none"
+          style={{ ...inputStyle, fontFamily: "'JetBrains Mono', monospace" }} />
+        <button onClick={applyPaste} className="rounded-lg px-3 text-xs" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
+          Remplir
+        </button>
+      </div>
+      {pasteErr && <p className="text-xs" style={{ color: "#D9793C" }}>{pasteErr}</p>}
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Jour réalisé</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Distance (km)</label>
+          <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>D+ (m)</label>
+          <input type="number" value={dplus} onChange={e => setDplus(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Durée (min)</label>
+          <input type="number" value={duree} onChange={e => setDuree(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs" style={{ color: "#5A6259" }}>Ressenti : {feeling}/5</label>
+        <input type="range" min="1" max="5" value={feeling} onChange={e => setFeeling(Number(e.target.value))} className="w-full" />
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => onSubmit({
+            distance: Number(distance) || null,
+            dplus: Number(dplus) || null,
+            duree: Number(duree) || null,
+            feeling,
+          }, date)}
+          className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#7A8B5E", color: "#14201C" }}>
+          Valider cette séance
+        </button>
+        <button onClick={onCancel} className="rounded-lg py-2 px-3 text-sm" style={{ color: "#5A6259" }}>Annuler</button>
+      </div>
+    </div>
+  );
+}
+
+function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma }) {
+  const [showActual, setShowActual] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const t = TYPES[s.type];
+  const complete = (actual, date) => { onToggle(s.id, { done: true, actual, date }); setShowActual(false); };
+
+  return (
+    <div className="rounded-xl p-3" style={{ background: s.done ? "#182420" : "#1C2B24", border: "1px solid #2C3A32" }}>
+      <div className="flex items-center gap-3">
+        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(v => !v)}>
+          <p className="text-sm" style={{ color: "#EDE7D9", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {t.label} {s.generated && <span style={{ color: "#5A6259" }}>· plan</span>}
+          </p>
+          <p className="text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+            {s.date ? fmtDate(s.date) : "à placer"} · {s.distance ? `${s.distance} km` : "—"} {s.dplus ? `· ${s.dplus} m D+` : ""} {s.duree ? `· ${s.duree} min` : ""}
+          </p>
+          {s.done && s.actual && (
+            <p className="text-xs mt-1" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>
+              réel: {s.actual.distance || "—"} km{s.actual.dplus ? ` · ${s.actual.dplus} m D+` : ""}{s.actual.duree ? ` · ${s.actual.duree} min` : ""}{s.actual.feeling ? ` · ressenti ${s.actual.feeling}/5` : ""}
+            </p>
+          )}
+        </div>
+        <button onClick={() => onDelete(s.id)} className="text-xs px-2 py-1 rounded" style={{ color: "#5A6259" }}>✕</button>
+        {!s.done ? (
+          <button onClick={() => setShowActual(v => !v)} className="text-xs px-3 py-1.5 rounded-lg shrink-0" style={{ background: "#C1622B", color: "#14201C" }}>Importer</button>
+        ) : (
+          <span className="text-xs px-2 py-1 rounded-lg shrink-0" style={{ color: "#7A8B5E" }}>✓</span>
+        )}
+      </div>
+      {showActual && <ActualForm defaults={s} onSubmit={complete} onCancel={() => setShowActual(false)} />}
+      {expanded && (
+        <SessionDetail s={s} vma={vma} onSaveNotes={onSaveNotes} onClose={() => setExpanded(false)} />
+      )}
+    </div>
+  );
+}
+
+function SessionDetail({ s, onClose, onSaveNotes, vma }) {
+  const [notes, setNotes] = useState(s.notes || "");
+  const [saved, setSaved] = useState(false);
+  const [exportMsg, setExportMsg] = useState("");
+  if (!s) return null;
+  const t = TYPES[s.type];
+  const workout = buildStructuredWorkout(s, vma);
+  const paceMinKm = s.distance && s.duree ? (s.duree / s.distance) : null;
+  const paceStr = paceMinKm ? `${Math.floor(paceMinKm)}:${String(Math.round((paceMinKm % 1) * 60)).padStart(2, "0")} /km` : null;
+
+  return (
+    <div className="mt-3 pt-3 space-y-4" style={{ borderTop: "1px solid #2C3A32" }}>
+        <p className="text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          {s.date ? fmtDate(s.date) : "jour libre"} {s.phase && `· phase ${PHASE_LABEL[s.phase]}`}
+        </p>
+
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-lg p-2 text-center" style={{ background: "#1C2B24" }}>
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{s.distance ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>km</p>
+          </div>
+          <div className="rounded-lg p-2 text-center" style={{ background: "#1C2B24" }}>
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{s.dplus ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>m D+</p>
+          </div>
+          <div className="rounded-lg p-2 text-center" style={{ background: "#1C2B24" }}>
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{s.duree ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>min</p>
+          </div>
+        </div>
+
+        {paceStr && (
+          <p className="text-xs text-center" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>
+            allure indicative : {paceStr}
+          </p>
+        )}
+
+        <div>
+          <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Comment exécuter</p>
+          <p className="text-sm leading-relaxed" style={{ color: "#EDE7D9" }}>{SESSION_ADVICE[s.type]}</p>
+        </div>
+
+        {workout && (
+          <div className="rounded-lg p-3 space-y-3" style={{ background: "#1C2B24", border: "1px solid #2C3A32" }}>
+            <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#C1622B" }}>{workout.title}</p>
+
+            <div>
+              <p className="text-xs uppercase" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>Échauffement</p>
+              <p className="text-sm" style={{ color: "#EDE7D9" }}>{workout.warmup.text}</p>
+              <p className="text-xs" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>~{workout.warmup.pace}/km</p>
+            </div>
+
+            {workout.blocks.map((b, i) => (
+              <div key={i}>
+                <p className="text-xs uppercase" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>Corps de séance</p>
+                <p className="text-sm" style={{ color: "#EDE7D9" }}>{b.repeats}</p>
+                <div className="mt-1 pl-3 space-y-1" style={{ borderLeft: "2px solid #C1622B" }}>
+                  <div>
+                    <p className="text-sm" style={{ color: "#EDE7D9" }}>▸ {b.work}</p>
+                    <p className="text-xs" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>{b.workPace.includes(":") ? `~${b.workPace}/km` : b.workPace}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm" style={{ color: "#9CAA9E" }}>▸ récup : {b.rest}</p>
+                    <p className="text-xs" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>~{b.restPace}/km</p>
+                  </div>
+                </div>
+                {b.between && <p className="text-xs mt-1" style={{ color: "#9CAA9E" }}>{b.between}</p>}
+              </div>
+            ))}
+
+            <div>
+              <p className="text-xs uppercase" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>Retour au calme</p>
+              <p className="text-sm" style={{ color: "#EDE7D9" }}>{workout.cooldown.text}</p>
+              <p className="text-xs" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>~{workout.cooldown.pace}/km</p>
+            </div>
+          </div>
+        )}
+
+        {vma && (
+          <div>
+            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+              Tes allures (VMA {vma} km/h)
+            </p>
+            <div className="space-y-0.5">
+              {ZONES.map(z => (
+                <div key={z.key} className="flex justify-between text-xs" style={{ color: "#9CAA9E" }}>
+                  <span>{z.label}</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>
+                    {paceAtPct(vma, z.pct[1])} – {paceAtPct(vma, z.pct[0])}/km
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Export</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                try {
+                  const slug = `${s.type}-${s.weekStart || toISO(new Date())}`;
+                  downloadBlob(buildFitFile(s, vma), `${slug}.fit`, "application/octet-stream");
+                  setExportMsg("Fichier .fit téléchargé");
+                } catch (e) { setExportMsg("Échec de l'export .fit"); }
+                setTimeout(() => setExportMsg(""), 4000);
+              }}
+              disabled={!vma}
+              className="flex-1 rounded-lg py-2 text-sm disabled:opacity-40"
+              style={{ background: "#2C3A32", color: "#EDE7D9" }}>
+              Fichier .fit
+            </button>
+            <button
+              onClick={() => {
+                const slug = `${s.type}-${s.weekStart || toISO(new Date())}`;
+                downloadBlob(workoutToText(s, vma), `${slug}.txt`, "text/plain;charset=utf-8");
+                setExportMsg("Fichier texte téléchargé");
+                setTimeout(() => setExportMsg(""), 4000);
+              }}
+              className="flex-1 rounded-lg py-2 text-sm"
+              style={{ background: "#2C3A32", color: "#EDE7D9" }}>
+              Texte
+            </button>
+          </div>
+          {exportMsg && <p className="text-xs text-center mt-2" style={{ color: "#7A8B5E" }}>{exportMsg}</p>}
+          <p className="text-xs mt-2 leading-relaxed" style={{ color: "#5A6259" }}>
+            Le .fit se copie sur la montre par USB dans le dossier <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>GARMIN/NEWFILES</span> — Garmin Connect ne sait pas importer ce type de fichier depuis le web.
+          </p>
+        </div>
+
+        <div>
+          <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Notes</p>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+            className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" }}
+            placeholder="Sensations attendues, parcours, matériel..." />
+          <button onClick={() => { onSaveNotes(s.id, notes); setSaved(true); setTimeout(() => setSaved(false), 2000); }} className="mt-2 w-full rounded-lg py-2 text-sm" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
+            {saved ? "Enregistré ✓" : "Enregistrer"}
+          </button>
+        </div>
+
+        {s.done && s.actual && (
+          <div>
+            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Réalisé</p>
+            <p className="text-sm" style={{ color: "#5C7A99" }}>
+              {s.actual.distance ?? "—"} km {s.actual.feeling ? `· ressenti ${s.actual.feeling}/5` : ""}
+            </p>
+          </div>
+        )}
+
+        <button onClick={onClose} className="w-full rounded-lg py-2 text-sm" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
+          Replier
+        </button>
+    </div>
+  );
+}
+
+// ======================================================================
+// Plan view (weeks grouped, with adjustment banners)
+// ======================================================================
+
+function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma }) {
+  const weeks = useMemo(() => {
+    const map = new Map();
+    sessions.forEach(s => {
+      const wk = sessionWeek(s);
+      if (!map.has(wk)) map.set(wk, []);
+      map.get(wk).push(s);
+    });
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [sessions]);
+
+  const todayISO = toISO(new Date());
+
+  return (
+    <div className="space-y-4">
+      {weeks.map(([weekStart, weekSessions]) => {
+        const isPast = addDays(weekStart, 6) < new Date();
+        if (isPast && weekSessions.every(s => s.done || !s.generated)) return null; // masque semaines passées complètes
+        const phase = weekSessions.find(s => s.generated)?.phase;
+        const evalInfo = evaluations[weekStart];
+        const adjustedFrom = Object.entries(evaluations).find(([wk, e]) => toISO(addDays(wk, 7)) === weekStart && e.multiplier !== 1);
+
+        return (
+          <div key={weekStart}>
+            <div className="flex items-center justify-between px-1 mb-2">
+              <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                Semaine du {fmtDate(weekStart)} {phase && `· ${PHASE_LABEL[phase]}`}
+              </p>
+              <p className="text-xs" style={{ color: "#5A6259" }}>ordre conseillé</p>
+            </div>
+            {adjustedFrom && (
+              <div className="rounded-lg px-3 py-2 mb-2 text-xs" style={{ background: "#2A2018", color: "#D9793C", border: "1px solid #3A2C1C" }}>
+                {adjustedFrom[1].reason}
+              </div>
+            )}
+            <div className="space-y-2">
+              {weekSessions.sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || (a.date || "").localeCompare(b.date || "")).map(s => (
+                <SessionRow key={s.id} s={s} onToggle={onToggle} onDelete={onDelete} onSaveNotes={onSaveNotes} vma={vma} />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ======================================================================
+// Stats
+// ======================================================================
+
+function Stats({ sessions }) {
+  const weekly = useMemo(() => {
+    const map = new Map();
+    sessions.forEach(s => {
+      const wk = sessionWeek(s);
+      if (!map.has(wk)) map.set(wk, { week: wk, planifie: 0, realise: 0 });
+      const e = map.get(wk);
+      e.planifie += s.distance || 0;
+      if (s.done) e.realise += (s.actual?.distance ?? s.distance) || 0;
+    });
+    return [...map.values()].sort((a, b) => a.week.localeCompare(b.week)).slice(-10)
+      .map(e => ({ ...e, label: fmtDate(e.week), planifie: Math.round(e.planifie), realise: Math.round(e.realise) }));
+  }, [sessions]);
+
+  const totalPlanned = sessions.length;
+  const totalDone = sessions.filter(s => s.done).length;
+  const compliance = totalPlanned ? Math.round((totalDone / totalPlanned) * 100) : 0;
+  const dplusDone = sessions.filter(s => s.done).reduce((a, s) => a + (s.dplus || 0), 0);
+  const cardStyle = { background: "#182420", border: "1px solid #2C3A32" };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="rounded-xl p-3 text-center" style={cardStyle}>
+          <p className="text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{compliance}%</p>
+          <p className="text-xs mt-1" style={{ color: "#7A8B5E" }}>séances faites</p>
+        </div>
+        <div className="rounded-xl p-3 text-center" style={cardStyle}>
+          <p className="text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{dplusDone}</p>
+          <p className="text-xs mt-1" style={{ color: "#7A8B5E" }}>m D+ cumulés</p>
+        </div>
+        <div className="rounded-xl p-3 text-center" style={cardStyle}>
+          <p className="text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{totalDone}/{totalPlanned}</p>
+          <p className="text-xs mt-1" style={{ color: "#7A8B5E" }}>séances</p>
+        </div>
+      </div>
+      <div className="rounded-xl p-4" style={cardStyle}>
+        <p className="text-xs uppercase tracking-wider mb-3" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Volume hebdo (km)</p>
+        <div style={{ width: "100%", height: 180 }}>
+          <ResponsiveContainer>
+            <BarChart data={weekly}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2C3A32" vertical={false} />
+              <XAxis dataKey="label" stroke="#5A6259" fontSize={11} />
+              <YAxis stroke="#5A6259" fontSize={11} />
+              <Tooltip contentStyle={{ background: "#14201C", border: "1px solid #2C3A32", color: "#EDE7D9" }} />
+              <Bar dataKey="planifie" fill="#2C3A32" radius={[4, 4, 0, 0]} name="Planifié" />
+              <Bar dataKey="realise" fill="#C1622B" radius={[4, 4, 0, 0]} name="Réalisé" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ======================================================================
+// App
+// ======================================================================
+
+function App() {
+  const [goal, setGoal] = useState(null);
+  const [sessions, setSessions] = useState([]);
+  const [evaluations, setEvaluations] = useState({});
+  const [tab, setTab] = useState("plan");
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importStatus, setImportStatus] = useState("");
+  const [storageOk, setStorageOk] = useState(true);
+  const [storageMsg, setStorageMsg] = useState("");
+  const [backupText, setBackupText] = useState("");
+  const [backupStatus, setBackupStatus] = useState("");
+  const [showRestore, setShowRestore] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        if (window.__storageReady) await window.__storageReady;
+        if (!window.storage || typeof window.storage.get !== "function") {
+          setStorageOk(false);
+          setStorageMsg("stockage indisponible");
+          setEditingGoal(true);
+          setLoaded(true);
+          return;
+        }
+        const res = await window.storage.get("appstate", false);
+        if (res?.value) {
+          setStorageMsg(`données rechargées (${window.STORAGE_MODE ? window.STORAGE_MODE() : "local"})`);
+          const data = JSON.parse(res.value);
+          setGoal(data.goal || null);
+          setSessions(data.sessions || []);
+          setEvaluations(data.evaluations || {});
+          if (!data.goal) setEditingGoal(true);
+        } else {
+          setEditingGoal(true);
+        }
+      } catch (e) { setEditingGoal(true); }
+      setLoaded(true);
+    })();
+  }, []);
+
+  // adaptive re-evaluation on load / whenever sessions change
+  useEffect(() => {
+    if (!loaded || sessions.length === 0) return;
+    const { sessions: adj, evaluations: newEval } = evaluateAndAdjust(sessions, evaluations);
+    if (JSON.stringify(newEval) !== JSON.stringify(evaluations)) {
+      setSessions(adj);
+      setEvaluations(newEval);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, sessions.length]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    (async () => {
+      try {
+        if (!window.storage || typeof window.storage.set !== "function") {
+          setStorageOk(false);
+          setStorageMsg("stockage indisponible");
+          return;
+        }
+        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations }), false);
+        const ok = r !== null && r !== undefined;
+        setStorageOk(ok);
+        setStorageMsg(ok ? `${window.STORAGE_MODE ? window.STORAGE_MODE() : "local"} · sauvegardé ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "échec de sauvegarde");
+      } catch (e) {
+        setStorageOk(false);
+        setStorageMsg("erreur : " + String(e).slice(0, 60));
+      }
+    })();
+  }, [goal, sessions, evaluations, loaded]);
+
+  const saveNotes = (id, notes) => setSessions(prev => prev.map(s => s.id === id ? { ...s, notes } : s));
+
+  const exportBackup = () => {
+    setBackupText(JSON.stringify({ goal, sessions, evaluations }));
+    setBackupStatus("Copie ce texte et garde-le quelque part.");
+  };
+
+  const restoreBackup = () => {
+    try {
+      const data = JSON.parse(backupText);
+      setGoal(data.goal || null);
+      setSessions(data.sessions || []);
+      setEvaluations(data.evaluations || {});
+      setEditingGoal(!data.goal);
+      setShowRestore(false);
+      setTab("plan");
+      setBackupStatus("Sauvegarde restaurée.");
+    } catch (e) {
+      setBackupStatus("Texte invalide — vérifie le copier-coller.");
+    }
+  };
+
+  /**
+   * Import texte. Une séance par ligne, format :
+   *   AAAA-MM-JJ ; distance_km ; dplus_m ; duree_min ; ressenti(1-5)
+   * Les champs vides sont tolérés :  2026-08-12 ; 12.4 ; 380 ;  ; 3
+   * Si une séance planifiée existe à ±2 jours, elle est marquée réalisée
+   * avec ces valeurs ; sinon une nouvelle séance réalisée est créée.
+   */
+  const runImport = () => {
+    const lines = importText.split("\n").map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) { setImportStatus("Rien à importer."); return; }
+
+    let matched = 0, created = 0, skipped = 0;
+    const updated = [...sessions];
+
+    for (const line of lines) {
+      const parts = line.split(";").map(p => p.trim());
+      const [dateStr, distStr, dplusStr, dureeStr, feelStr] = parts;
+      if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) { skipped++; continue; }
+
+      const actual = {
+        distance: distStr ? Number(distStr) : null,
+        dplus: dplusStr ? Number(dplusStr) : null,
+        duree: dureeStr ? Number(dureeStr) : null,
+        feeling: feelStr ? Number(feelStr) : null,
+      };
+
+      // Cherche dans la MÊME semaine une séance planifiée non encore validée.
+      // Parmi celles-ci, prend celle dont la distance prévue est la plus proche
+      // de la distance réalisée (une sortie de 22 km se rapproche de la longue,
+      // pas du fractionné).
+      const targetWeek = toISO(isoWeekStart(dateStr));
+      let bestIdx = -1, bestScore = Infinity;
+      updated.forEach((s, i) => {
+        if (s.done) return;
+        if (sessionWeek(s) !== targetWeek) return;
+        const score = actual.distance != null && s.distance != null
+          ? Math.abs(s.distance - actual.distance)
+          : 0;
+        if (score < bestScore) { bestScore = score; bestIdx = i; }
+      });
+
+      if (bestIdx >= 0) {
+        updated[bestIdx] = { ...updated[bestIdx], done: true, actual, date: dateStr };
+        matched++;
+      } else {
+        updated.push({
+          id: uid(), type: "fonda", date: dateStr,
+          distance: actual.distance, dplus: actual.dplus, duree: actual.duree,
+          notes: "", done: true, actual, generated: false,
+        });
+        created++;
+      }
+    }
+
+    setSessions(updated);
+    setImportText("");
+    setImportStatus(`${matched} séance(s) rapprochée(s), ${created} ajoutée(s)${skipped ? `, ${skipped} ignorée(s)` : ""}.`);
+    setTimeout(() => setImportStatus(""), 6000);
+  };
+
+  const saveGoal = (g) => {
+    const generated = generatePlan(g);
+    const manual = sessions.filter(s => !s.generated);
+    setGoal(g);
+    setSessions([...manual, ...generated]);
+    setEvaluations({});
+    setEditingGoal(false);
+  };
+
+  const addSession = (s) => setSessions(prev => [...prev, s]);
+  const deleteSession = (id) => setSessions(prev => prev.filter(s => s.id !== id));
+  const toggleSession = (id, patch) => setSessions(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+
+  const now = new Date();
+  const progress = goal ? Math.min(1, Math.max(0, 1 - (new Date(goal.raceDate) - now) / (new Date(goal.raceDate) - addDays(now, -90)))) : 0;
+  const daysLeft = goal ? Math.max(0, Math.ceil((new Date(goal.raceDate) - now) / 86400000)) : 0;
+
+  const upcoming = sessions.filter(s => !s.done).sort((a, b) => (sessionWeek(a) || "").localeCompare(sessionWeek(b) || "") || (a.order ?? 99) - (b.order ?? 99));
+  const past = sessions.filter(s => s.done).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+  return (
+    <div className="min-h-screen w-full" style={{ background: "#14201C" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+        * { font-family: 'IBM Plex Sans', sans-serif; }
+        input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
+      `}</style>
+
+      <div className="max-w-md mx-auto px-4 py-5 space-y-5">
+        <ElevationHero goal={goal} progress={progress} daysLeft={daysLeft} />
+
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs" style={{ color: storageOk ? "#5A6259" : "#D9793C", fontFamily: "'JetBrains Mono', monospace" }}>
+            {storageOk ? "● " : "▲ "}{storageMsg || "sauvegarde auto"}
+          </span>
+          {!storageOk && (
+            <span className="text-xs" style={{ color: "#D9793C" }}>pense à sauvegarder à la main</span>
+          )}
+        </div>
+
+        {goal && !editingGoal && (
+          <button onClick={() => setEditingGoal(true)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
+            Modifier l'objectif
+          </button>
+        )}
+
+        {(editingGoal || !goal) && (
+          <>
+            <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+              <button onClick={() => setShowRestore(v => !v)} className="w-full flex items-center justify-between">
+                <span className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                  Restaurer une sauvegarde
+                </span>
+                <span style={{ color: "#5A6259" }}>{showRestore ? "▾" : "▸"}</span>
+              </button>
+              {showRestore && (
+                <>
+                  <p className="text-xs" style={{ color: "#9CAA9E" }}>
+                    Colle ici le texte de sauvegarde généré précédemment pour retrouver ton plan et ton historique.
+                  </p>
+                  <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
+                    className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
+                    placeholder='{"goal":...}' />
+                  <button onClick={restoreBackup} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "#5C7A99", color: "#14201C" }}>
+                    Restaurer
+                  </button>
+                  {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
+                </>
+              )}
+            </div>
+            <GoalWizard initial={goal} onSave={saveGoal} />
+          </>
+        )}
+
+        {goal && !editingGoal && (
+          <>
+            <div className="flex gap-1 rounded-xl p-1" style={{ background: "#1C2B24" }}>
+              {[["plan", "Plan"], ["importer", "Importer"], ["ajouter", "Ajouter"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
+                <button key={k} onClick={() => setTab(k)} className="flex-1 py-2 rounded-lg text-xs"
+                  style={{ background: tab === k ? "#C1622B" : "transparent", color: tab === k ? "#14201C" : "#9CAA9E", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {tab === "plan" && (
+              <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
+                onSaveNotes={saveNotes} vma={goal?.vma} />
+            )}
+
+            {tab === "importer" && (
+              <div className="space-y-4">
+                {!storageOk && (
+                  <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "#2A2018", color: "#D9793C", border: "1px solid #3A2C1C" }}>
+                    La sauvegarde automatique ne fonctionne pas dans ce contexte. Utilise la sauvegarde manuelle ci-dessous avant de fermer l'app.
+                  </div>
+                )}
+                <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+                  <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                    Importer des séances réalisées
+                  </p>
+                  <p className="text-xs leading-relaxed" style={{ color: "#D9793C" }}>
+                    Import en lot : le rapprochement se fait par semaine et par distance approchante, il peut se tromper de séance. Pour être sûr, utilise le bouton <span style={{ color: "#C1622B" }}>Importer</span> en face de la séance voulue.
+                  </p>
+                  <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
+                    Une séance par ligne :<br />
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>
+                      date ; km ; D+ ; minutes ; ressenti
+                    </span><br />
+                    Exemple : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>2026-08-12 ; 12.4 ; 380 ; 78 ; 3</span><br />
+                    Les champs vides sont acceptés. Une séance planifiée à ±2 jours est automatiquement rapprochée.
+                  </p>
+                  <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6}
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
+                    placeholder={"2026-08-12 ; 12.4 ; 380 ; 78 ; 3\n2026-08-14 ; 8 ; 90 ; 45 ; 2"} />
+                  <button onClick={runImport} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "#C1622B", color: "#14201C" }}>
+                    Importer
+                  </button>
+                  {importStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{importStatus}</p>}
+                </div>
+
+                <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+                  <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                    Sauvegarde manuelle
+                  </p>
+                  <p className="text-xs" style={{ color: "#9CAA9E" }}>
+                    Génère un texte contenant tout ton plan. Garde-le (note, mail, message) : si tu perds tes données, recolle-le ici et clique Restaurer.
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={exportBackup} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
+                      Générer
+                    </button>
+                    <button onClick={restoreBackup} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#5C7A99", color: "#14201C" }}>
+                      Restaurer
+                    </button>
+                  </div>
+                  <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
+                    className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
+                    placeholder="Le texte de sauvegarde apparaîtra ici" />
+                  {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
+                </div>
+              </div>
+            )}
+            {tab === "ajouter" && <SessionForm onAdd={addSession} />}
+            {tab === "stats" && <Stats sessions={sessions} />}
+            {tab === "historique" && (
+              <div className="space-y-3">
+                {past.length === 0 && <p className="text-sm text-center py-6" style={{ color: "#5A6259" }}>Pas encore de séance réalisée.</p>}
+                {past.map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} />)}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
