@@ -1279,6 +1279,79 @@ function fmtPace(p) {
   return s === 60 ? `${m + 1}:00` : `${m}:${String(s).padStart(2, "0")}`;
 }
 
+/**
+ * Courbe de FC en fonction du temps, reconstruite à partir des tours.
+ * Chaque tour est un palier à sa FC moyenne : sur du 30/30 on obtient la
+ * dentelure caractéristique, et on voit la dérive cardiaque au fil des séries.
+ */
+function HeartRateChart({ laps }) {
+  const withFc = laps.filter(l => l.fc);
+  if (withFc.length < 2) return null;
+
+  const W = 320, H = 150, PL = 30, PR = 6, PT = 8, PB = 18;
+  const total = laps.reduce((a, l) => a + l.sec, 0);
+  const fcs = withFc.map(l => l.fc);
+  const lo = Math.floor((Math.min(...fcs) - 5) / 5) * 5;
+  const hi = Math.ceil((Math.max(...fcs) + 5) / 5) * 5;
+
+  const x = t => PL + (t / total) * (W - PL - PR);
+  const y = f => PT + (1 - (f - lo) / (hi - lo)) * (H - PT - PB);
+
+  // segments horizontaux successifs (un par tour)
+  let t = 0;
+  const segs = laps.map(l => {
+    const s = { x1: x(t), x2: x(t + l.sec), y: l.fc ? y(l.fc) : null, kind: l.kind };
+    t += l.sec;
+    return s;
+  }).filter(s => s.y !== null);
+
+  // ligne continue reliant les paliers
+  const path = segs.map((s, i) =>
+    (i === 0 ? `M ${s.x1} ${s.y}` : `L ${s.x1} ${s.y}`) + ` L ${s.x2} ${s.y}`
+  ).join(" ");
+
+  const ticks = [lo, Math.round((lo + hi) / 2), hi];
+  const timeTicks = [0, 0.25, 0.5, 0.75, 1].map(f => f * total);
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          FC dans le temps
+        </p>
+        <p className="text-xs" style={{ color: "#5A6259" }}>
+          {Math.min(...fcs)}–{Math.max(...fcs)} bpm
+        </p>
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: "auto" }}>
+        {/* grille */}
+        {ticks.map(f => (
+          <g key={f}>
+            <line x1={PL} y1={y(f)} x2={W - PR} y2={y(f)} stroke="#2C3A32" strokeWidth="0.5" />
+            <text x={PL - 4} y={y(f) + 3} textAnchor="end" fontSize="8" fill="#5A6259" fontFamily="monospace">{f}</text>
+          </g>
+        ))}
+        {timeTicks.map((tt, i) => (
+          <text key={i} x={x(tt)} y={H - 5} textAnchor="middle" fontSize="8" fill="#5A6259" fontFamily="monospace">
+            {Math.round(tt / 60)}′
+          </text>
+        ))}
+
+        {/* fond des efforts, pour situer les fractions */}
+        {segs.filter(s => s.kind === "effort").map((s, i) => (
+          <rect key={i} x={s.x1} y={PT} width={Math.max(0.8, s.x2 - s.x1)} height={H - PT - PB} fill="#C1622B" opacity="0.13" />
+        ))}
+
+        <path d={path} fill="none" stroke="#D9793C" strokeWidth="1.4" strokeLinejoin="round" />
+      </svg>
+      <div className="flex gap-3 text-xs mt-1" style={{ color: "#5A6259" }}>
+        <span><span style={{ color: "#C1622B" }}>▮</span> efforts</span>
+        <span>paliers = FC moyenne par tour</span>
+      </div>
+    </div>
+  );
+}
+
 function LapAnalysis({ session, vma }) {
   const laps = classifyLaps(session.actual?.laps, vma, session);
   if (!laps.length) return null;
@@ -1296,6 +1369,8 @@ function LapAnalysis({ session, vma }) {
       <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#C1622B" }}>
         Déroulé de la séance
       </p>
+
+      <HeartRateChart laps={laps} />
 
       {/* ordre chronologique : chaque tour tel qu'il s'est enchaîné */}
       <div className="space-y-1">
@@ -1403,6 +1478,16 @@ function CompareRow({ label, planned, actual, unit, lowerIsBetter = false }) {
 
 function SessionReport({ s, vma }) {
   const a = s.actual || {};
+
+  // Sur une séance à intervalles, seule la FC pendant les efforts est
+  // interprétable — la moyenne de séance est diluée par les récups.
+  const effortLaps = classifyLaps(a.laps, vma, s).filter(l => l.kind === "effort" && l.fc);
+  const effortFc = effortLaps.length
+    ? {
+        avg: Math.round(effortLaps.reduce((x, l) => x + l.fc, 0) / effortLaps.length),
+        max: Math.round(Math.max(...effortLaps.map(l => l.fc))),
+      }
+    : null;
   const planPace = paceStr(s.distance, s.duree);
   const realPace = paceStr(a.distance, a.duree);
 
@@ -1463,6 +1548,20 @@ function SessionReport({ s, vma }) {
           <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
             {gradReal ?? "—"} <span style={{ color: "#5A6259" }}>/ {gradPlan ?? "—"} m/km</span>
           </span>
+        </div>
+      )}
+
+      {effortFc && (
+        <div className="rounded-lg p-2" style={{ background: "#22302A" }}>
+          <div className="flex justify-between text-xs">
+            <span style={{ color: "#C1622B" }}>FC sur les efforts uniquement</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
+              {effortFc.avg} bpm <span style={{ color: "#5A6259" }}>(max {effortFc.max})</span>
+            </span>
+          </div>
+          <p className="text-xs mt-1" style={{ color: "#5A6259" }}>
+            La FC moyenne de séance mélange échauffement et récups : sur du fractionné, c'est cette valeur-ci qui compte.
+          </p>
         </div>
       )}
 
