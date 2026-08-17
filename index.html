@@ -4,6 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Trail Coach</title>
+<meta name="build" content="2026-08-17-laps" />
 <meta name="theme-color" content="#14201C" />
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
@@ -1798,7 +1799,7 @@ function App() {
 
         <div className="flex items-center justify-between px-1">
           <span className="text-xs" style={{ color: storageOk ? "#5A6259" : "#D9793C", fontFamily: "'JetBrains Mono', monospace" }}>
-            {storageOk ? "● " : "▲ "}{storageMsg || "sauvegarde auto"}
+            {storageOk ? "● " : "▲ "}{storageMsg || "sauvegarde auto"} · build laps
           </span>
           {!storageOk && (
             <span className="text-xs" style={{ color: "#D9793C" }}>pense à sauvegarder à la main</span>

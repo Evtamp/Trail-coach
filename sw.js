@@ -1,7 +1,7 @@
 // Trail Coach — service worker
 // Stratégie : network-first pour index.html (pour recevoir les mises à jour),
 // cache-first pour le reste.
-const CACHE = "trailcoach-v1";
+const CACHE = "trailcoach-v2";
 const SHELL = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", e => {
