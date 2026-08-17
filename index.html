@@ -732,10 +732,18 @@ function evaluateAndAdjust(sessions, evaluations) {
 
     const weekSessions = generated.filter(s => s.weekStart === weekStart);
     const plannedKm = weekSessions.reduce((a, s) => a + (s.distance || 0), 0);
-    const realizedKm = weekSessions.filter(s => s.done).reduce((a, s) => a + (s.actual?.distance ?? s.distance ?? 0), 0);
+
+    // Le volume réalisé compte TOUTE la course à pied de la semaine, y compris
+    // les séances ajoutées hors plan (footing improvisé, sortie spontanée).
+    // Les activités complémentaires (vélo, renfo, natation) en sont exclues.
+    const realizedKm = sessions
+      .filter(s => s.done && !isCross(s.type) && sessionWeek(s) === weekStart)
+      .reduce((a, s) => a + (s.actual?.distance ?? s.distance ?? 0), 0);
     const complianceRatio = plannedKm > 0 ? realizedKm / plannedKm : 1;
     const missedKey = weekSessions.filter(s => ["longue", "fractionne", "seuil", "cotes"].includes(s.type) && !s.done).length;
-    const feelings = weekSessions.filter(s => s.done && s.actual?.feeling).map(s => s.actual.feeling);
+    const feelings = sessions
+      .filter(s => s.done && !isCross(s.type) && sessionWeek(s) === weekStart && s.actual?.feeling)
+      .map(s => s.actual.feeling);
     const avgFeeling = feelings.length ? feelings.reduce((a, b) => a + b, 0) / feelings.length : null;
 
     let multiplier = 1, reason = "Progression normale.";
@@ -1700,7 +1708,9 @@ function Stats({ sessions }) {
       const wk = sessionWeek(s);
       if (!map.has(wk)) map.set(wk, { week: wk, planifie: 0, realise: 0 });
       const e = map.get(wk);
-      e.planifie += s.distance || 0;
+      // planifié = ce que le plan prévoyait ; réalisé = toute la course faite,
+      // y compris les séances ajoutées hors plan
+      if (s.generated) e.planifie += s.distance || 0;
       if (s.done) e.realise += (s.actual?.distance ?? s.distance) || 0;
     });
     return [...map.values()].sort((a, b) => a.week.localeCompare(b.week)).slice(-10)
