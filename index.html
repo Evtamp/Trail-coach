@@ -1235,52 +1235,154 @@ const MEAL_DAYS = {
     intro: "Glucides plus modérés, protéines et légumes en avant. C'est la journée idéale pour creuser le déficit sans pénaliser l'entraînement.",
     protein: 119,
     meals: [
-      { t: "Petit-déjeuner", n: "Skyr, fruits rouges et graines",
-        d: "200 g de skyr, une poignée de fruits rouges, 15 g de graines de chanvre, 30 g d'amandes concassées, cannelle.", p: 33 },
-      { t: "Déjeuner", n: "Bowl lentilles-quinoa aux légumes rôtis",
-        d: "Lentilles vertes et quinoa, poivrons et courgettes rôtis, 40 g de feta, roquette. Vinaigrette citron-huile d'olive : le citron double l'absorption du fer des lentilles.", p: 35 },
-      { t: "Collation", n: "Fromage blanc et noix",
-        d: "200 g de fromage blanc, une poignée de noix, un carré de chocolat noir.", p: 18 },
-      { t: "Dîner", n: "Curry pois chiches-épinards et tofu",
-        d: "Pois chiches et tofu ferme doré, épinards, lait de coco léger, curcuma et gingembre, riz complet.", p: 33 },
+      { t: "Petit-déjeuner", n: "Skyr, fruits rouges et graines", p: 33, temps: "5 min",
+        d: "Sans cuisson, à préparer la veille si tu es pressé le matin.",
+        ing: ["200 g de skyr nature", "100 g de fruits rouges (frais ou surgelés)", "15 g de graines de chanvre décortiquées", "30 g d'amandes", "1 c. à café de miel", "cannelle"],
+        steps: ["Concasse grossièrement les amandes au couteau (elles restent plus croquantes qu'en poudre).",
+                "Si tu utilises des fruits surgelés, sors-les 10 min avant : ils rendent un jus qui parfume le skyr.",
+                "Mélange skyr, miel et cannelle dans un bol.",
+                "Ajoute les fruits, les graines de chanvre et les amandes par-dessus, sans mélanger."] },
+
+      { t: "Déjeuner", n: "Bowl lentilles-quinoa aux légumes rôtis", p: 35, temps: "35 min",
+        d: "Se prépare en double pour le lendemain — les lentilles se bonifient une nuit au frais.",
+        ing: ["80 g de lentilles vertes sèches", "60 g de quinoa", "1 poivron rouge", "1 courgette", "40 g de feta", "1 poignée de roquette", "1 citron", "2 c. à soupe d'huile d'olive", "1 c. à café de cumin", "sel, poivre"],
+        steps: ["Préchauffe le four à 200 °C.",
+                "Coupe poivron et courgette en gros morceaux, mélange-les avec 1 c. à soupe d'huile, le cumin, sel et poivre. Étale sur une plaque sans les superposer.",
+                "Enfourne 25 min, en remuant à mi-cuisson : tu cherches des bords colorés, pas des légumes mous.",
+                "Pendant ce temps, rince les lentilles et cuis-les 20 min dans 3 fois leur volume d'eau non salée (le sel durcit la peau). Sale en fin de cuisson.",
+                "Cuis le quinoa 12 min dans 2 fois son volume d'eau salée, puis laisse gonfler 5 min hors du feu, à couvert.",
+                "Assemble lentilles, quinoa et légumes. Assaisonne avec le jus du citron et le reste d'huile.",
+                "Ajoute la roquette et la feta émiettée au dernier moment."],
+        note: "Le jus de citron n'est pas décoratif : la vitamine C multiplie l'absorption du fer des lentilles." },
+
+      { t: "Collation", n: "Fromage blanc, noix et chocolat noir", p: 18, temps: "2 min",
+        d: "À prendre en milieu d'après-midi pour lisser les apports protéiques.",
+        ing: ["200 g de fromage blanc à 3 %", "25 g de noix", "1 carré de chocolat noir 70 %", "1 c. à café de miel (facultatif)"],
+        steps: ["Concasse les noix et le chocolat.", "Mélange le tout au fromage blanc."] },
+
+      { t: "Dîner", n: "Curry de pois chiches, épinards et tofu", p: 33, temps: "30 min",
+        d: "Un plat unique complet, meilleur réchauffé le lendemain.",
+        ing: ["120 g de tofu ferme", "150 g de pois chiches cuits (égouttés)", "200 g d'épinards frais (ou 150 g surgelés)", "200 ml de lait de coco léger", "1 oignon", "2 gousses d'ail", "2 cm de gingembre frais", "1 c. à café de curcuma", "1 c. à café de garam masala", "70 g de riz complet", "1 c. à soupe d'huile", "1/2 citron"],
+        steps: ["Presse le tofu 10 min sous un poids (une assiette avec une boîte de conserve suffit) : il dore beaucoup mieux sec.",
+                "Lance le riz complet : 35 min dans 2,5 fois son volume d'eau salée.",
+                "Coupe le tofu en cubes de 2 cm et fais-les dorer à feu vif dans l'huile, 6-8 min, sans y toucher les 3 premières minutes. Réserve.",
+                "Dans la même poêle, fais suer l'oignon émincé 5 min, puis ajoute ail et gingembre râpés, 1 min.",
+                "Ajoute les épices, remue 30 secondes pour les réveiller, puis verse le lait de coco.",
+                "Ajoute les pois chiches, laisse mijoter 10 min à feu doux.",
+                "Incorpore les épinards, ils fondent en 2 min. Remets le tofu, coupe le feu.",
+                "Un trait de citron au moment de servir, avec le riz."],
+        note: "Les épices ont besoin de 30 secondes dans le gras chaud pour libérer leurs arômes : ne saute pas cette étape." },
     ],
     tip: "Le thé et le café bloquent l'absorption du fer : garde-les à distance des repas riches en légumineuses.",
   },
+
   seance: {
     label: "Journée avec séance",
     intro: "Glucides répartis autour de la séance, sans excès sur le reste de la journée. Digestion terminée avant l'effort.",
     protein: 118,
     meals: [
-      { t: "Petit-déjeuner", n: "Omelette et pain complet",
-        d: "3 œufs, tomates et herbes, deux tranches de pain complet, un fruit.", p: 27 },
-      { t: "90 min avant la séance", n: "Collation glucidique légère",
-        d: "Une banane bien mûre ou du pain avec du miel. Peu de fibres, pas de gras : ce qui compte est que l'estomac soit vide au départ.", p: 3 },
-      { t: "Juste après la séance", n: "Smoothie de récupération",
-        d: "200 g de skyr, une banane, 20 g de beurre de cacahuète, lait. À boire dans les 30 minutes.", p: 30 },
-      { t: "Déjeuner ou dîner", n: "Pâtes complètes, sauce lentilles corail",
-        d: "Pâtes complètes, sauce tomate aux lentilles corail (elles fondent dans la sauce), parmesan, basilic.", p: 32 },
-      { t: "Second repas", n: "Sauté de tofu et soba",
-        d: "Tofu ferme mariné sauce soja-gingembre, nouilles soba, brocoli et poivron, graines de sésame.", p: 26 },
+      { t: "Petit-déjeuner", n: "Omelette aux herbes et pain complet", p: 27, temps: "10 min",
+        d: "",
+        ing: ["3 œufs", "2 tranches de pain complet (80 g)", "1 tomate", "persil et ciboulette", "1 c. à café d'huile d'olive", "1 fruit", "sel, poivre"],
+        steps: ["Bats les œufs à la fourchette 20 secondes, juste pour homogénéiser — trop battus, ils deviennent caoutchouteux.",
+                "Chauffe l'huile à feu moyen, pas plus : une omelette se cuit doucement.",
+                "Verse les œufs, laisse prendre 30 secondes, puis ramène les bords vers le centre avec une spatule.",
+                "Quand le dessus est encore légèrement baveux, ajoute tomate en dés et herbes, plie en deux et coupe le feu.",
+                "Sers avec le pain grillé et le fruit."] },
+
+      { t: "90 min avant la séance", n: "Collation glucidique", p: 3, temps: "1 min",
+        d: "Peu de fibres, pas de gras : ce qui compte est que l'estomac soit vide au départ.",
+        ing: ["1 banane bien mûre", "ou 2 tranches de pain blanc + miel", "un verre d'eau"],
+        steps: ["Mange sans traîner, puis bois un verre d'eau.",
+                "Si tu supportes mal de courir l'estomac plein, recule à 2 h avant plutôt que de sauter la collation."] },
+
+      { t: "Dans les 30 min après", n: "Smoothie de récupération", p: 30, temps: "3 min",
+        d: "La fenêtre où le muscle capte le mieux glucides et acides aminés.",
+        ing: ["180 g de skyr", "1 banane", "20 g de beurre de cacahuète", "150 ml de lait (ou boisson de soja)", "1 c. à café de cacao non sucré", "2 glaçons"],
+        steps: ["Mixe tout ensemble 30 secondes.",
+                "Trop épais ? Ajoute du lait par petites quantités.",
+                "Bois-le dans la demi-heure qui suit la séance."] },
+
+      { t: "Déjeuner ou dîner", n: "Pâtes complètes, sauce lentilles corail", p: 32, temps: "25 min",
+        d: "Les lentilles corail fondent dans la sauce : la texture rappelle une bolognaise.",
+        ing: ["100 g de pâtes complètes", "60 g de lentilles corail", "400 g de tomates concassées", "1 oignon", "2 gousses d'ail", "1 c. à café d'origan", "20 g de parmesan (ou équivalent végétarien)", "basilic frais", "1 c. à soupe d'huile d'olive"],
+        steps: ["Fais revenir l'oignon émincé 5 min dans l'huile, ajoute l'ail 1 min.",
+                "Ajoute les lentilles corail rincées, les tomates et l'origan. Complète avec 150 ml d'eau.",
+                "Laisse mijoter 15 min à couvert, en remuant : les lentilles se délitent et épaississent la sauce.",
+                "Cuis les pâtes al dente pendant ce temps, garde une louche d'eau de cuisson.",
+                "Mélange pâtes et sauce hors du feu, détends avec l'eau de cuisson si besoin.",
+                "Parmesan et basilic au moment de servir."] },
+
+      { t: "Second repas", n: "Sauté de tofu et nouilles soba", p: 26, temps: "20 min",
+        d: "",
+        ing: ["150 g de tofu ferme", "80 g de nouilles soba (sarrasin)", "1 brocoli (200 g)", "1 poivron", "2 c. à soupe de sauce soja", "1 c. à soupe de vinaigre de riz", "2 cm de gingembre", "1 gousse d'ail", "1 c. à soupe de graines de sésame", "1 c. à soupe d'huile neutre"],
+        steps: ["Coupe le tofu en cubes et fais-le mariner 10 min dans la sauce soja, le vinaigre, l'ail et le gingembre râpés.",
+                "Cuis les soba 4-5 min seulement, puis rince-les à l'eau froide : sinon elles collent en refroidissant.",
+                "Égoutte le tofu (garde la marinade) et fais-le dorer à feu vif 5 min.",
+                "Ajoute brocoli en petits bouquets et poivron en lanières, saute 4 min à feu vif : ils doivent rester croquants.",
+                "Verse la marinade, laisse réduire 1 min, puis ajoute les nouilles et mélange.",
+                "Graines de sésame par-dessus."] },
     ],
     tip: "Si la séance est en soirée, décale le smoothie en collation d'après-séance et allège le dîner.",
   },
+
   longue: {
     label: "Journée de sortie longue",
     intro: "Charge glucidique nette la veille au soir et le matin, ravitaillement pendant, recharge dans les deux heures qui suivent. Ce n'est pas la journée pour creuser un déficit.",
     protein: 122,
     meals: [
-      { t: "La veille au soir", n: "Risotto d'orge aux champignons",
-        d: "Orge perlé, champignons, oignon, bouillon de légumes, parmesan. Riche en glucides, pauvre en fibres irritantes.", p: 20 },
-      { t: "2 à 3 h avant", n: "Porridge avoine-banane",
-        d: "80 g de flocons d'avoine, lait, une banane écrasée, miel, une cuillère de beurre d'amande. Évite le son et les fruits secs le jour J.", p: 20 },
-      { t: "Pendant", n: "Selon le calculateur ci-dessus",
-        d: "Boisson d'effort, gels, purées de fruits — et du salé au-delà de 2 h : petits sandwichs, olives, chips. Teste ici ce que tu prévois pour la course.", p: 0 },
-      { t: "Dans les 30 min", n: "Boisson de récupération",
-        d: "Lait chocolaté ou boisson soja-cacao et une banane. Le rapport glucides/protéines y est proche de l'idéal pour relancer la reconstitution du glycogène.", p: 18 },
-      { t: "Repas suivant", n: "Dahl de lentilles corail et riz basmati",
-        d: "Lentilles corail, tomate, lait de coco, épices douces, riz basmati, yaourt et coriandre. Un filet de citron pour le fer.", p: 30 },
-      { t: "Dîner", n: "Frittata pommes de terre-épinards",
-        d: "Œufs, pommes de terre, épinards, oignons, comté râpé. Salade verte à côté.", p: 34 },
+      { t: "La veille au soir", n: "Risotto d'orge aux champignons", p: 20, temps: "45 min",
+        d: "Riche en glucides et pauvre en fibres irritantes — l'orge passe mieux que le riz complet la veille d'une sortie.",
+        ing: ["90 g d'orge perlé", "250 g de champignons de Paris", "1 oignon", "1 gousse d'ail", "1 litre de bouillon de légumes chaud", "25 g de parmesan", "1 c. à soupe d'huile d'olive", "10 g de beurre", "persil"],
+        steps: ["Garde le bouillon frémissant sur un feu à côté : versé froid, il casse la cuisson à chaque louche.",
+                "Fais dorer les champignons émincés à feu vif 6 min, sans sel au début (il les ferait rendre leur eau). Réserve.",
+                "Fais suer l'oignon dans l'huile 5 min, ajoute l'ail puis l'orge, remue 2 min jusqu'à ce qu'il devienne translucide.",
+                "Verse une louche de bouillon, remue jusqu'à absorption, recommence — compte 30 à 35 min pour l'orge, plus long que le riz.",
+                "Remets les champignons en fin de cuisson.",
+                "Hors du feu, incorpore beurre et parmesan et laisse reposer 2 min à couvert : c'est ce qui donne le crémeux.",
+                "Persil ciselé au moment de servir."] },
+
+      { t: "2 à 3 h avant", n: "Porridge avoine-banane", p: 20, temps: "10 min",
+        d: "Évite le son d'avoine et les fruits secs le jour J : trop de fibres avant l'effort.",
+        ing: ["80 g de flocons d'avoine", "200 ml de lait (ou boisson végétale)", "100 ml d'eau", "1 banane bien mûre", "1 c. à soupe de miel", "15 g de beurre d'amande", "1 pincée de sel"],
+        steps: ["Porte lait, eau et sel à frémissement.",
+                "Verse les flocons, baisse le feu, remue 5 min jusqu'à épaississement.",
+                "Écrase la moitié de la banane dans le porridge : elle sucre et lie sans ajouter de fibres dures.",
+                "Hors du feu, ajoute miel et beurre d'amande.",
+                "Décore avec le reste de banane en rondelles."] },
+
+      { t: "Pendant la sortie", n: "Ravitaillement — voir le calculateur", p: 0, temps: "",
+        d: "Teste ici exactement ce que tu prévois pour la course.",
+        ing: ["boisson d'effort selon le calculateur", "gels ou purées de fruits", "au-delà de 2 h : du salé (petits sandwichs, olives, chips)"],
+        steps: ["Commence à t'alimenter dès la 40e minute, avant d'avoir faim.",
+                "Puis toutes les 20 à 25 minutes, par petites quantités.",
+                "Bois régulièrement plutôt qu'en grandes gorgées espacées."] },
+
+      { t: "Dans les 30 min", n: "Boisson de récupération", p: 18, temps: "2 min",
+        d: "Le rapport glucides/protéines du lait chocolaté est proche de l'idéal pour relancer le glycogène.",
+        ing: ["400 ml de lait (ou boisson de soja)", "2 c. à café de cacao non sucré", "1 c. à soupe de sucre ou de miel", "1 banane"],
+        steps: ["Mixe ou secoue énergiquement le lait, le cacao et le sucre.",
+                "Bois-le avec la banane, sans attendre le repas."] },
+
+      { t: "Repas suivant", n: "Dahl de lentilles corail et riz basmati", p: 29, temps: "30 min",
+        d: "",
+        ing: ["80 g de lentilles corail", "80 g de riz basmati", "200 g de tomates concassées", "150 ml de lait de coco léger", "1 oignon", "2 gousses d'ail", "2 cm de gingembre", "1 c. à café de cumin, 1 de curcuma, 1/2 de coriandre moulue", "100 g de yaourt nature", "coriandre fraîche", "1/2 citron"],
+        steps: ["Rince les lentilles corail à l'eau claire jusqu'à ce qu'elle sorte limpide.",
+                "Fais suer l'oignon 5 min, ajoute ail et gingembre râpés, puis les épices 30 secondes.",
+                "Ajoute lentilles, tomates, lait de coco et 200 ml d'eau.",
+                "Laisse mijoter 20 min à découvert, en remuant de temps en temps — les lentilles doivent se défaire complètement.",
+                "Cuis le riz basmati en parallèle : 11 min dans 1,5 fois son volume, puis 5 min hors du feu à couvert.",
+                "Sers le dahl sur le riz, avec le yaourt, la coriandre et un trait de citron."] },
+
+      { t: "Dîner", n: "Frittata pommes de terre-épinards", p: 34, temps: "30 min",
+        d: "Se mange aussi froide le lendemain.",
+        ing: ["4 œufs", "300 g de pommes de terre", "150 g d'épinards frais", "1 oignon", "30 g de comté râpé", "2 c. à soupe d'huile d'olive", "sel, poivre, muscade"],
+        steps: ["Coupe les pommes de terre en rondelles de 5 mm et fais-les cuire 10 min à la poêle à couvert, feu moyen, avec l'huile.",
+                "Ajoute l'oignon émincé, poursuis 5 min à découvert pour colorer.",
+                "Ajoute les épinards, ils fondent en 2 min. Assaisonne avec sel, poivre et muscade.",
+                "Bats les œufs avec le comté, verse dans la poêle et répartis uniformément.",
+                "Cuis 8 min à feu doux, à couvert : le dessous prend pendant que le dessus reste moelleux.",
+                "Termine 2 min sous le gril du four pour dorer, ou retourne la frittata à l'aide d'une assiette."] },
     ],
     tip: "Resale davantage tes repas ce jour-là : sur une sortie longue tu perds facilement 1 à 2 g de sodium.",
   },
@@ -1302,6 +1404,7 @@ function menuTypeFor(sessionType) {
 }
 
 function WeekMenu({ sessions, goal }) {
+  const [openDay, setOpenDay] = useState(null);
   const wk = toISO(isoWeekStart(new Date()));
   const weekSessions = sessions
     .filter(s => s.generated && s.weekStart === wk)
@@ -1343,18 +1446,28 @@ function WeekMenu({ sessions, goal }) {
 
           return (
             <div key={day} className="pl-2 py-1" style={{ borderLeft: `2px solid ${color}` }}>
-              <div className="flex items-baseline justify-between">
-                <span className="text-sm" style={{ color: "#EDE7D9", fontFamily: "'Space Grotesk', sans-serif" }}>{day}</span>
-                <span className="text-xs" style={{ color, fontFamily: "'JetBrains Mono', monospace" }}>
-                  {s ? `${TYPES[s.type].label}${s.distance ? ` · ${s.distance} km` : ""}` : "Repos"}
-                </span>
-              </div>
-              <p className="text-xs mt-0.5" style={{ color: "#9CAA9E" }}>
-                {menu.meals.filter(m => m.p > 0).map(m => m.n).join(" · ")}
-              </p>
-              <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
-                menu {mt === "repos" ? "repos" : mt === "longue" ? "sortie longue" : "séance"} · ~{menu.protein} g protéines
-              </p>
+              <button onClick={() => setOpenDay(openDay === i ? null : i)} className="text-left w-full">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm" style={{ color: "#EDE7D9", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {day} <span style={{ color: "#5A6259" }}>{openDay === i ? "▾" : "▸"}</span>
+                  </span>
+                  <span className="text-xs" style={{ color, fontFamily: "'JetBrains Mono', monospace" }}>
+                    {s ? `${TYPES[s.type].label}${s.distance ? ` · ${s.distance} km` : ""}` : "Repos"}
+                  </span>
+                </div>
+                <p className="text-xs mt-0.5" style={{ color: "#9CAA9E" }}>
+                  {menu.meals.filter(m => m.p > 0).map(m => m.n).join(" · ")}
+                </p>
+                <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
+                  menu {mt === "repos" ? "repos" : mt === "longue" ? "sortie longue" : "séance"} · ~{menu.protein} g protéines
+                </p>
+              </button>
+
+              {openDay === i && (
+                <div className="mt-2 space-y-2.5">
+                  {menu.meals.map((m, j) => <RecipeCard key={j} m={m} />)}
+                </div>
+              )}
             </div>
           );
         })}
@@ -1366,6 +1479,68 @@ function WeekMenu({ sessions, goal }) {
           : "Pas de sortie longue cette semaine : c'est la semaine idéale pour tenir le déficit sans compromettre l'entraînement."}
         {goal?.otherSports?.length > 0 && " Les jours où tu ajoutes une autre activité, prends le menu « séance » plutôt que « repos »."}
       </div>
+    </div>
+  );
+}
+
+function RecipeCard({ m }) {
+  const [open, setOpen] = useState(false);
+  const hasRecipe = m.ing && m.ing.length > 0;
+
+  return (
+    <div className="pl-2" style={{ borderLeft: "2px solid #2C3A32" }}>
+      <div className="flex justify-between items-baseline">
+        <span className="text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>{m.t}</span>
+        <span className="text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+          {m.temps && <span style={{ color: "#5A6259" }}>{m.temps} </span>}
+          {m.p > 0 && <span style={{ color: "#C1622B" }}>{m.p} g prot.</span>}
+        </span>
+      </div>
+
+      <button onClick={() => hasRecipe && setOpen(v => !v)} className="text-left w-full">
+        <p className="text-sm" style={{ color: "#EDE7D9" }}>
+          {m.n}
+          {hasRecipe && <span style={{ color: "#5A6259" }}> {open ? "▾" : "▸"}</span>}
+        </p>
+      </button>
+      {m.d && <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>{m.d}</p>}
+
+      {open && hasRecipe && (
+        <div className="mt-2 mb-1 rounded-lg p-3 space-y-3" style={{ background: "#1C2B24" }}>
+          <div>
+            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+              Ingrédients · 1 personne
+            </p>
+            <ul className="space-y-0.5">
+              {m.ing.map((x, i) => (
+                <li key={i} className="text-sm" style={{ color: "#EDE7D9" }}>· {x}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+              Préparation
+            </p>
+            <ol className="space-y-1.5">
+              {m.steps.map((x, i) => (
+                <li key={i} className="text-sm leading-relaxed flex gap-2" style={{ color: "#EDE7D9" }}>
+                  <span style={{ color: "#C1622B", fontFamily: "'JetBrains Mono', monospace" }}>{i + 1}.</span>
+                  <span>{x}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          {m.note && (
+            <p className="text-xs leading-relaxed" style={{ color: "#B0863C" }}>{m.note}</p>
+          )}
+
+          <button onClick={() => setOpen(false)} className="w-full rounded-lg py-1.5 text-xs" style={{ background: "#22302A", color: "#7A8B5E" }}>
+            Replier
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1382,7 +1557,7 @@ function MealIdeas({ proteinTarget }) {
       </p>
 
       <div className="flex gap-1 rounded-lg p-1" style={{ background: "#1C2B24" }}>
-        {Object.entries(MEAL_DAYS).map(([k, v]) => (
+        {Object.entries(MEAL_DAYS).map(([k]) => (
           <button key={k} onClick={() => setDay(k)}
             className="flex-1 py-1.5 rounded-md text-xs"
             style={{ background: day === k ? "#C1622B" : "transparent", color: day === k ? "#14201C" : "#9CAA9E" }}>
@@ -1392,20 +1567,10 @@ function MealIdeas({ proteinTarget }) {
       </div>
 
       <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>{d.intro}</p>
+      <p className="text-xs" style={{ color: "#5A6259" }}>Touche un plat pour voir quantités et préparation.</p>
 
       <div className="space-y-2.5">
-        {d.meals.map((m, i) => (
-          <div key={i} className="pl-2" style={{ borderLeft: "2px solid #2C3A32" }}>
-            <div className="flex justify-between items-baseline">
-              <span className="text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>{m.t}</span>
-              {m.p > 0 && (
-                <span className="text-xs" style={{ color: "#C1622B", fontFamily: "'JetBrains Mono', monospace" }}>{m.p} g prot.</span>
-              )}
-            </div>
-            <p className="text-sm" style={{ color: "#EDE7D9" }}>{m.n}</p>
-            <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>{m.d}</p>
-          </div>
-        ))}
+        {d.meals.map((m, i) => <RecipeCard key={i} m={m} />)}
       </div>
 
       <div className="flex justify-between text-sm pt-2" style={{ borderTop: "1px solid #2C3A32" }}>
