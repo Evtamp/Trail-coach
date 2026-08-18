@@ -865,14 +865,14 @@ function GoalWizard({ initial, onSave }) {
       <div className="flex gap-2">
         {["trail", "route"].map(t => (
           <button key={t} onClick={() => setType(t)}
-            className="flex-1 py-2 rounded-lg text-sm"
+            className="flex-1 py-2 rounded-lg text-sm cursor-pointer hover:opacity-90 transition-opacity"
             style={{ background: type === t ? "#C1622B" : "#1C2B24", color: type === t ? "#14201C" : "#9CAA9E" }}>
             {t === "trail" ? "Trail" : "Route"}
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
         <div>
           <label className={labelCls} style={{ color: "#5A6259" }}>Date de la course</label>
           <input type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)} className={inputCls} style={inputStyle} />
@@ -924,7 +924,7 @@ function GoalWizard({ initial, onSave }) {
       <button
         disabled={!canSave}
         onClick={() => onSave({ type, raceDate, distanceKm: Number(distanceKm), dPlus: Number(dPlus) || 0, daysPerWeek, vma: Number(vma), startVolumeKm: Number(startVolumeKm), otherSports })}
-        className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
+        className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
         style={{ background: "#C1622B", color: "#14201C" }}
       >
         Générer le plan
@@ -1127,7 +1127,7 @@ function SessionForm({ onAdd }) {
         suivies à part et n'entrent pas dans le volume de course à pied.
       </p>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
         <select value={type} onChange={e => setType(e.target.value)} className={inputCls} style={inputStyle}>
           <optgroup label="Course à pied">
             {Object.entries(TYPES).filter(([k, v]) => !v.cross && k !== "repos")
@@ -1164,7 +1164,7 @@ function SessionForm({ onAdd }) {
         </div>
       )}
 
-      <button onClick={submit} className="w-full rounded-lg py-2.5 text-sm font-medium hover:opacity-90" style={{ background: "#C1622B", color: "#14201C" }}>
+      <button onClick={submit} className="w-full rounded-lg py-2.5 text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#C1622B", color: "#14201C" }}>
         Ajouter
       </button>
       {msg && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{msg}</p>}
@@ -1229,7 +1229,7 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
       </div>
       {pasteErr && <p className="text-xs" style={{ color: "#D9793C" }}>{pasteErr}</p>}
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
         <div>
           <label className="text-xs" style={{ color: "#5A6259" }}>Jour réalisé</label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} style={inputStyle} />
@@ -1290,10 +1290,10 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
             cadence: Number(cadence) || null,
             laps: parseLaps(),
           }, date)}
-          className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#7A8B5E", color: "#14201C" }}>
+          className="flex-1 rounded-lg py-2 text-sm cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#7A8B5E", color: "#14201C" }}>
           {defaults.done ? "Mettre à jour" : "Valider cette séance"}
         </button>
-        <button onClick={onCancel} className="rounded-lg py-2 px-3 text-sm" style={{ color: "#5A6259" }}>Annuler</button>
+        <button onClick={onCancel} className="rounded-lg py-2 px-3 text-sm cursor-pointer hover:opacity-80 transition-opacity" style={{ color: "#5A6259" }}>Annuler</button>
       </div>
     </div>
   );
@@ -1322,22 +1322,22 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma }) {
             </p>
           )}
         </div>
-        <button onClick={() => onDelete(s.id)} className="text-xs px-2 py-1 rounded" style={{ color: "#5A6259" }}>✕</button>
+        <button onClick={() => onDelete(s.id)} className="text-xs px-2 py-1 rounded cursor-pointer hover:opacity-80 transition-opacity" style={{ color: "#5A6259" }}>✕</button>
         {!s.done ? (
-          <button onClick={() => setShowActual(v => !v)} className="text-xs px-3 py-1.5 rounded-lg shrink-0" style={{ background: "#C1622B", color: "#14201C" }}>Importer</button>
+          <button onClick={() => setShowActual(v => !v)} className="text-xs px-3 py-1.5 rounded-lg shrink-0 cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#C1622B", color: "#14201C" }}>Importer</button>
         ) : (
           <div className="flex gap-1 shrink-0">
             <button
               onClick={() => setShowActual(v => !v)}
               title="Corriger ou compléter les données réalisées"
-              className="text-xs px-3 py-1.5 rounded-lg"
+              className="text-xs px-3 py-1.5 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
               style={{ background: "#C1622B", color: "#14201C" }}>
               Modifier
             </button>
             <button
               onClick={() => onToggle(s.id, { done: false, actual: null, date: s.generated ? null : s.date })}
               title="Annuler la validation — la séance retourne dans le planning"
-              className="text-xs px-2 py-1.5 rounded-lg"
+              className="text-xs px-2 py-1.5 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
               style={{ background: "#2C3A32", color: "#7A8B5E" }}>
               ↺
             </button>
@@ -2024,7 +2024,7 @@ function Stats({ sessions }) {
             ))}
           </div>
         ) : (
-        <div style={{ width: "100%", height: 180 }}>
+        <div className="w-full h-[180px] lg:h-[280px]">
           <ResponsiveContainer>
             <BarChart data={weekly}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2C3A32" vertical={false} />
@@ -2232,136 +2232,146 @@ function App() {
         input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
       `}</style>
 
-      <div className="max-w-md mx-auto px-4 py-5 space-y-5">
-        <ElevationHero goal={goal} progress={progress} daysLeft={daysLeft} />
+      <div className="max-w-md mx-auto px-4 py-5 lg:max-w-6xl lg:px-8 lg:py-8">
+        <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-8 lg:items-start">
 
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs" style={{ color: storageOk ? "#5A6259" : "#D9793C", fontFamily: "'JetBrains Mono', monospace" }}>
-            {storageOk ? "● " : "▲ "}{storageMsg || "sauvegarde auto"} · build laps
-          </span>
-          {!storageOk && (
-            <span className="text-xs" style={{ color: "#D9793C" }}>pense à sauvegarder à la main</span>
-          )}
-        </div>
+          <div className="space-y-5 lg:sticky lg:top-8">
+            <ElevationHero goal={goal} progress={progress} daysLeft={daysLeft} />
 
-        {goal && !editingGoal && <WeekRings sessions={sessions} />}
-
-        {goal && !editingGoal && (
-          <button onClick={() => setEditingGoal(true)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
-            Modifier l'objectif
-          </button>
-        )}
-
-        {(editingGoal || !goal) && (
-          <>
-            <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
-              <button onClick={() => setShowRestore(v => !v)} className="w-full flex items-center justify-between">
-                <span className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
-                  Restaurer une sauvegarde
-                </span>
-                <span style={{ color: "#5A6259" }}>{showRestore ? "▾" : "▸"}</span>
-              </button>
-              {showRestore && (
-                <>
-                  <p className="text-xs" style={{ color: "#9CAA9E" }}>
-                    Colle ici le texte de sauvegarde généré précédemment pour retrouver ton plan et ton historique.
-                  </p>
-                  <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
-                    className="w-full rounded-lg px-3 py-2 text-xs outline-none"
-                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
-                    placeholder='{"goal":...}' />
-                  <button onClick={restoreBackup} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "#5C7A99", color: "#14201C" }}>
-                    Restaurer
-                  </button>
-                  {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
-                </>
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs" style={{ color: storageOk ? "#5A6259" : "#D9793C", fontFamily: "'JetBrains Mono', monospace" }}>
+                {storageOk ? "● " : "▲ "}{storageMsg || "sauvegarde auto"} · build laps
+              </span>
+              {!storageOk && (
+                <span className="text-xs" style={{ color: "#D9793C" }}>pense à sauvegarder à la main</span>
               )}
             </div>
-            <GoalWizard initial={goal} onSave={saveGoal} />
-          </>
-        )}
 
-        {goal && !editingGoal && (
-          <>
-            <div className="flex gap-1 rounded-xl p-1" style={{ background: "#1C2B24" }}>
-              {[["plan", "Plan"], ["importer", "Importer"], ["ajouter", "Ajouter"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
-                <button key={k} onClick={() => setTab(k)} className="flex-1 py-2 rounded-lg text-xs"
-                  style={{ background: tab === k ? "#C1622B" : "transparent", color: tab === k ? "#14201C" : "#9CAA9E", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {label}
-                </button>
-              ))}
-            </div>
+            {goal && !editingGoal && <WeekRings sessions={sessions} />}
 
-            {tab === "plan" && (
-              <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
-                onSaveNotes={saveNotes} vma={goal?.vma} />
+            {goal && !editingGoal && (
+              <button onClick={() => setEditingGoal(true)} className="text-xs px-3 py-1.5 rounded-lg cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
+                Modifier l'objectif
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-5">
+            {(editingGoal || !goal) && (
+              <>
+                <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+                  <button onClick={() => setShowRestore(v => !v)} className="w-full flex items-center justify-between cursor-pointer">
+                    <span className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                      Restaurer une sauvegarde
+                    </span>
+                    <span style={{ color: "#5A6259" }}>{showRestore ? "▾" : "▸"}</span>
+                  </button>
+                  {showRestore && (
+                    <>
+                      <p className="text-xs" style={{ color: "#9CAA9E" }}>
+                        Colle ici le texte de sauvegarde généré précédemment pour retrouver ton plan et ton historique.
+                      </p>
+                      <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
+                        className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                        style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
+                        placeholder='{"goal":...}' />
+                      <button onClick={restoreBackup} className="w-full rounded-lg py-2.5 text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#5C7A99", color: "#14201C" }}>
+                        Restaurer
+                      </button>
+                      {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
+                    </>
+                  )}
+                </div>
+                <GoalWizard initial={goal} onSave={saveGoal} />
+              </>
             )}
 
-            {tab === "importer" && (
-              <div className="space-y-4">
-                {!storageOk && (
-                  <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "#2A2018", color: "#D9793C", border: "1px solid #3A2C1C" }}>
-                    La sauvegarde automatique ne fonctionne pas dans ce contexte. Utilise la sauvegarde manuelle ci-dessous avant de fermer l'app.
+            {goal && !editingGoal && (
+              <>
+                <div className="flex gap-1 rounded-xl p-1" style={{ background: "#1C2B24" }}>
+                  {[["plan", "Plan"], ["importer", "Importer"], ["ajouter", "Ajouter"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
+                    <button key={k} onClick={() => setTab(k)} className="flex-1 py-2 rounded-lg text-xs cursor-pointer transition-colors hover:opacity-90"
+                      style={{ background: tab === k ? "#C1622B" : "transparent", color: tab === k ? "#14201C" : "#9CAA9E", fontFamily: "'Space Grotesk', sans-serif" }}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                {tab === "plan" && (
+                  <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
+                    onSaveNotes={saveNotes} vma={goal?.vma} />
+                )}
+
+                {tab === "importer" && (
+                  <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+                    <div className="space-y-4">
+                      {!storageOk && (
+                        <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "#2A2018", color: "#D9793C", border: "1px solid #3A2C1C" }}>
+                          La sauvegarde automatique ne fonctionne pas dans ce contexte. Utilise la sauvegarde manuelle ci-dessous avant de fermer l'app.
+                        </div>
+                      )}
+                      <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+                        <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                          Importer des séances réalisées
+                        </p>
+                        <p className="text-xs leading-relaxed" style={{ color: "#D9793C" }}>
+                          Import en lot : le rapprochement se fait par semaine et par distance approchante, il peut se tromper de séance. Pour être sûr, utilise le bouton <span style={{ color: "#C1622B" }}>Importer</span> en face de la séance voulue.
+                        </p>
+                        <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
+                          Une séance par ligne :<br />
+                          <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>
+                            date ; km ; D+ ; minutes ; ressenti ; FC moy ; FC max ; cadence
+                          </span><br />
+                          Exemple : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>2026-08-12 ; 12.4 ; 380 ; 78 ; 3 ; 148 ; 172 ; 80</span><br />
+                          Les champs vides sont acceptés. Une séance planifiée à ±2 jours est automatiquement rapprochée.
+                        </p>
+                        <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6}
+                          className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                          style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
+                          placeholder={"2026-08-12 ; 12.4 ; 380 ; 78 ; 3\n2026-08-14 ; 8 ; 90 ; 45 ; 2"} />
+                        <button onClick={runImport} className="w-full rounded-lg py-2.5 text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#C1622B", color: "#14201C" }}>
+                          Importer
+                        </button>
+                        {importStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{importStatus}</p>}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl p-4 space-y-3 lg:self-start" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+                      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                        Sauvegarde manuelle
+                      </p>
+                      <p className="text-xs" style={{ color: "#9CAA9E" }}>
+                        Génère un texte contenant tout ton plan. Garde-le (note, mail, message) : si tu perds tes données, recolle-le ici et clique Restaurer.
+                      </p>
+                      <div className="flex gap-2">
+                        <button onClick={exportBackup} className="flex-1 rounded-lg py-2 text-sm cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
+                          Générer
+                        </button>
+                        <button onClick={restoreBackup} className="flex-1 rounded-lg py-2 text-sm cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#5C7A99", color: "#14201C" }}>
+                          Restaurer
+                        </button>
+                      </div>
+                      <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
+                        className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                        style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
+                        placeholder="Le texte de sauvegarde apparaîtra ici" />
+                      {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
+                    </div>
                   </div>
                 )}
-                <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
-                  <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
-                    Importer des séances réalisées
-                  </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#D9793C" }}>
-                    Import en lot : le rapprochement se fait par semaine et par distance approchante, il peut se tromper de séance. Pour être sûr, utilise le bouton <span style={{ color: "#C1622B" }}>Importer</span> en face de la séance voulue.
-                  </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
-                    Une séance par ligne :<br />
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>
-                      date ; km ; D+ ; minutes ; ressenti ; FC moy ; FC max ; cadence
-                    </span><br />
-                    Exemple : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>2026-08-12 ; 12.4 ; 380 ; 78 ; 3 ; 148 ; 172 ; 80</span><br />
-                    Les champs vides sont acceptés. Une séance planifiée à ±2 jours est automatiquement rapprochée.
-                  </p>
-                  <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6}
-                    className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
-                    placeholder={"2026-08-12 ; 12.4 ; 380 ; 78 ; 3\n2026-08-14 ; 8 ; 90 ; 45 ; 2"} />
-                  <button onClick={runImport} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "#C1622B", color: "#14201C" }}>
-                    Importer
-                  </button>
-                  {importStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{importStatus}</p>}
-                </div>
-
-                <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
-                  <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
-                    Sauvegarde manuelle
-                  </p>
-                  <p className="text-xs" style={{ color: "#9CAA9E" }}>
-                    Génère un texte contenant tout ton plan. Garde-le (note, mail, message) : si tu perds tes données, recolle-le ici et clique Restaurer.
-                  </p>
-                  <div className="flex gap-2">
-                    <button onClick={exportBackup} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
-                      Générer
-                    </button>
-                    <button onClick={restoreBackup} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#5C7A99", color: "#14201C" }}>
-                      Restaurer
-                    </button>
+                {tab === "ajouter" && <SessionForm onAdd={addSession} />}
+                {tab === "stats" && <Stats sessions={sessions} />}
+                {tab === "historique" && (
+                  <div className="space-y-3">
+                    {past.length === 0 && <p className="text-sm text-center py-6" style={{ color: "#5A6259" }}>Pas encore de séance réalisée.</p>}
+                    {past.map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} />)}
                   </div>
-                  <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
-                    className="w-full rounded-lg px-3 py-2 text-xs outline-none"
-                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
-                    placeholder="Le texte de sauvegarde apparaîtra ici" />
-                  {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
-                </div>
-              </div>
+                )}
+              </>
             )}
-            {tab === "ajouter" && <SessionForm onAdd={addSession} />}
-            {tab === "stats" && <Stats sessions={sessions} />}
-            {tab === "historique" && (
-              <div className="space-y-3">
-                {past.length === 0 && <p className="text-sm text-center py-6" style={{ color: "#5A6259" }}>Pas encore de séance réalisée.</p>}
-                {past.map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} />)}
-              </div>
-            )}
-          </>
-        )}
+          </div>
+
+        </div>
       </div>
     </div>
   );
