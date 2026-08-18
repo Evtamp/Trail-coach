@@ -1176,7 +1176,301 @@ function fuelingPlan({ durationMin, tempC, weightKg, intensity }) {
   return { carbs, fluid, sodium, totalCarbs, totalFluid, totalSodium, gels, drinkMl, drinkCarbs, notes };
 }
 
-function NutritionTab({ goal, weightKg, onWeightChange }) {
+// ======================================================================
+// Poids de forme : plan jusqu'au jour de la course
+// ======================================================================
+
+const KCAL_PER_KG_FAT = 7700;
+
+/**
+ * Un déficit énergétique et un bloc d'entraînement lourd se cumulent mal :
+ * la perte de poids doit se faire tôt (Base / Développement) et s'arrêter
+ * avant la phase spécifique, où l'organisme a besoin d'être pleinement
+ * ravitaillé pour encaisser les plus grosses charges puis affûter.
+ */
+function raceWeightPlan({ current, target, raceDate }) {
+  const cur = Number(current), tgt = Number(target);
+  if (!cur || !tgt || !raceDate) return null;
+
+  const today = new Date();
+  const race = new Date(raceDate);
+  const daysToRace = Math.max(0, Math.round((race - today) / 86400000));
+
+  // le déficit s'arrête 4 semaines avant la course
+  const stopDate = addDays(race, -28);
+  const deficitDays = Math.max(0, Math.round((stopDate - today) / 86400000));
+
+  const toLose = cur - tgt;
+  const weeksAvailable = deficitDays / 7;
+  const kgPerWeek = weeksAvailable > 0 ? toLose / weeksAvailable : 0;
+  const pctPerWeek = cur > 0 ? (kgPerWeek / cur) * 100 : 0;
+  const kcalPerDay = deficitDays > 0 ? Math.round((toLose * KCAL_PER_KG_FAT) / deficitDays) : 0;
+
+  // au-delà de 0,7 % du poids par semaine, la masse musculaire et les
+  // adaptations à l'entraînement commencent à en pâtir
+  let verdict, verdictColor;
+  if (toLose <= 0) { verdict = "Objectif déjà atteint — passe en maintien."; verdictColor = "#7A8B5E"; }
+  else if (pctPerWeek <= 0.5) { verdict = "Rythme prudent, compatible avec le bloc d'entraînement."; verdictColor = "#7A8B5E"; }
+  else if (pctPerWeek <= 0.7) { verdict = "Rythme soutenu — surveille ta fraîcheur sur les séances de qualité."; verdictColor = "#B0863C"; }
+  else { verdict = "Rythme trop rapide sur une prépa d'ultra : allonge le délai ou revois l'objectif à la hausse."; verdictColor = "#C0522B"; }
+
+  return {
+    cur, tgt, toLose, daysToRace, deficitDays,
+    stopDate: toISO(stopDate),
+    kgPerWeek: Math.round(kgPerWeek * 100) / 100,
+    pctPerWeek: Math.round(pctPerWeek * 100) / 100,
+    kcalPerDay, verdict, verdictColor,
+    proteinMin: Math.round(tgt * 1.6),
+    proteinMax: Math.round(tgt * 2.0),
+  };
+}
+
+// ======================================================================
+// Idées de repas selon le type de journée (végétarien)
+// ======================================================================
+
+const MEAL_DAYS = {
+  repos: {
+    label: "Journée sans course",
+    intro: "Glucides plus modérés, protéines et légumes en avant. C'est la journée idéale pour creuser le déficit sans pénaliser l'entraînement.",
+    protein: 119,
+    meals: [
+      { t: "Petit-déjeuner", n: "Skyr, fruits rouges et graines",
+        d: "200 g de skyr, une poignée de fruits rouges, 15 g de graines de chanvre, 30 g d'amandes concassées, cannelle.", p: 33 },
+      { t: "Déjeuner", n: "Bowl lentilles-quinoa aux légumes rôtis",
+        d: "Lentilles vertes et quinoa, poivrons et courgettes rôtis, 40 g de feta, roquette. Vinaigrette citron-huile d'olive : le citron double l'absorption du fer des lentilles.", p: 35 },
+      { t: "Collation", n: "Fromage blanc et noix",
+        d: "200 g de fromage blanc, une poignée de noix, un carré de chocolat noir.", p: 18 },
+      { t: "Dîner", n: "Curry pois chiches-épinards et tofu",
+        d: "Pois chiches et tofu ferme doré, épinards, lait de coco léger, curcuma et gingembre, riz complet.", p: 33 },
+    ],
+    tip: "Le thé et le café bloquent l'absorption du fer : garde-les à distance des repas riches en légumineuses.",
+  },
+  seance: {
+    label: "Journée avec séance",
+    intro: "Glucides répartis autour de la séance, sans excès sur le reste de la journée. Digestion terminée avant l'effort.",
+    protein: 118,
+    meals: [
+      { t: "Petit-déjeuner", n: "Omelette et pain complet",
+        d: "3 œufs, tomates et herbes, deux tranches de pain complet, un fruit.", p: 27 },
+      { t: "90 min avant la séance", n: "Collation glucidique légère",
+        d: "Une banane bien mûre ou du pain avec du miel. Peu de fibres, pas de gras : ce qui compte est que l'estomac soit vide au départ.", p: 3 },
+      { t: "Juste après la séance", n: "Smoothie de récupération",
+        d: "200 g de skyr, une banane, 20 g de beurre de cacahuète, lait. À boire dans les 30 minutes.", p: 30 },
+      { t: "Déjeuner ou dîner", n: "Pâtes complètes, sauce lentilles corail",
+        d: "Pâtes complètes, sauce tomate aux lentilles corail (elles fondent dans la sauce), parmesan, basilic.", p: 32 },
+      { t: "Second repas", n: "Sauté de tofu et soba",
+        d: "Tofu ferme mariné sauce soja-gingembre, nouilles soba, brocoli et poivron, graines de sésame.", p: 26 },
+    ],
+    tip: "Si la séance est en soirée, décale le smoothie en collation d'après-séance et allège le dîner.",
+  },
+  longue: {
+    label: "Journée de sortie longue",
+    intro: "Charge glucidique nette la veille au soir et le matin, ravitaillement pendant, recharge dans les deux heures qui suivent. Ce n'est pas la journée pour creuser un déficit.",
+    protein: 122,
+    meals: [
+      { t: "La veille au soir", n: "Risotto d'orge aux champignons",
+        d: "Orge perlé, champignons, oignon, bouillon de légumes, parmesan. Riche en glucides, pauvre en fibres irritantes.", p: 20 },
+      { t: "2 à 3 h avant", n: "Porridge avoine-banane",
+        d: "80 g de flocons d'avoine, lait, une banane écrasée, miel, une cuillère de beurre d'amande. Évite le son et les fruits secs le jour J.", p: 20 },
+      { t: "Pendant", n: "Selon le calculateur ci-dessus",
+        d: "Boisson d'effort, gels, purées de fruits — et du salé au-delà de 2 h : petits sandwichs, olives, chips. Teste ici ce que tu prévois pour la course.", p: 0 },
+      { t: "Dans les 30 min", n: "Boisson de récupération",
+        d: "Lait chocolaté ou boisson soja-cacao et une banane. Le rapport glucides/protéines y est proche de l'idéal pour relancer la reconstitution du glycogène.", p: 18 },
+      { t: "Repas suivant", n: "Dahl de lentilles corail et riz basmati",
+        d: "Lentilles corail, tomate, lait de coco, épices douces, riz basmati, yaourt et coriandre. Un filet de citron pour le fer.", p: 30 },
+      { t: "Dîner", n: "Frittata pommes de terre-épinards",
+        d: "Œufs, pommes de terre, épinards, oignons, comté râpé. Salade verte à côté.", p: 34 },
+    ],
+    tip: "Resale davantage tes repas ce jour-là : sur une sortie longue tu perds facilement 1 à 2 g de sodium.",
+  },
+};
+
+function MealIdeas({ proteinTarget }) {
+  const [day, setDay] = useState("seance");
+  const d = MEAL_DAYS[day];
+  const card = { background: "#182420", border: "1px solid #2C3A32" };
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={card}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+        Idées de repas
+      </p>
+
+      <div className="flex gap-1 rounded-lg p-1" style={{ background: "#1C2B24" }}>
+        {Object.entries(MEAL_DAYS).map(([k, v]) => (
+          <button key={k} onClick={() => setDay(k)}
+            className="flex-1 py-1.5 rounded-md text-xs"
+            style={{ background: day === k ? "#C1622B" : "transparent", color: day === k ? "#14201C" : "#9CAA9E" }}>
+            {k === "repos" ? "Repos" : k === "seance" ? "Séance" : "Longue"}
+          </button>
+        ))}
+      </div>
+
+      <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>{d.intro}</p>
+
+      <div className="space-y-2.5">
+        {d.meals.map((m, i) => (
+          <div key={i} className="pl-2" style={{ borderLeft: "2px solid #2C3A32" }}>
+            <div className="flex justify-between items-baseline">
+              <span className="text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>{m.t}</span>
+              {m.p > 0 && (
+                <span className="text-xs" style={{ color: "#C1622B", fontFamily: "'JetBrains Mono', monospace" }}>{m.p} g prot.</span>
+              )}
+            </div>
+            <p className="text-sm" style={{ color: "#EDE7D9" }}>{m.n}</p>
+            <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>{m.d}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="flex justify-between text-sm pt-2" style={{ borderTop: "1px solid #2C3A32" }}>
+        <span style={{ color: "#9CAA9E" }}>Total protéines</span>
+        <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>
+          ~{d.protein} g
+          {proteinTarget ? <span style={{ color: "#5A6259" }}> / cible {proteinTarget}</span> : null}
+        </span>
+      </div>
+
+      <p className="text-xs leading-relaxed" style={{ color: "#5A6259" }}>{d.tip}</p>
+    </div>
+  );
+}
+
+function RaceWeightPlan({ goal, weightKg, targetWeight, onTargetChange }) {
+  const p = raceWeightPlan({ current: weightKg, target: targetWeight, raceDate: goal?.raceDate });
+  const card = { background: "#182420", border: "1px solid #2C3A32" };
+  const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
+  const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={card}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+        Poids de forme
+      </p>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Poids visé (kg)</label>
+          <input type="number" value={targetWeight} onChange={e => onTargetChange(e.target.value)} className={inputCls} style={inputStyle} />
+        </div>
+        <div className="flex items-end">
+          <p className="text-xs" style={{ color: "#5A6259" }}>
+            Poids actuel : {weightKg || "—"} kg (modifiable plus haut)
+          </p>
+        </div>
+      </div>
+
+      {!p ? (
+        <p className="text-xs" style={{ color: "#5A6259" }}>Renseigne ton poids actuel et ton poids visé.</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-lg p-3 text-center" style={{ background: "#1C2B24" }}>
+              <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>{p.toLose > 0 ? `-${p.toLose}` : "0"}</p>
+              <p className="text-xs" style={{ color: "#5A6259" }}>kg à perdre</p>
+            </div>
+            <div className="rounded-lg p-3 text-center" style={{ background: "#1C2B24" }}>
+              <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#B0863C" }}>{p.kgPerWeek}</p>
+              <p className="text-xs" style={{ color: "#5A6259" }}>kg/semaine</p>
+            </div>
+            <div className="rounded-lg p-3 text-center" style={{ background: "#1C2B24" }}>
+              <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#7A8B5E" }}>{p.kcalPerDay}</p>
+              <p className="text-xs" style={{ color: "#5A6259" }}>kcal/jour</p>
+            </div>
+          </div>
+
+          <p className="text-sm" style={{ color: p.verdictColor }}>{p.verdict}</p>
+
+          {/* fenêtre de perte, puis stabilisation obligatoire */}
+          <div>
+            <div className="flex h-2 rounded-full overflow-hidden" style={{ background: "#2C3A32" }}>
+              <div style={{ width: `${(p.deficitDays / Math.max(1, p.daysToRace)) * 100}%`, background: "#C1622B" }} />
+              <div style={{ flex: 1, background: "#5C7A99" }} />
+            </div>
+            <div className="flex justify-between text-xs mt-1">
+              <span style={{ color: "#C1622B" }}>déficit · {Math.round(p.deficitDays / 7)} sem.</span>
+              <span style={{ color: "#5C7A99" }}>maintien · 4 sem.</span>
+            </div>
+            <p className="text-xs mt-2 leading-relaxed" style={{ color: "#9CAA9E" }}>
+              Arrête le déficit le <span style={{ color: "#EDE7D9" }}>{fmtDate(p.stopDate)}</span>.
+              Les quatre dernières semaines couvrent la fin du bloc spécifique et l'affûtage :
+              c'est là que tu dois être pleinement ravitaillé pour absorber la charge, refaire
+              tes réserves de glycogène et arriver frais. Perdre du poids sur cette période
+              coûte plus en performance que les kilos n'en font gagner.
+            </p>
+          </div>
+
+          <div className="rounded-lg p-3 space-y-2" style={{ background: "#1C2B24" }}>
+            <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+              Protéines — priorité n°1 en déficit
+            </p>
+            <p className="text-sm" style={{ color: "#EDE7D9" }}>
+              <span style={{ color: "#C1622B" }}>{p.proteinMin}-{p.proteinMax} g par jour</span>, réparties sur 4 prises
+            </p>
+            <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
+              En déficit, c'est ce qui protège la masse musculaire. En végétarien, les protéines
+              végétales sont moins bien assimilées : vise le haut de la fourchette et varie les
+              sources dans la même journée.
+            </p>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function VegetarianGuide({ targetWeight }) {
+  const card = { background: "#182420", border: "1px solid #2C3A32" };
+  const sources = [
+    ["Légumineuses", "lentilles, pois chiches, haricots rouges", "~9 g / 100 g cuits"],
+    ["Tofu ferme / tempeh", "à faire sauter, mariner, griller", "15-19 g / 100 g"],
+    ["Seitan", "la plus dense en protéines", "~25 g / 100 g"],
+    ["Œufs et laitages", "skyr, fromage blanc, comté", "10-20 g / portion"],
+    ["Céréales complètes", "quinoa, avoine, sarrasin, épeautre", "5-14 g / 100 g"],
+    ["Oléagineux et graines", "amandes, courge, chanvre, chia", "20-30 g / 100 g"],
+  ];
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={card}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+        Végétarien · sources et points de vigilance
+      </p>
+
+      <div className="space-y-1.5">
+        {sources.map(([n, d, q]) => (
+          <div key={n}>
+            <div className="flex justify-between text-sm">
+              <span style={{ color: "#EDE7D9" }}>{n}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>{q}</span>
+            </div>
+            <p className="text-xs" style={{ color: "#5A6259" }}>{d}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="pt-2 space-y-2" style={{ borderTop: "1px solid #2C3A32" }}>
+        <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          À surveiller en endurance
+        </p>
+        {[
+          ["Fer", "Le point le plus critique : le fer végétal s'absorbe mal, et la course à pied augmente les pertes. Associe systématiquement une source de vitamine C (agrumes, poivron, persil) aux légumineuses, et évite thé et café dans l'heure qui suit le repas. Une fatigue inhabituelle sur un bloc chargé mérite un bilan sanguin."],
+          ["Vitamine B12", "Non couverte par l'alimentation végétale : une supplémentation est la norme en régime végétarien, à voir avec ton médecin."],
+          ["Zinc", "Légumineuses, graines de courge, noix de cajou. Le trempage et la fermentation améliorent nettement l'absorption."],
+          ["Oméga-3", "Noix, graines de lin et de chia moulues, huile de colza. Une source d'EPA/DHA à base d'algues si tu veux couvrir complètement."],
+          ["Créatine", "Naturellement plus basse en végétarien. Sans intérêt direct sur un 100 km, mais utile si tu ajoutes du renforcement."],
+        ].map(([t, d]) => (
+          <div key={t}>
+            <p className="text-sm" style={{ color: "#B0863C" }}>{t}</p>
+            <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>{d}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NutritionTab({ goal, weightKg, onWeightChange, targetWeight, onTargetChange }) {
   const [durationMin, setDurationMin] = useState(120);
   const [tempC, setTempC] = useState(18);
   const [intensity, setIntensity] = useState("moderee");
@@ -1259,6 +1553,13 @@ function NutritionTab({ goal, weightKg, onWeightChange }) {
           <p key={i} className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>— {n}</p>
         ))}
       </div>
+
+      {/* ---------- poids de forme ---------- */}
+      <RaceWeightPlan goal={goal} weightKg={weightKg} targetWeight={targetWeight} onTargetChange={onTargetChange} />
+
+      <VegetarianGuide targetWeight={targetWeight} />
+
+      <MealIdeas proteinTarget={targetWeight ? `${Math.round(Number(targetWeight) * 1.6)}-${Math.round(Number(targetWeight) * 2)} g` : null} />
 
       {/* ---------- entraînement digestif ---------- */}
       {goal?.type === "trail" && (
@@ -2309,6 +2610,7 @@ function App() {
   const [backupStatus, setBackupStatus] = useState("");
   const [showRestore, setShowRestore] = useState(false);
   const [weightKg, setWeightKg] = useState("");
+  const [targetWeight, setTargetWeight] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -2329,6 +2631,7 @@ function App() {
           setSessions(data.sessions || []);
           setEvaluations(data.evaluations || {});
           setWeightKg(data.weightKg || "");
+          setTargetWeight(data.targetWeight || "");
           if (!data.goal) setEditingGoal(true);
         } else {
           setEditingGoal(true);
@@ -2358,7 +2661,7 @@ function App() {
           setStorageMsg("stockage indisponible");
           return;
         }
-        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations, weightKg }), false);
+        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight }), false);
         const ok = r !== null && r !== undefined;
         setStorageOk(ok);
         setStorageMsg(ok ? `${window.STORAGE_MODE ? window.STORAGE_MODE() : "local"} · sauvegardé ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "échec de sauvegarde");
@@ -2367,12 +2670,12 @@ function App() {
         setStorageMsg("erreur : " + String(e).slice(0, 60));
       }
     })();
-  }, [goal, sessions, evaluations, weightKg, loaded]);
+  }, [goal, sessions, evaluations, weightKg, targetWeight, loaded]);
 
   const saveNotes = (id, notes) => setSessions(prev => prev.map(s => s.id === id ? { ...s, notes } : s));
 
   const exportBackup = () => {
-    setBackupText(JSON.stringify({ goal, sessions, evaluations, weightKg }));
+    setBackupText(JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight }));
     setBackupStatus("Copie ce texte et garde-le quelque part.");
   };
 
@@ -2383,6 +2686,7 @@ function App() {
       setSessions(data.sessions || []);
       setEvaluations(data.evaluations || {});
       if (data.weightKg) setWeightKg(data.weightKg);
+      if (data.targetWeight) setTargetWeight(data.targetWeight);
       setEditingGoal(!data.goal);
       setShowRestore(false);
       setTab("plan");
@@ -2605,7 +2909,7 @@ function App() {
             )}
             {tab === "ajouter" && <SessionForm onAdd={addSession} />}
             {tab === "nutrition" && (
-              <NutritionTab goal={goal} weightKg={weightKg} onWeightChange={setWeightKg} />
+              <NutritionTab goal={goal} weightKg={weightKg} onWeightChange={setWeightKg} targetWeight={targetWeight} onTargetChange={setTargetWeight} />
             )}
             {tab === "stats" && <Stats sessions={sessions} />}
             {tab === "historique" && (
