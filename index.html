@@ -205,31 +205,8 @@ const ZONES = [
 ];
 
 /**
- * Choisit une variante de séance dans une liste, de façon déterministe et
- * stable — basée sur la semaine de la séance (weekStart, ou date pour les
- * séances ajoutées à la main), pas sur un tirage aléatoire. Comme les
- * weekStart générés sont toujours espacés de 7 jours, ce choix tourne
- * naturellement d'une semaine à l'autre (7 et le nombre de variantes étant
- * premiers entre eux dans tous les cas utilisés ici), sans jamais changer
- * pour une séance déjà créée — important car les totaux (distance/durée)
- * sont calculés une fois à la génération du plan et ne doivent pas se
- * décorréler de la séance affichée ensuite.
- */
-function pickVariant(list, session) {
-  if (!list || !list.length) return null;
-  if (list.length === 1) return list[0];
-  const key = (session && (session.weekStart || session.date)) || "";
-  const days = Math.floor(new Date(key).getTime() / 86400000);
-  const idx = Number.isFinite(days) ? ((days % list.length) + list.length) % list.length : 0;
-  return list[idx];
-}
-
-/**
  * Construit une séance structurée (échauffement / blocs / retour au calme)
- * pour les séances de qualité, selon le type et la phase du plan. Plusieurs
- * variantes existent par phase — un vrai plan d'entraînement ne répète pas
- * indéfiniment le même format de fractionné ou de côtes ; pickVariant fait
- * tourner ces variantes semaine après semaine.
+ * pour les séances de qualité, selon le type et la phase du plan.
  * Renvoie null pour les séances continues (longue, fonda, récup).
  */
 function buildStructuredWorkout(session, vma) {
@@ -239,27 +216,12 @@ function buildStructuredWorkout(session, vma) {
 
   if (type === "fractionne") {
     const plans = {
-      base: [
-        { name: "30/30", sets: 2, reps: 8, workSec: 30, restSec: 30, pct: 100, restPct: 50 },
-        { name: "45/45", sets: 2, reps: 6, workSec: 45, restSec: 45, pct: 97,  restPct: 52 },
-        { name: "1'/1'", sets: 2, reps: 5, workSec: 60, restSec: 60, pct: 95,  restPct: 55 },
-      ],
-      build: [
-        { name: "30/30", sets: 2, reps: 10, workSec: 30, restSec: 30, pct: 102, restPct: 50 },
-        { name: "200 m", sets: 3, reps: 6,  workSec: 40, restSec: 40, pct: 105, restPct: 50 },
-        { name: "1'/1'", sets: 2, reps: 8,  workSec: 60, restSec: 60, pct: 100, restPct: 52 },
-      ],
-      peak: [
-        { name: "400 m",  sets: 3, reps: 5, workSec: 90,  restSec: 75,  pct: 100, restPct: 50 },
-        { name: "300 m",  sets: 3, reps: 6, workSec: 65,  restSec: 60,  pct: 103, restPct: 50 },
-        { name: "1000 m", sets: 2, reps: 4, workSec: 180, restSec: 120, pct: 95,  restPct: 50 },
-      ],
-      taper: [
-        { name: "30/30", sets: 1, reps: 8, workSec: 30, restSec: 30, pct: 100, restPct: 50 },
-        { name: "200 m", sets: 1, reps: 6, workSec: 40, restSec: 50, pct: 102, restPct: 55 },
-      ],
+      base:  { name: "30/30", sets: 2, reps: 8,  workSec: 30, restSec: 30, pct: 100, restPct: 50 },
+      build: { name: "30/30", sets: 2, reps: 10, workSec: 30, restSec: 30, pct: 102, restPct: 50 },
+      peak:  { name: "400 m", sets: 3, reps: 5,  workSec: 90, restSec: 75, pct: 100, restPct: 50 },
+      taper: { name: "30/30", sets: 1, reps: 8,  workSec: 30, restSec: 30, pct: 100, restPct: 50 },
     };
-    const p = pickVariant(plans[ph], session);
+    const p = plans[ph];
     return {
       title: `${p.sets} × ${p.reps} × ${p.name}`,
       warmup: { text: "20 min en endurance fondamentale + 3-4 lignes droites progressives", pace: paceAtPct(vma, 68) },
@@ -277,26 +239,12 @@ function buildStructuredWorkout(session, vma) {
 
   if (type === "seuil") {
     const plans = {
-      base: [
-        { sets: 2, minutes: 8,  pct: 85, rest: 3 },
-        { sets: 1, minutes: 15, pct: 84, rest: 3 },
-        { sets: 3, minutes: 6,  pct: 86, rest: 3 },
-      ],
-      build: [
-        { sets: 3, minutes: 8,  pct: 87, rest: 3 },
-        { sets: 2, minutes: 12, pct: 86, rest: 4 },
-        { sets: 4, minutes: 6,  pct: 88, rest: 3 },
-      ],
-      peak: [
-        { sets: 2, minutes: 15, pct: 88, rest: 4 },
-        { sets: 3, minutes: 10, pct: 88, rest: 3 },
-      ],
-      taper: [
-        { sets: 2, minutes: 6,  pct: 87, rest: 3 },
-        { sets: 1, minutes: 10, pct: 86, rest: 3 },
-      ],
+      base:  { sets: 2, minutes: 8,  pct: 85, rest: 3 },
+      build: { sets: 3, minutes: 8,  pct: 87, rest: 3 },
+      peak:  { sets: 2, minutes: 15, pct: 88, rest: 4 },
+      taper: { sets: 2, minutes: 6,  pct: 87, rest: 3 },
     };
-    const p = pickVariant(plans[ph], session);
+    const p = plans[ph];
     return {
       title: `${p.sets} × ${p.minutes} min au seuil`,
       warmup: { text: "20 min en endurance fondamentale", pace: paceAtPct(vma, 68) },
@@ -314,25 +262,12 @@ function buildStructuredWorkout(session, vma) {
 
   if (type === "cotes") {
     const plans = {
-      base: [
-        { sets: 2, reps: 6, workSec: 45, effort: "95-100% VMA" },
-        { sets: 2, reps: 8, workSec: 30, effort: "95-100% VMA" },
-      ],
-      build: [
-        { sets: 3, reps: 6, workSec: 60, effort: "95-100% VMA" },
-        { sets: 3, reps: 8, workSec: 40, effort: "98-102% VMA" },
-        { sets: 2, reps: 5, workSec: 90, effort: "90-95% VMA" },
-      ],
-      peak: [
-        { sets: 3, reps: 5, workSec: 120, effort: "90-95% VMA" },
-        { sets: 4, reps: 5, workSec: 60,  effort: "95-100% VMA" },
-      ],
-      taper: [
-        { sets: 1, reps: 6, workSec: 45, effort: "95% VMA" },
-        { sets: 1, reps: 8, workSec: 30, effort: "95-100% VMA" },
-      ],
+      base:  { sets: 2, reps: 6, workSec: 45, effort: "95-100% VMA" },
+      build: { sets: 3, reps: 6, workSec: 60, effort: "95-100% VMA" },
+      peak:  { sets: 3, reps: 5, workSec: 120, effort: "90-95% VMA" },
+      taper: { sets: 1, reps: 6, workSec: 45, effort: "95% VMA" },
     };
-    const p = pickVariant(plans[ph], session);
+    const p = plans[ph];
     return {
       title: `${p.sets} × ${p.reps} × ${p.workSec}s en côte`,
       warmup: { text: "20 min en endurance fondamentale jusqu'au pied de la côte", pace: paceAtPct(vma, 68) },
@@ -748,11 +683,7 @@ function generatePlan(goal) {
     let qualityKm = 0;
     template.forEach(type => {
       if (QUALITY.includes(type) && !totalsByType[type]) {
-        // weekStart identique à celui stocké sur la séance plus bas : la
-        // variante choisie ici (pour calculer distance/durée) doit rester
-        // celle affichée ensuite, sinon les totaux ne correspondent plus
-        // à la séance structurée montrée à l'utilisateur.
-        const tot = structuredTotals({ type, phase, weekStart: toISO(weekStart) }, goal.vma);
+        const tot = structuredTotals({ type, phase }, goal.vma);
         if (tot) { totalsByType[type] = tot; qualityKm += tot.distance; }
       }
     });
@@ -934,14 +865,14 @@ function GoalWizard({ initial, onSave }) {
       <div className="flex gap-2">
         {["trail", "route"].map(t => (
           <button key={t} onClick={() => setType(t)}
-            className="flex-1 py-2 rounded-lg text-sm cursor-pointer hover:opacity-90 transition-opacity"
+            className="flex-1 py-2 rounded-lg text-sm"
             style={{ background: type === t ? "#C1622B" : "#1C2B24", color: type === t ? "#14201C" : "#9CAA9E" }}>
             {t === "trail" ? "Trail" : "Route"}
           </button>
         ))}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <div>
           <label className={labelCls} style={{ color: "#5A6259" }}>Date de la course</label>
           <input type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)} className={inputCls} style={inputStyle} />
@@ -993,7 +924,7 @@ function GoalWizard({ initial, onSave }) {
       <button
         disabled={!canSave}
         onClick={() => onSave({ type, raceDate, distanceKm: Number(distanceKm), dPlus: Number(dPlus) || 0, daysPerWeek, vma: Number(vma), startVolumeKm: Number(startVolumeKm), otherSports })}
-        className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+        className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
         style={{ background: "#C1622B", color: "#14201C" }}
       >
         Générer le plan
@@ -1152,6 +1083,235 @@ function WeekRings({ sessions }) {
   );
 }
 
+// ======================================================================
+// Nutrition : apports autour des séances et pendant l'effort
+// ======================================================================
+
+const NUTRITION_ADVICE = {
+  longue: {
+    avant: "Repas 2-3 h avant, riche en glucides et pauvre en fibres et en gras (1-2 g de glucides par kg). Si la sortie démarre tôt, une collation 45 min avant suffit : banane, pain-miel, compote.",
+    pendant: "C'est LA séance où tu entraînes ton système digestif. Commence à t'alimenter avant d'avoir faim, dès la 40e minute, puis toutes les 20-25 min. Utilise exactement les produits prévus pour ta course.",
+    apres: "Dans l'heure : glucides + protéines (environ 1 g/kg de glucides et 20-30 g de protéines). Réhydrate à 1,5× le poids perdu et resale le repas suivant.",
+  },
+  fractionne: {
+    avant: "Séance courte mais intense : viens avec des réserves pleines. Collation glucidique 60-90 min avant si tu n'as pas mangé depuis longtemps. Évite fibres et gras dans les 2 h.",
+    pendant: "Eau uniquement. La séance est trop courte pour nécessiter des glucides.",
+    apres: "Repas normal dans les 2 h, avec une source de protéines. Pas besoin de recharge d'urgence sur ce format.",
+  },
+  cotes: {
+    avant: "Comme le fractionné : réserves pleines, digestion terminée. Les montées répétées sollicitent fort les jambes, ne pars pas à jeun.",
+    pendant: "Eau. Au-delà de 75 min de séance totale, ajoute une boisson d'effort légère.",
+    apres: "Séance très traumatisante musculairement (descentes) : protéines dans l'heure, 20-30 g, plus des glucides.",
+  },
+  seuil: {
+    avant: "Collation glucidique 1-2 h avant. Le seuil se dégrade vite sur réserves basses.",
+    pendant: "Eau, ou boisson d'effort si la séance dépasse 75 min.",
+    apres: "Repas complet dans les 2 h.",
+  },
+  fonda: {
+    avant: "Peu de contraintes. Sortie possible à jeun si elle reste sous 75 min et facile — utile pour l'adaptation lipidique, à ne pas faire systématiquement.",
+    pendant: "Eau. Au-delà de 75 min, commence à t'alimenter légèrement.",
+    apres: "Repas normal. Pas de recharge particulière.",
+  },
+  recup: {
+    avant: "Rien de spécifique.",
+    pendant: "Eau.",
+    apres: "Repas normal. L'objectif de la séance est la circulation, pas la dépense.",
+  },
+  repos: { avant: "—", pendant: "—", apres: "Journée idéale pour bien couvrir tes apports en protéines et reconstituer tes réserves." },
+  renfo: {
+    avant: "Ne viens pas à jeun : la force se travaille mal sur réserves vides.",
+    pendant: "Eau.",
+    apres: "20-30 g de protéines dans les 2 h qui suivent.",
+  },
+  velo: {
+    avant: "Comme une sortie course de durée équivalente.",
+    pendant: "Le vélo tolère mieux l'alimentation solide que la course : bonne occasion de manger consistant.",
+    apres: "Glucides + protéines si la sortie était longue.",
+  },
+  natation: { avant: "Collation légère 1 h avant.", pendant: "Eau au bord.", apres: "Repas normal." },
+  autre: { avant: "Adapte selon l'intensité et la durée.", pendant: "Eau.", apres: "Repas normal." },
+};
+
+/**
+ * Besoins pendant l'effort, selon la durée et les conditions.
+ * Bases : glucides croissants avec la durée (plafonnés par l'absorption
+ * intestinale), hydratation modulée par la température, sodium majoré à la
+ * chaleur. Ce sont des points de départ à ajuster à ta tolérance réelle.
+ */
+function fuelingPlan({ durationMin, tempC, weightKg, intensity }) {
+  const h = durationMin / 60;
+
+  let carbs;
+  if (durationMin < 60) carbs = 0;
+  else if (durationMin < 90) carbs = 30;
+  else if (durationMin < 150) carbs = 50;
+  else if (durationMin < 240) carbs = 65;
+  else carbs = 80;
+  if (intensity === "haute" && carbs > 0) carbs = Math.min(90, carbs + 10);
+  if (intensity === "facile" && carbs > 30) carbs -= 10;
+
+  let fluid = 500 + (tempC - 15) * 45;
+  fluid = Math.max(350, Math.min(900, Math.round(fluid / 50) * 50));
+
+  let sodium = 500 + Math.max(0, tempC - 18) * 45;
+  sodium = Math.max(300, Math.min(1100, Math.round(sodium / 50) * 50));
+
+  const totalCarbs = Math.round(carbs * h);
+  const totalFluid = Math.round(fluid * h);
+  const totalSodium = Math.round(sodium * h);
+
+  // Traduction en produits, pour que le chiffre devienne actionnable
+  const gels = carbs > 0 ? Math.round(totalCarbs * 0.5 / 25) : 0;
+  const drinkMl = totalFluid;
+  const drinkCarbs = Math.round(totalCarbs * 0.5);
+
+  const notes = [];
+  if (carbs >= 70) notes.push("Au-delà de 70 g/h, mélange glucose et fructose (produits « multi-transporteurs ») : un seul type de sucre sature l'absorption vers 60 g/h.");
+  if (durationMin >= 150) notes.push("Alterne les textures : tout en gel devient écœurant après 3 h. Prévois du salé et du solide.");
+  if (tempC >= 25) notes.push("Chaleur : bois davantage mais par petites gorgées régulières, et augmente le sodium — c'est lui qui retient l'eau.");
+  if (tempC <= 5) notes.push("Froid : la sensation de soif chute alors que les pertes continuent. Bois à la montre, pas à la soif.");
+  if (weightKg && durationMin >= 150) notes.push(`Pèse-toi avant et après : chaque kilo perdu correspond à environ 1 litre à compenser dans les heures qui suivent.`);
+
+  return { carbs, fluid, sodium, totalCarbs, totalFluid, totalSodium, gels, drinkMl, drinkCarbs, notes };
+}
+
+function NutritionTab({ goal, weightKg, onWeightChange }) {
+  const [durationMin, setDurationMin] = useState(120);
+  const [tempC, setTempC] = useState(18);
+  const [intensity, setIntensity] = useState("moderee");
+  const [adviceType, setAdviceType] = useState("longue");
+
+  const plan = fuelingPlan({ durationMin, tempC, weightKg: Number(weightKg) || null, intensity });
+  const adv = NUTRITION_ADVICE[adviceType];
+  const card = { background: "#182420", border: "1px solid #2C3A32" };
+  const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
+  const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
+
+  return (
+    <div className="space-y-4">
+      {/* ---------- calculateur ---------- */}
+      <div className="rounded-xl p-4 space-y-3" style={card}>
+        <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          Apports pendant l'effort
+        </p>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="text-xs" style={{ color: "#5A6259" }}>Durée (min)</label>
+            <input type="number" value={durationMin} onChange={e => setDurationMin(Number(e.target.value) || 0)} className={inputCls} style={inputStyle} />
+          </div>
+          <div>
+            <label className="text-xs" style={{ color: "#5A6259" }}>Température (°C)</label>
+            <input type="number" value={tempC} onChange={e => setTempC(Number(e.target.value))} className={inputCls} style={inputStyle} />
+          </div>
+          <div>
+            <label className="text-xs" style={{ color: "#5A6259" }}>Intensité</label>
+            <select value={intensity} onChange={e => setIntensity(e.target.value)} className={inputCls} style={inputStyle}>
+              <option value="facile">Facile</option>
+              <option value="moderee">Modérée</option>
+              <option value="haute">Soutenue</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs" style={{ color: "#5A6259" }}>Poids (kg)</label>
+            <input type="number" value={weightKg} onChange={e => onWeightChange(e.target.value)} placeholder="pour les g/kg" className={inputCls} style={inputStyle} />
+          </div>
+        </div>
+
+        {plan.carbs === 0 ? (
+          <div className="rounded-lg p-3 text-sm" style={{ background: "#1C2B24", color: "#9CAA9E" }}>
+            Sous une heure d'effort, tes réserves suffisent : de l'eau, rien d'autre.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { v: plan.carbs, u: "g/h", l: "Glucides", c: "#C1622B", tot: `${plan.totalCarbs} g` },
+                { v: plan.fluid, u: "ml/h", l: "Boisson", c: "#5C7A99", tot: `${(plan.totalFluid / 1000).toFixed(1)} L` },
+                { v: plan.sodium, u: "mg/h", l: "Sodium", c: "#B0863C", tot: `${plan.totalSodium} mg` },
+              ].map(x => (
+                <div key={x.l} className="rounded-lg p-3 text-center" style={{ background: "#1C2B24" }}>
+                  <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: x.c }}>{x.v}</p>
+                  <p className="text-xs" style={{ color: "#5A6259" }}>{x.u}</p>
+                  <p className="text-xs mt-1" style={{ color: "#9CAA9E" }}>{x.l}</p>
+                  <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>{x.tot}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="rounded-lg p-3" style={{ background: "#1C2B24" }}>
+              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                Concrètement, à emporter
+              </p>
+              <p className="text-sm" style={{ color: "#EDE7D9" }}>
+                environ {plan.gels} gel{plan.gels > 1 ? "s" : ""} ({Math.round(plan.totalCarbs * 0.5)} g)
+                + {(plan.drinkMl / 1000).toFixed(1)} L de boisson d'effort dosée à {plan.drinkCarbs} g
+              </p>
+              <p className="text-xs mt-1" style={{ color: "#5A6259" }}>
+                Une répartition parmi d'autres — barres, purées de fruits ou salé remplacent très bien les gels.
+              </p>
+            </div>
+          </>
+        )}
+
+        {plan.notes.map((n, i) => (
+          <p key={i} className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>— {n}</p>
+        ))}
+      </div>
+
+      {/* ---------- entraînement digestif ---------- */}
+      {goal?.type === "trail" && (
+        <div className="rounded-xl p-4 space-y-2" style={card}>
+          <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+            Entraînement digestif
+          </p>
+          <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
+            L'intestin s'entraîne comme un muscle. Passer directement à 80 g/h le jour de la course est la cause la plus fréquente d'abandon sur ultra. Progresse sur tes sorties longues :
+          </p>
+          <div className="space-y-1">
+            {[
+              ["Phase Base", "30-40 g/h", "habituer, sans forcer"],
+              ["Développement", "50-60 g/h", "monter progressivement"],
+              ["Spécifique", "70-80 g/h", "aux produits exacts de la course"],
+              ["Affûtage", "comme en course", "aucune nouveauté"],
+            ].map(([ph, val, note]) => (
+              <div key={ph} className="flex justify-between text-xs">
+                <span style={{ color: "#9CAA9E" }}>{ph}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>
+                  {val} <span style={{ color: "#5A6259" }}>· {note}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ---------- fiche par type de séance ---------- */}
+      <div className="rounded-xl p-4 space-y-3" style={card}>
+        <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          Autour de la séance
+        </p>
+        <select value={adviceType} onChange={e => setAdviceType(e.target.value)} className={inputCls} style={inputStyle}>
+          {Object.keys(NUTRITION_ADVICE).filter(k => TYPES[k]).map(k => (
+            <option key={k} value={k}>{TYPES[k].label}</option>
+          ))}
+        </select>
+        {[["Avant", adv.avant], ["Pendant", adv.pendant], ["Après", adv.apres]].map(([t, txt]) => (
+          <div key={t}>
+            <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>{t}</p>
+            <p className="text-sm leading-relaxed" style={{ color: "#EDE7D9" }}>{txt}</p>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-xs leading-relaxed px-1" style={{ color: "#5A6259" }}>
+        Ces repères sont des points de départ issus des recommandations générales en nutrition sportive. La tolérance digestive varie beaucoup d'une personne à l'autre : teste tout à l'entraînement. Pour un besoin médical ou un suivi personnalisé, un diététicien du sport reste la bonne adresse.
+      </p>
+    </div>
+  );
+}
+
 function SessionForm({ onAdd }) {
   const [type, setType] = useState("recup");
   const [date, setDate] = useState(() => toISO(new Date()));
@@ -1196,7 +1356,7 @@ function SessionForm({ onAdd }) {
         suivies à part et n'entrent pas dans le volume de course à pied.
       </p>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <select value={type} onChange={e => setType(e.target.value)} className={inputCls} style={inputStyle}>
           <optgroup label="Course à pied">
             {Object.entries(TYPES).filter(([k, v]) => !v.cross && k !== "repos")
@@ -1233,7 +1393,7 @@ function SessionForm({ onAdd }) {
         </div>
       )}
 
-      <button onClick={submit} className="w-full rounded-lg py-2.5 text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#C1622B", color: "#14201C" }}>
+      <button onClick={submit} className="w-full rounded-lg py-2.5 text-sm font-medium hover:opacity-90" style={{ background: "#C1622B", color: "#14201C" }}>
         Ajouter
       </button>
       {msg && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{msg}</p>}
@@ -1298,7 +1458,7 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
       </div>
       {pasteErr && <p className="text-xs" style={{ color: "#D9793C" }}>{pasteErr}</p>}
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="text-xs" style={{ color: "#5A6259" }}>Jour réalisé</label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} style={inputStyle} />
@@ -1359,10 +1519,10 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
             cadence: Number(cadence) || null,
             laps: parseLaps(),
           }, date)}
-          className="flex-1 rounded-lg py-2 text-sm cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#7A8B5E", color: "#14201C" }}>
+          className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#7A8B5E", color: "#14201C" }}>
           {defaults.done ? "Mettre à jour" : "Valider cette séance"}
         </button>
-        <button onClick={onCancel} className="rounded-lg py-2 px-3 text-sm cursor-pointer hover:opacity-80 transition-opacity" style={{ color: "#5A6259" }}>Annuler</button>
+        <button onClick={onCancel} className="rounded-lg py-2 px-3 text-sm" style={{ color: "#5A6259" }}>Annuler</button>
       </div>
     </div>
   );
@@ -1391,22 +1551,22 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma }) {
             </p>
           )}
         </div>
-        <button onClick={() => onDelete(s.id)} className="text-xs px-2 py-1 rounded cursor-pointer hover:opacity-80 transition-opacity" style={{ color: "#5A6259" }}>✕</button>
+        <button onClick={() => onDelete(s.id)} className="text-xs px-2 py-1 rounded" style={{ color: "#5A6259" }}>✕</button>
         {!s.done ? (
-          <button onClick={() => setShowActual(v => !v)} className="text-xs px-3 py-1.5 rounded-lg shrink-0 cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#C1622B", color: "#14201C" }}>Importer</button>
+          <button onClick={() => setShowActual(v => !v)} className="text-xs px-3 py-1.5 rounded-lg shrink-0" style={{ background: "#C1622B", color: "#14201C" }}>Importer</button>
         ) : (
           <div className="flex gap-1 shrink-0">
             <button
               onClick={() => setShowActual(v => !v)}
               title="Corriger ou compléter les données réalisées"
-              className="text-xs px-3 py-1.5 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+              className="text-xs px-3 py-1.5 rounded-lg"
               style={{ background: "#C1622B", color: "#14201C" }}>
               Modifier
             </button>
             <button
               onClick={() => onToggle(s.id, { done: false, actual: null, date: s.generated ? null : s.date })}
               title="Annuler la validation — la séance retourne dans le planning"
-              className="text-xs px-2 py-1.5 rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+              className="text-xs px-2 py-1.5 rounded-lg"
               style={{ background: "#2C3A32", color: "#7A8B5E" }}>
               ↺
             </button>
@@ -1927,6 +2087,25 @@ function SessionDetail({ s, onClose, onSaveNotes, vma }) {
           </div>
         )}
 
+        {s.duree >= 75 && !isCross(s.type) && (() => {
+          const f = fuelingPlan({ durationMin: s.duree, tempC: 18, weightKg: null, intensity: s.type === "longue" ? "facile" : "moderee" });
+          return (
+            <div className="rounded-lg p-3" style={{ background: "#1C2B24", border: "1px solid #2C3A32" }}>
+              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                Ravitaillement
+              </p>
+              <p className="text-sm" style={{ color: "#EDE7D9" }}>
+                <span style={{ color: "#C1622B" }}>{f.carbs} g</span> de glucides et
+                <span style={{ color: "#5C7A99" }}> {f.fluid} ml</span> de boisson par heure
+                <span style={{ color: "#5A6259" }}> — soit ~{f.totalCarbs} g et {(f.totalFluid / 1000).toFixed(1)} L sur la séance</span>
+              </p>
+              <p className="text-xs mt-1" style={{ color: "#5A6259" }}>
+                Base 18 °C — ajuste dans l'onglet Nutrition selon la météo.
+              </p>
+            </div>
+          );
+        })()}
+
         <div>
           <p className="text-xs uppercase tracking-wider mb-2" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Export</p>
           <div className="flex gap-2">
@@ -2037,87 +2216,24 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma 
 // Stats
 // ======================================================================
 
-const STATS_PERIODS = [["semaine", "Semaine"], ["mois", "Mois"], ["annee", "Année"]];
-const STATS_PERIOD_TITLE = { semaine: "Volume hebdo course (km)", mois: "Volume mensuel course (km) — depuis janvier", annee: "Volume annuel course (km)" };
-
-// Infobulle personnalisée du graphique de volume : distance ET dénivelé
-// (réalisé / planifié) pour la période survolée, quelle que soit la vue
-// (semaine, mois ou année).
-function VolumeTooltip({ active, payload, label }) {
-  if (!active || !payload || !payload.length) return null;
-  const d = payload[0]?.payload;
-  if (!d) return null;
-  return (
-    <div className="rounded-lg px-3 py-2 text-xs space-y-1" style={{ background: "#14201C", border: "1px solid #2C3A32", color: "#EDE7D9" }}>
-      <p style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>{label}</p>
-      <p style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-        <span style={{ color: "#9CAA9E" }}>Distance </span>
-        <span style={{ color: "#C1622B" }}>{d.realise}</span>
-        <span style={{ color: "#5A6259" }}> / {d.planifie} km</span>
-      </p>
-      <p style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-        <span style={{ color: "#9CAA9E" }}>D+ </span>
-        <span style={{ color: "#B0863C" }}>{d.dplusRealise}</span>
-        <span style={{ color: "#5A6259" }}> / {d.dplusPlanifie} m</span>
-      </p>
-    </div>
-  );
-}
-
 function Stats({ sessions }) {
   const runSessions = sessions.filter(s => !isCross(s.type));
   const crossSessions = sessions.filter(s => isCross(s.type) && s.done);
-  const [period, setPeriod] = useState("mois");
 
-  // Regroupe le volume course par semaine, mois ou année, selon la période
-  // choisie. "mois" se limite à l'année en cours (depuis janvier), en
-  // complétant les mois sans séance par des barres à zéro pour garder une
-  // frise continue jusqu'au mois courant.
-  const chartData = useMemo(() => {
+  const weekly = useMemo(() => {
     const map = new Map();
     runSessions.forEach(s => {
       const wk = sessionWeek(s);
-      if (!wk) return;
-      const key = period === "semaine" ? wk : period === "annee" ? wk.slice(0, 4) : wk.slice(0, 7);
-      if (!map.has(key)) map.set(key, { key, planifie: 0, realise: 0, dplusPlanifie: 0, dplusRealise: 0 });
-      const e = map.get(key);
+      if (!map.has(wk)) map.set(wk, { week: wk, planifie: 0, realise: 0 });
+      const e = map.get(wk);
       // planifié = ce que le plan prévoyait ; réalisé = toute la course faite,
       // y compris les séances ajoutées hors plan
-      if (s.generated) {
-        e.planifie += s.distance || 0;
-        e.dplusPlanifie += s.dplus || 0;
-      }
-      if (s.done) {
-        e.realise += (s.actual?.distance ?? s.distance) || 0;
-        e.dplusRealise += (s.actual?.dplus ?? s.dplus) || 0;
-      }
+      if (s.generated) e.planifie += s.distance || 0;
+      if (s.done) e.realise += (s.actual?.distance ?? s.distance) || 0;
     });
-
-    let keys = [...map.keys()];
-
-    if (period === "mois") {
-      const now = new Date();
-      const year = String(now.getFullYear());
-      const monthsThisYear = new Set(keys.filter(k => k.startsWith(year)));
-      for (let m = 0; m <= now.getMonth(); m++) monthsThisYear.add(`${year}-${String(m + 1).padStart(2, "0")}`);
-      keys = [...monthsThisYear];
-    }
-
-    keys.sort();
-    if (period === "semaine") keys = keys.slice(-10);
-
-    return keys.map(k => {
-      const e = map.get(k) || { key: k, planifie: 0, realise: 0, dplusPlanifie: 0, dplusRealise: 0 };
-      const label = period === "semaine" ? fmtDate(k)
-        : period === "annee" ? k
-        : new Date(`${k}-01`).toLocaleDateString("fr-FR", { month: "short" }).replace(".", "");
-      return {
-        ...e, label,
-        planifie: Math.round(e.planifie), realise: Math.round(e.realise),
-        dplusPlanifie: Math.round(e.dplusPlanifie), dplusRealise: Math.round(e.dplusRealise),
-      };
-    });
-  }, [sessions, period]);
+    return [...map.values()].sort((a, b) => a.week.localeCompare(b.week)).slice(-10)
+      .map(e => ({ ...e, label: fmtDate(e.week), planifie: Math.round(e.planifie), realise: Math.round(e.realise) }));
+  }, [sessions]);
 
   const planned = sessions.filter(s => s.generated);
   const totalPlanned = planned.length;
@@ -2143,41 +2259,26 @@ function Stats({ sessions }) {
         </div>
       </div>
       <div className="rounded-xl p-4" style={cardStyle}>
-        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-          <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
-            {STATS_PERIOD_TITLE[period]}
-          </p>
-          <div className="flex gap-1 rounded-lg p-0.5 shrink-0" style={{ background: "#1C2B24" }}>
-            {STATS_PERIODS.map(([k, label]) => (
-              <button key={k} onClick={() => setPeriod(k)}
-                className="px-2.5 py-1 rounded-md text-xs cursor-pointer transition-colors hover:opacity-90"
-                style={{ background: period === k ? "#C1622B" : "transparent", color: period === k ? "#14201C" : "#9CAA9E", fontFamily: "'Space Grotesk', sans-serif" }}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+        <p className="text-xs uppercase tracking-wider mb-3" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Volume hebdo course (km)</p>
         {!CHARTS_OK ? (
           <div className="space-y-1">
-            {chartData.map(w => (
-              <div key={w.key} className="flex items-center justify-between text-xs" style={{ color: "#9CAA9E" }}>
+            {weekly.map(w => (
+              <div key={w.week} className="flex items-center justify-between text-xs" style={{ color: "#9CAA9E" }}>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{w.label}</span>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                   <span style={{ color: "#5A6259" }}>{w.planifie}</span> / <span style={{ color: "#C1622B" }}>{w.realise}</span> km
-                  <span style={{ color: "#5A6259" }}> · </span>
-                  <span style={{ color: "#5A6259" }}>{w.dplusPlanifie}</span> / <span style={{ color: "#B0863C" }}>{w.dplusRealise}</span> m D+
                 </span>
               </div>
             ))}
           </div>
         ) : (
-        <div className="w-full h-[180px] lg:h-[280px]">
+        <div style={{ width: "100%", height: 180 }}>
           <ResponsiveContainer>
-            <BarChart data={chartData}>
+            <BarChart data={weekly}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2C3A32" vertical={false} />
               <XAxis dataKey="label" stroke="#5A6259" fontSize={11} />
               <YAxis stroke="#5A6259" fontSize={11} />
-              <Tooltip content={<VolumeTooltip />} cursor={{ fill: "#22302A" }} />
+              <Tooltip contentStyle={{ background: "#14201C", border: "1px solid #2C3A32", color: "#EDE7D9" }} />
               <Bar dataKey="planifie" fill="#2C3A32" radius={[4, 4, 0, 0]} name="Planifié" />
               <Bar dataKey="realise" fill="#C1622B" radius={[4, 4, 0, 0]} name="Réalisé" />
             </BarChart>
@@ -2207,6 +2308,7 @@ function App() {
   const [backupText, setBackupText] = useState("");
   const [backupStatus, setBackupStatus] = useState("");
   const [showRestore, setShowRestore] = useState(false);
+  const [weightKg, setWeightKg] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -2226,6 +2328,7 @@ function App() {
           setGoal(data.goal || null);
           setSessions(data.sessions || []);
           setEvaluations(data.evaluations || {});
+          setWeightKg(data.weightKg || "");
           if (!data.goal) setEditingGoal(true);
         } else {
           setEditingGoal(true);
@@ -2255,7 +2358,7 @@ function App() {
           setStorageMsg("stockage indisponible");
           return;
         }
-        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations }), false);
+        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations, weightKg }), false);
         const ok = r !== null && r !== undefined;
         setStorageOk(ok);
         setStorageMsg(ok ? `${window.STORAGE_MODE ? window.STORAGE_MODE() : "local"} · sauvegardé ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "échec de sauvegarde");
@@ -2264,12 +2367,12 @@ function App() {
         setStorageMsg("erreur : " + String(e).slice(0, 60));
       }
     })();
-  }, [goal, sessions, evaluations, loaded]);
+  }, [goal, sessions, evaluations, weightKg, loaded]);
 
   const saveNotes = (id, notes) => setSessions(prev => prev.map(s => s.id === id ? { ...s, notes } : s));
 
   const exportBackup = () => {
-    setBackupText(JSON.stringify({ goal, sessions, evaluations }));
+    setBackupText(JSON.stringify({ goal, sessions, evaluations, weightKg }));
     setBackupStatus("Copie ce texte et garde-le quelque part.");
   };
 
@@ -2279,6 +2382,7 @@ function App() {
       setGoal(data.goal || null);
       setSessions(data.sessions || []);
       setEvaluations(data.evaluations || {});
+      if (data.weightKg) setWeightKg(data.weightKg);
       setEditingGoal(!data.goal);
       setShowRestore(false);
       setTab("plan");
@@ -2379,146 +2483,139 @@ function App() {
         input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
       `}</style>
 
-      <div className="max-w-md mx-auto px-4 py-5 lg:max-w-6xl lg:px-8 lg:py-8">
-        <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[380px_minmax(0,1fr)] lg:gap-8 lg:items-start">
+      <div className="max-w-md mx-auto px-4 py-5 space-y-5">
+        <ElevationHero goal={goal} progress={progress} daysLeft={daysLeft} />
 
-          <div className="space-y-5 lg:sticky lg:top-8">
-            <ElevationHero goal={goal} progress={progress} daysLeft={daysLeft} />
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs" style={{ color: storageOk ? "#5A6259" : "#D9793C", fontFamily: "'JetBrains Mono', monospace" }}>
+            {storageOk ? "● " : "▲ "}{storageMsg || "sauvegarde auto"} · build laps
+          </span>
+          {!storageOk && (
+            <span className="text-xs" style={{ color: "#D9793C" }}>pense à sauvegarder à la main</span>
+          )}
+        </div>
 
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs" style={{ color: storageOk ? "#5A6259" : "#D9793C", fontFamily: "'JetBrains Mono', monospace" }}>
-                {storageOk ? "● " : "▲ "}{storageMsg || "sauvegarde auto"} · build laps
-              </span>
-              {!storageOk && (
-                <span className="text-xs" style={{ color: "#D9793C" }}>pense à sauvegarder à la main</span>
+        {goal && !editingGoal && <WeekRings sessions={sessions} />}
+
+        {goal && !editingGoal && (
+          <button onClick={() => setEditingGoal(true)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
+            Modifier l'objectif
+          </button>
+        )}
+
+        {(editingGoal || !goal) && (
+          <>
+            <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+              <button onClick={() => setShowRestore(v => !v)} className="w-full flex items-center justify-between">
+                <span className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                  Restaurer une sauvegarde
+                </span>
+                <span style={{ color: "#5A6259" }}>{showRestore ? "▾" : "▸"}</span>
+              </button>
+              {showRestore && (
+                <>
+                  <p className="text-xs" style={{ color: "#9CAA9E" }}>
+                    Colle ici le texte de sauvegarde généré précédemment pour retrouver ton plan et ton historique.
+                  </p>
+                  <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
+                    className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
+                    placeholder='{"goal":...}' />
+                  <button onClick={restoreBackup} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "#5C7A99", color: "#14201C" }}>
+                    Restaurer
+                  </button>
+                  {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
+                </>
               )}
             </div>
+            <GoalWizard initial={goal} onSave={saveGoal} />
+          </>
+        )}
 
-            {goal && !editingGoal && <WeekRings sessions={sessions} />}
+        {goal && !editingGoal && (
+          <>
+            <div className="flex gap-1 rounded-xl p-1" style={{ background: "#1C2B24" }}>
+              {[["plan", "Plan"], ["importer", "Importer"], ["ajouter", "Ajouter"], ["nutrition", "Nutrition"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
+                <button key={k} onClick={() => setTab(k)} className="flex-1 py-2 rounded-lg text-xs"
+                  style={{ background: tab === k ? "#C1622B" : "transparent", color: tab === k ? "#14201C" : "#9CAA9E", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
 
-            {goal && !editingGoal && (
-              <button onClick={() => setEditingGoal(true)} className="text-xs px-3 py-1.5 rounded-lg cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
-                Modifier l'objectif
-              </button>
+            {tab === "plan" && (
+              <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
+                onSaveNotes={saveNotes} vma={goal?.vma} />
             )}
-          </div>
 
-          <div className="space-y-5">
-            {(editingGoal || !goal) && (
-              <>
+            {tab === "importer" && (
+              <div className="space-y-4">
+                {!storageOk && (
+                  <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "#2A2018", color: "#D9793C", border: "1px solid #3A2C1C" }}>
+                    La sauvegarde automatique ne fonctionne pas dans ce contexte. Utilise la sauvegarde manuelle ci-dessous avant de fermer l'app.
+                  </div>
+                )}
                 <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
-                  <button onClick={() => setShowRestore(v => !v)} className="w-full flex items-center justify-between cursor-pointer">
-                    <span className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
-                      Restaurer une sauvegarde
-                    </span>
-                    <span style={{ color: "#5A6259" }}>{showRestore ? "▾" : "▸"}</span>
+                  <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                    Importer des séances réalisées
+                  </p>
+                  <p className="text-xs leading-relaxed" style={{ color: "#D9793C" }}>
+                    Import en lot : le rapprochement se fait par semaine et par distance approchante, il peut se tromper de séance. Pour être sûr, utilise le bouton <span style={{ color: "#C1622B" }}>Importer</span> en face de la séance voulue.
+                  </p>
+                  <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
+                    Une séance par ligne :<br />
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>
+                      date ; km ; D+ ; minutes ; ressenti ; FC moy ; FC max ; cadence
+                    </span><br />
+                    Exemple : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>2026-08-12 ; 12.4 ; 380 ; 78 ; 3 ; 148 ; 172 ; 80</span><br />
+                    Les champs vides sont acceptés. Une séance planifiée à ±2 jours est automatiquement rapprochée.
+                  </p>
+                  <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6}
+                    className="w-full rounded-lg px-3 py-2 text-sm outline-none"
+                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
+                    placeholder={"2026-08-12 ; 12.4 ; 380 ; 78 ; 3\n2026-08-14 ; 8 ; 90 ; 45 ; 2"} />
+                  <button onClick={runImport} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "#C1622B", color: "#14201C" }}>
+                    Importer
                   </button>
-                  {showRestore && (
-                    <>
-                      <p className="text-xs" style={{ color: "#9CAA9E" }}>
-                        Colle ici le texte de sauvegarde généré précédemment pour retrouver ton plan et ton historique.
-                      </p>
-                      <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
-                        className="w-full rounded-lg px-3 py-2 text-xs outline-none"
-                        style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
-                        placeholder='{"goal":...}' />
-                      <button onClick={restoreBackup} className="w-full rounded-lg py-2.5 text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#5C7A99", color: "#14201C" }}>
-                        Restaurer
-                      </button>
-                      {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
-                    </>
-                  )}
+                  {importStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{importStatus}</p>}
                 </div>
-                <GoalWizard initial={goal} onSave={saveGoal} />
-              </>
-            )}
 
-            {goal && !editingGoal && (
-              <>
-                <div className="flex gap-1 rounded-xl p-1" style={{ background: "#1C2B24" }}>
-                  {[["plan", "Plan"], ["importer", "Importer"], ["ajouter", "Ajouter"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
-                    <button key={k} onClick={() => setTab(k)} className="flex-1 py-2 rounded-lg text-xs cursor-pointer transition-colors hover:opacity-90"
-                      style={{ background: tab === k ? "#C1622B" : "transparent", color: tab === k ? "#14201C" : "#9CAA9E", fontFamily: "'Space Grotesk', sans-serif" }}>
-                      {label}
+                <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+                  <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                    Sauvegarde manuelle
+                  </p>
+                  <p className="text-xs" style={{ color: "#9CAA9E" }}>
+                    Génère un texte contenant tout ton plan. Garde-le (note, mail, message) : si tu perds tes données, recolle-le ici et clique Restaurer.
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={exportBackup} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
+                      Générer
                     </button>
-                  ))}
+                    <button onClick={restoreBackup} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#5C7A99", color: "#14201C" }}>
+                      Restaurer
+                    </button>
+                  </div>
+                  <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
+                    className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
+                    placeholder="Le texte de sauvegarde apparaîtra ici" />
+                  {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
                 </div>
-
-                {tab === "plan" && (
-                  <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
-                    onSaveNotes={saveNotes} vma={goal?.vma} />
-                )}
-
-                {tab === "importer" && (
-                  <div className="space-y-4 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
-                    <div className="space-y-4">
-                      {!storageOk && (
-                        <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "#2A2018", color: "#D9793C", border: "1px solid #3A2C1C" }}>
-                          La sauvegarde automatique ne fonctionne pas dans ce contexte. Utilise la sauvegarde manuelle ci-dessous avant de fermer l'app.
-                        </div>
-                      )}
-                      <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
-                        <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
-                          Importer des séances réalisées
-                        </p>
-                        <p className="text-xs leading-relaxed" style={{ color: "#D9793C" }}>
-                          Import en lot : le rapprochement se fait par semaine et par distance approchante, il peut se tromper de séance. Pour être sûr, utilise le bouton <span style={{ color: "#C1622B" }}>Importer</span> en face de la séance voulue.
-                        </p>
-                        <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
-                          Une séance par ligne :<br />
-                          <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>
-                            date ; km ; D+ ; minutes ; ressenti ; FC moy ; FC max ; cadence
-                          </span><br />
-                          Exemple : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>2026-08-12 ; 12.4 ; 380 ; 78 ; 3 ; 148 ; 172 ; 80</span><br />
-                          Les champs vides sont acceptés. Une séance planifiée à ±2 jours est automatiquement rapprochée.
-                        </p>
-                        <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6}
-                          className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                          style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
-                          placeholder={"2026-08-12 ; 12.4 ; 380 ; 78 ; 3\n2026-08-14 ; 8 ; 90 ; 45 ; 2"} />
-                        <button onClick={runImport} className="w-full rounded-lg py-2.5 text-sm font-medium cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#C1622B", color: "#14201C" }}>
-                          Importer
-                        </button>
-                        {importStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{importStatus}</p>}
-                      </div>
-                    </div>
-
-                    <div className="rounded-xl p-4 space-y-3 lg:self-start" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
-                      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
-                        Sauvegarde manuelle
-                      </p>
-                      <p className="text-xs" style={{ color: "#9CAA9E" }}>
-                        Génère un texte contenant tout ton plan. Garde-le (note, mail, message) : si tu perds tes données, recolle-le ici et clique Restaurer.
-                      </p>
-                      <div className="flex gap-2">
-                        <button onClick={exportBackup} className="flex-1 rounded-lg py-2 text-sm cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
-                          Générer
-                        </button>
-                        <button onClick={restoreBackup} className="flex-1 rounded-lg py-2 text-sm cursor-pointer hover:opacity-90 transition-opacity" style={{ background: "#5C7A99", color: "#14201C" }}>
-                          Restaurer
-                        </button>
-                      </div>
-                      <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
-                        className="w-full rounded-lg px-3 py-2 text-xs outline-none"
-                        style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
-                        placeholder="Le texte de sauvegarde apparaîtra ici" />
-                      {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
-                    </div>
-                  </div>
-                )}
-                {tab === "ajouter" && <SessionForm onAdd={addSession} />}
-                {tab === "stats" && <Stats sessions={sessions} />}
-                {tab === "historique" && (
-                  <div className="space-y-3">
-                    {past.length === 0 && <p className="text-sm text-center py-6" style={{ color: "#5A6259" }}>Pas encore de séance réalisée.</p>}
-                    {past.map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} />)}
-                  </div>
-                )}
-              </>
+              </div>
             )}
-          </div>
-
-        </div>
+            {tab === "ajouter" && <SessionForm onAdd={addSession} />}
+            {tab === "nutrition" && (
+              <NutritionTab goal={goal} weightKg={weightKg} onWeightChange={setWeightKg} />
+            )}
+            {tab === "stats" && <Stats sessions={sessions} />}
+            {tab === "historique" && (
+              <div className="space-y-3">
+                {past.length === 0 && <p className="text-sm text-center py-6" style={{ color: "#5A6259" }}>Pas encore de séance réalisée.</p>}
+                {past.map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} />)}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
