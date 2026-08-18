@@ -1968,24 +1968,53 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma 
 // Stats
 // ======================================================================
 
+const STATS_PERIODS = [["semaine", "Semaine"], ["mois", "Mois"], ["annee", "Année"]];
+const STATS_PERIOD_TITLE = { semaine: "Volume hebdo course (km)", mois: "Volume mensuel course (km) — depuis janvier", annee: "Volume annuel course (km)" };
+
 function Stats({ sessions }) {
   const runSessions = sessions.filter(s => !isCross(s.type));
   const crossSessions = sessions.filter(s => isCross(s.type) && s.done);
+  const [period, setPeriod] = useState("mois");
 
-  const weekly = useMemo(() => {
+  // Regroupe le volume course par semaine, mois ou année, selon la période
+  // choisie. "mois" se limite à l'année en cours (depuis janvier), en
+  // complétant les mois sans séance par des barres à zéro pour garder une
+  // frise continue jusqu'au mois courant.
+  const chartData = useMemo(() => {
     const map = new Map();
     runSessions.forEach(s => {
       const wk = sessionWeek(s);
-      if (!map.has(wk)) map.set(wk, { week: wk, planifie: 0, realise: 0 });
-      const e = map.get(wk);
+      if (!wk) return;
+      const key = period === "semaine" ? wk : period === "annee" ? wk.slice(0, 4) : wk.slice(0, 7);
+      if (!map.has(key)) map.set(key, { key, planifie: 0, realise: 0 });
+      const e = map.get(key);
       // planifié = ce que le plan prévoyait ; réalisé = toute la course faite,
       // y compris les séances ajoutées hors plan
       if (s.generated) e.planifie += s.distance || 0;
       if (s.done) e.realise += (s.actual?.distance ?? s.distance) || 0;
     });
-    return [...map.values()].sort((a, b) => a.week.localeCompare(b.week)).slice(-10)
-      .map(e => ({ ...e, label: fmtDate(e.week), planifie: Math.round(e.planifie), realise: Math.round(e.realise) }));
-  }, [sessions]);
+
+    let keys = [...map.keys()];
+
+    if (period === "mois") {
+      const now = new Date();
+      const year = String(now.getFullYear());
+      const monthsThisYear = new Set(keys.filter(k => k.startsWith(year)));
+      for (let m = 0; m <= now.getMonth(); m++) monthsThisYear.add(`${year}-${String(m + 1).padStart(2, "0")}`);
+      keys = [...monthsThisYear];
+    }
+
+    keys.sort();
+    if (period === "semaine") keys = keys.slice(-10);
+
+    return keys.map(k => {
+      const e = map.get(k) || { key: k, planifie: 0, realise: 0 };
+      const label = period === "semaine" ? fmtDate(k)
+        : period === "annee" ? k
+        : new Date(`${k}-01`).toLocaleDateString("fr-FR", { month: "short" }).replace(".", "");
+      return { ...e, label, planifie: Math.round(e.planifie), realise: Math.round(e.realise) };
+    });
+  }, [sessions, period]);
 
   const planned = sessions.filter(s => s.generated);
   const totalPlanned = planned.length;
@@ -2011,11 +2040,24 @@ function Stats({ sessions }) {
         </div>
       </div>
       <div className="rounded-xl p-4" style={cardStyle}>
-        <p className="text-xs uppercase tracking-wider mb-3" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Volume hebdo course (km)</p>
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+            {STATS_PERIOD_TITLE[period]}
+          </p>
+          <div className="flex gap-1 rounded-lg p-0.5 shrink-0" style={{ background: "#1C2B24" }}>
+            {STATS_PERIODS.map(([k, label]) => (
+              <button key={k} onClick={() => setPeriod(k)}
+                className="px-2.5 py-1 rounded-md text-xs cursor-pointer transition-colors hover:opacity-90"
+                style={{ background: period === k ? "#C1622B" : "transparent", color: period === k ? "#14201C" : "#9CAA9E", fontFamily: "'Space Grotesk', sans-serif" }}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         {!CHARTS_OK ? (
           <div className="space-y-1">
-            {weekly.map(w => (
-              <div key={w.week} className="flex items-center justify-between text-xs" style={{ color: "#9CAA9E" }}>
+            {chartData.map(w => (
+              <div key={w.key} className="flex items-center justify-between text-xs" style={{ color: "#9CAA9E" }}>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{w.label}</span>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                   <span style={{ color: "#5A6259" }}>{w.planifie}</span> / <span style={{ color: "#C1622B" }}>{w.realise}</span> km
@@ -2026,7 +2068,7 @@ function Stats({ sessions }) {
         ) : (
         <div className="w-full h-[180px] lg:h-[280px]">
           <ResponsiveContainer>
-            <BarChart data={weekly}>
+            <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#2C3A32" vertical={false} />
               <XAxis dataKey="label" stroke="#5A6259" fontSize={11} />
               <YAxis stroke="#5A6259" fontSize={11} />
