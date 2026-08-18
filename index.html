@@ -205,8 +205,31 @@ const ZONES = [
 ];
 
 /**
+ * Choisit une variante de séance dans une liste, de façon déterministe et
+ * stable — basée sur la semaine de la séance (weekStart, ou date pour les
+ * séances ajoutées à la main), pas sur un tirage aléatoire. Comme les
+ * weekStart générés sont toujours espacés de 7 jours, ce choix tourne
+ * naturellement d'une semaine à l'autre (7 et le nombre de variantes étant
+ * premiers entre eux dans tous les cas utilisés ici), sans jamais changer
+ * pour une séance déjà créée — important car les totaux (distance/durée)
+ * sont calculés une fois à la génération du plan et ne doivent pas se
+ * décorréler de la séance affichée ensuite.
+ */
+function pickVariant(list, session) {
+  if (!list || !list.length) return null;
+  if (list.length === 1) return list[0];
+  const key = (session && (session.weekStart || session.date)) || "";
+  const days = Math.floor(new Date(key).getTime() / 86400000);
+  const idx = Number.isFinite(days) ? ((days % list.length) + list.length) % list.length : 0;
+  return list[idx];
+}
+
+/**
  * Construit une séance structurée (échauffement / blocs / retour au calme)
- * pour les séances de qualité, selon le type et la phase du plan.
+ * pour les séances de qualité, selon le type et la phase du plan. Plusieurs
+ * variantes existent par phase — un vrai plan d'entraînement ne répète pas
+ * indéfiniment le même format de fractionné ou de côtes ; pickVariant fait
+ * tourner ces variantes semaine après semaine.
  * Renvoie null pour les séances continues (longue, fonda, récup).
  */
 function buildStructuredWorkout(session, vma) {
@@ -216,12 +239,27 @@ function buildStructuredWorkout(session, vma) {
 
   if (type === "fractionne") {
     const plans = {
-      base:  { name: "30/30", sets: 2, reps: 8,  workSec: 30, restSec: 30, pct: 100, restPct: 50 },
-      build: { name: "30/30", sets: 2, reps: 10, workSec: 30, restSec: 30, pct: 102, restPct: 50 },
-      peak:  { name: "400 m", sets: 3, reps: 5,  workSec: 90, restSec: 75, pct: 100, restPct: 50 },
-      taper: { name: "30/30", sets: 1, reps: 8,  workSec: 30, restSec: 30, pct: 100, restPct: 50 },
+      base: [
+        { name: "30/30", sets: 2, reps: 8, workSec: 30, restSec: 30, pct: 100, restPct: 50 },
+        { name: "45/45", sets: 2, reps: 6, workSec: 45, restSec: 45, pct: 97,  restPct: 52 },
+        { name: "1'/1'", sets: 2, reps: 5, workSec: 60, restSec: 60, pct: 95,  restPct: 55 },
+      ],
+      build: [
+        { name: "30/30", sets: 2, reps: 10, workSec: 30, restSec: 30, pct: 102, restPct: 50 },
+        { name: "200 m", sets: 3, reps: 6,  workSec: 40, restSec: 40, pct: 105, restPct: 50 },
+        { name: "1'/1'", sets: 2, reps: 8,  workSec: 60, restSec: 60, pct: 100, restPct: 52 },
+      ],
+      peak: [
+        { name: "400 m",  sets: 3, reps: 5, workSec: 90,  restSec: 75,  pct: 100, restPct: 50 },
+        { name: "300 m",  sets: 3, reps: 6, workSec: 65,  restSec: 60,  pct: 103, restPct: 50 },
+        { name: "1000 m", sets: 2, reps: 4, workSec: 180, restSec: 120, pct: 95,  restPct: 50 },
+      ],
+      taper: [
+        { name: "30/30", sets: 1, reps: 8, workSec: 30, restSec: 30, pct: 100, restPct: 50 },
+        { name: "200 m", sets: 1, reps: 6, workSec: 40, restSec: 50, pct: 102, restPct: 55 },
+      ],
     };
-    const p = plans[ph];
+    const p = pickVariant(plans[ph], session);
     return {
       title: `${p.sets} × ${p.reps} × ${p.name}`,
       warmup: { text: "20 min en endurance fondamentale + 3-4 lignes droites progressives", pace: paceAtPct(vma, 68) },
@@ -239,12 +277,26 @@ function buildStructuredWorkout(session, vma) {
 
   if (type === "seuil") {
     const plans = {
-      base:  { sets: 2, minutes: 8,  pct: 85, rest: 3 },
-      build: { sets: 3, minutes: 8,  pct: 87, rest: 3 },
-      peak:  { sets: 2, minutes: 15, pct: 88, rest: 4 },
-      taper: { sets: 2, minutes: 6,  pct: 87, rest: 3 },
+      base: [
+        { sets: 2, minutes: 8,  pct: 85, rest: 3 },
+        { sets: 1, minutes: 15, pct: 84, rest: 3 },
+        { sets: 3, minutes: 6,  pct: 86, rest: 3 },
+      ],
+      build: [
+        { sets: 3, minutes: 8,  pct: 87, rest: 3 },
+        { sets: 2, minutes: 12, pct: 86, rest: 4 },
+        { sets: 4, minutes: 6,  pct: 88, rest: 3 },
+      ],
+      peak: [
+        { sets: 2, minutes: 15, pct: 88, rest: 4 },
+        { sets: 3, minutes: 10, pct: 88, rest: 3 },
+      ],
+      taper: [
+        { sets: 2, minutes: 6,  pct: 87, rest: 3 },
+        { sets: 1, minutes: 10, pct: 86, rest: 3 },
+      ],
     };
-    const p = plans[ph];
+    const p = pickVariant(plans[ph], session);
     return {
       title: `${p.sets} × ${p.minutes} min au seuil`,
       warmup: { text: "20 min en endurance fondamentale", pace: paceAtPct(vma, 68) },
@@ -262,12 +314,25 @@ function buildStructuredWorkout(session, vma) {
 
   if (type === "cotes") {
     const plans = {
-      base:  { sets: 2, reps: 6, workSec: 45, effort: "95-100% VMA" },
-      build: { sets: 3, reps: 6, workSec: 60, effort: "95-100% VMA" },
-      peak:  { sets: 3, reps: 5, workSec: 120, effort: "90-95% VMA" },
-      taper: { sets: 1, reps: 6, workSec: 45, effort: "95% VMA" },
+      base: [
+        { sets: 2, reps: 6, workSec: 45, effort: "95-100% VMA" },
+        { sets: 2, reps: 8, workSec: 30, effort: "95-100% VMA" },
+      ],
+      build: [
+        { sets: 3, reps: 6, workSec: 60, effort: "95-100% VMA" },
+        { sets: 3, reps: 8, workSec: 40, effort: "98-102% VMA" },
+        { sets: 2, reps: 5, workSec: 90, effort: "90-95% VMA" },
+      ],
+      peak: [
+        { sets: 3, reps: 5, workSec: 120, effort: "90-95% VMA" },
+        { sets: 4, reps: 5, workSec: 60,  effort: "95-100% VMA" },
+      ],
+      taper: [
+        { sets: 1, reps: 6, workSec: 45, effort: "95% VMA" },
+        { sets: 1, reps: 8, workSec: 30, effort: "95-100% VMA" },
+      ],
     };
-    const p = plans[ph];
+    const p = pickVariant(plans[ph], session);
     return {
       title: `${p.sets} × ${p.reps} × ${p.workSec}s en côte`,
       warmup: { text: "20 min en endurance fondamentale jusqu'au pied de la côte", pace: paceAtPct(vma, 68) },
@@ -683,7 +748,11 @@ function generatePlan(goal) {
     let qualityKm = 0;
     template.forEach(type => {
       if (QUALITY.includes(type) && !totalsByType[type]) {
-        const tot = structuredTotals({ type, phase }, goal.vma);
+        // weekStart identique à celui stocké sur la séance plus bas : la
+        // variante choisie ici (pour calculer distance/durée) doit rester
+        // celle affichée ensuite, sinon les totaux ne correspondent plus
+        // à la séance structurée montrée à l'utilisateur.
+        const tot = structuredTotals({ type, phase, weekStart: toISO(weekStart) }, goal.vma);
         if (tot) { totalsByType[type] = tot; qualityKm += tot.distance; }
       }
     });
@@ -1971,6 +2040,30 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma 
 const STATS_PERIODS = [["semaine", "Semaine"], ["mois", "Mois"], ["annee", "Année"]];
 const STATS_PERIOD_TITLE = { semaine: "Volume hebdo course (km)", mois: "Volume mensuel course (km) — depuis janvier", annee: "Volume annuel course (km)" };
 
+// Infobulle personnalisée du graphique de volume : distance ET dénivelé
+// (réalisé / planifié) pour la période survolée, quelle que soit la vue
+// (semaine, mois ou année).
+function VolumeTooltip({ active, payload, label }) {
+  if (!active || !payload || !payload.length) return null;
+  const d = payload[0]?.payload;
+  if (!d) return null;
+  return (
+    <div className="rounded-lg px-3 py-2 text-xs space-y-1" style={{ background: "#14201C", border: "1px solid #2C3A32", color: "#EDE7D9" }}>
+      <p style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>{label}</p>
+      <p style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+        <span style={{ color: "#9CAA9E" }}>Distance </span>
+        <span style={{ color: "#C1622B" }}>{d.realise}</span>
+        <span style={{ color: "#5A6259" }}> / {d.planifie} km</span>
+      </p>
+      <p style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+        <span style={{ color: "#9CAA9E" }}>D+ </span>
+        <span style={{ color: "#B0863C" }}>{d.dplusRealise}</span>
+        <span style={{ color: "#5A6259" }}> / {d.dplusPlanifie} m</span>
+      </p>
+    </div>
+  );
+}
+
 function Stats({ sessions }) {
   const runSessions = sessions.filter(s => !isCross(s.type));
   const crossSessions = sessions.filter(s => isCross(s.type) && s.done);
@@ -1986,12 +2079,18 @@ function Stats({ sessions }) {
       const wk = sessionWeek(s);
       if (!wk) return;
       const key = period === "semaine" ? wk : period === "annee" ? wk.slice(0, 4) : wk.slice(0, 7);
-      if (!map.has(key)) map.set(key, { key, planifie: 0, realise: 0 });
+      if (!map.has(key)) map.set(key, { key, planifie: 0, realise: 0, dplusPlanifie: 0, dplusRealise: 0 });
       const e = map.get(key);
       // planifié = ce que le plan prévoyait ; réalisé = toute la course faite,
       // y compris les séances ajoutées hors plan
-      if (s.generated) e.planifie += s.distance || 0;
-      if (s.done) e.realise += (s.actual?.distance ?? s.distance) || 0;
+      if (s.generated) {
+        e.planifie += s.distance || 0;
+        e.dplusPlanifie += s.dplus || 0;
+      }
+      if (s.done) {
+        e.realise += (s.actual?.distance ?? s.distance) || 0;
+        e.dplusRealise += (s.actual?.dplus ?? s.dplus) || 0;
+      }
     });
 
     let keys = [...map.keys()];
@@ -2008,11 +2107,15 @@ function Stats({ sessions }) {
     if (period === "semaine") keys = keys.slice(-10);
 
     return keys.map(k => {
-      const e = map.get(k) || { key: k, planifie: 0, realise: 0 };
+      const e = map.get(k) || { key: k, planifie: 0, realise: 0, dplusPlanifie: 0, dplusRealise: 0 };
       const label = period === "semaine" ? fmtDate(k)
         : period === "annee" ? k
         : new Date(`${k}-01`).toLocaleDateString("fr-FR", { month: "short" }).replace(".", "");
-      return { ...e, label, planifie: Math.round(e.planifie), realise: Math.round(e.realise) };
+      return {
+        ...e, label,
+        planifie: Math.round(e.planifie), realise: Math.round(e.realise),
+        dplusPlanifie: Math.round(e.dplusPlanifie), dplusRealise: Math.round(e.dplusRealise),
+      };
     });
   }, [sessions, period]);
 
@@ -2061,6 +2164,8 @@ function Stats({ sessions }) {
                 <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{w.label}</span>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                   <span style={{ color: "#5A6259" }}>{w.planifie}</span> / <span style={{ color: "#C1622B" }}>{w.realise}</span> km
+                  <span style={{ color: "#5A6259" }}> · </span>
+                  <span style={{ color: "#5A6259" }}>{w.dplusPlanifie}</span> / <span style={{ color: "#B0863C" }}>{w.dplusRealise}</span> m D+
                 </span>
               </div>
             ))}
@@ -2072,7 +2177,7 @@ function Stats({ sessions }) {
               <CartesianGrid strokeDasharray="3 3" stroke="#2C3A32" vertical={false} />
               <XAxis dataKey="label" stroke="#5A6259" fontSize={11} />
               <YAxis stroke="#5A6259" fontSize={11} />
-              <Tooltip contentStyle={{ background: "#14201C", border: "1px solid #2C3A32", color: "#EDE7D9" }} />
+              <Tooltip content={<VolumeTooltip />} cursor={{ fill: "#22302A" }} />
               <Bar dataKey="planifie" fill="#2C3A32" radius={[4, 4, 0, 0]} name="Planifié" />
               <Bar dataKey="realise" fill="#C1622B" radius={[4, 4, 0, 0]} name="Réalisé" />
             </BarChart>
