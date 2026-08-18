@@ -1286,6 +1286,90 @@ const MEAL_DAYS = {
   },
 };
 
+// Jours conseillés pour répartir les séances de la semaine. Les séances
+// n'ont pas de date imposée : cette répartition sert uniquement à construire
+// une semaine type côté repas, la sortie longue tombant en fin de semaine.
+const SUGGESTED_DAYS = {
+  2: [1, 5], 3: [1, 3, 5], 4: [1, 2, 4, 5], 5: [0, 1, 3, 4, 5], 6: [0, 1, 2, 3, 4, 5],
+};
+const DAY_NAMES = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+
+function menuTypeFor(sessionType) {
+  if (!sessionType) return "repos";
+  if (sessionType === "longue") return "longue";
+  if (sessionType === "repos") return "repos";
+  return "seance";
+}
+
+function WeekMenu({ sessions, goal }) {
+  const wk = toISO(isoWeekStart(new Date()));
+  const weekSessions = sessions
+    .filter(s => s.generated && s.weekStart === wk)
+    .sort((a, b) => (a.order ?? 99) - (b.order ?? 99));
+
+  if (!weekSessions.length) return null;
+
+  const offsets = SUGGESTED_DAYS[Math.min(6, Math.max(2, weekSessions.length))] || [1, 3, 5];
+  const byDay = {};
+  weekSessions.forEach((s, i) => { if (offsets[i] !== undefined) byDay[offsets[i]] = s; });
+
+  const card = { background: "#182420", border: "1px solid #2C3A32" };
+  const longCount = weekSessions.filter(s => s.type === "longue").length;
+  const restCount = 7 - Object.keys(byDay).length;
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={card}>
+      <div className="flex items-baseline justify-between">
+        <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          Semaine type
+        </p>
+        <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
+          {weekSessions.length} séances · {restCount} jours sans course
+        </p>
+      </div>
+
+      <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
+        Menus calés sur ton plan de la semaine en cours. Les séances n'ayant pas de jour
+        imposé, cette répartition est une proposition — si tu décales une séance, décale
+        le menu avec elle.
+      </p>
+
+      <div className="space-y-2">
+        {DAY_NAMES.map((day, i) => {
+          const s = byDay[i];
+          const mt = menuTypeFor(s?.type);
+          const menu = MEAL_DAYS[mt];
+          const color = s ? TYPES[s.type].color : "#5A6259";
+
+          return (
+            <div key={day} className="pl-2 py-1" style={{ borderLeft: `2px solid ${color}` }}>
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm" style={{ color: "#EDE7D9", fontFamily: "'Space Grotesk', sans-serif" }}>{day}</span>
+                <span className="text-xs" style={{ color, fontFamily: "'JetBrains Mono', monospace" }}>
+                  {s ? `${TYPES[s.type].label}${s.distance ? ` · ${s.distance} km` : ""}` : "Repos"}
+                </span>
+              </div>
+              <p className="text-xs mt-0.5" style={{ color: "#9CAA9E" }}>
+                {menu.meals.filter(m => m.p > 0).map(m => m.n).join(" · ")}
+              </p>
+              <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
+                menu {mt === "repos" ? "repos" : mt === "longue" ? "sortie longue" : "séance"} · ~{menu.protein} g protéines
+              </p>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="pt-2 text-xs leading-relaxed" style={{ borderTop: "1px solid #2C3A32", color: "#9CAA9E" }}>
+        {longCount > 0
+          ? "La veille de ta sortie longue, applique le repas du soir du menu « sortie longue » — la charge glucidique se prépare la veille, pas le matin même."
+          : "Pas de sortie longue cette semaine : c'est la semaine idéale pour tenir le déficit sans compromettre l'entraînement."}
+        {goal?.otherSports?.length > 0 && " Les jours où tu ajoutes une autre activité, prends le menu « séance » plutôt que « repos »."}
+      </div>
+    </div>
+  );
+}
+
 function MealIdeas({ proteinTarget }) {
   const [day, setDay] = useState("seance");
   const d = MEAL_DAYS[day];
@@ -1470,7 +1554,7 @@ function VegetarianGuide({ targetWeight }) {
   );
 }
 
-function NutritionTab({ goal, weightKg, onWeightChange, targetWeight, onTargetChange }) {
+function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, onTargetChange }) {
   const [durationMin, setDurationMin] = useState(120);
   const [tempC, setTempC] = useState(18);
   const [intensity, setIntensity] = useState("moderee");
@@ -1558,6 +1642,8 @@ function NutritionTab({ goal, weightKg, onWeightChange, targetWeight, onTargetCh
       <RaceWeightPlan goal={goal} weightKg={weightKg} targetWeight={targetWeight} onTargetChange={onTargetChange} />
 
       <VegetarianGuide targetWeight={targetWeight} />
+
+      <WeekMenu sessions={sessions} goal={goal} />
 
       <MealIdeas proteinTarget={targetWeight ? `${Math.round(Number(targetWeight) * 1.6)}-${Math.round(Number(targetWeight) * 2)} g` : null} />
 
@@ -2914,7 +3000,7 @@ function App() {
               </div>
             )}
             {tab === "nutrition" && (
-              <NutritionTab goal={goal} weightKg={weightKg} onWeightChange={setWeightKg} targetWeight={targetWeight} onTargetChange={setTargetWeight} />
+              <NutritionTab goal={goal} sessions={sessions} weightKg={weightKg} onWeightChange={setWeightKg} targetWeight={targetWeight} onTargetChange={setTargetWeight} />
             )}
             {tab === "stats" && <Stats sessions={sessions} />}
             {tab === "historique" && (
