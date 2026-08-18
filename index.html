@@ -1483,7 +1483,7 @@ function NutritionTab({ goal, weightKg, onWeightChange, targetWeight, onTargetCh
   const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
       {/* ---------- calculateur ---------- */}
       <div className="rounded-xl p-4 space-y-3" style={card}>
         <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
@@ -2480,7 +2480,7 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma 
   const todayISO = toISO(new Date());
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
       {weeks.map(([weekStart, weekSessions]) => {
         const isPast = addDays(weekStart, 6) < new Date();
         if (isPast && weekSessions.every(s => s.done || !s.generated)) return null; // masque semaines passées complètes
@@ -2544,8 +2544,8 @@ function Stats({ sessions }) {
   const cardStyle = { background: "#182420", border: "1px solid #2C3A32" };
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+      <div className="grid grid-cols-3 gap-3 lg:col-span-2">
         <div className="rounded-xl p-3 text-center" style={cardStyle}>
           <p className="text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{compliance}%</p>
           <p className="text-xs mt-1" style={{ color: "#7A8B5E" }}>séances faites</p>
@@ -2787,8 +2787,11 @@ function App() {
         input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
       `}</style>
 
-      <div className="max-w-md mx-auto px-4 py-5 space-y-5">
-        <ElevationHero goal={goal} progress={progress} daysLeft={daysLeft} />
+      <div className="max-w-md lg:max-w-5xl mx-auto px-4 py-5 space-y-5">
+        <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[1.5fr_1fr] lg:gap-5 lg:items-stretch">
+          <ElevationHero goal={goal} progress={progress} daysLeft={daysLeft} />
+          {goal && !editingGoal && <WeekRings sessions={sessions} />}
+        </div>
 
         <div className="flex items-center justify-between px-1">
           <span className="text-xs" style={{ color: storageOk ? "#5A6259" : "#D9793C", fontFamily: "'JetBrains Mono', monospace" }}>
@@ -2799,8 +2802,6 @@ function App() {
           )}
         </div>
 
-        {goal && !editingGoal && <WeekRings sessions={sessions} />}
-
         {goal && !editingGoal && (
           <button onClick={() => setEditingGoal(true)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
             Modifier l'objectif
@@ -2808,7 +2809,7 @@ function App() {
         )}
 
         {(editingGoal || !goal) && (
-          <>
+          <div className="lg:max-w-xl space-y-5">
             <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
               <button onClick={() => setShowRestore(v => !v)} className="w-full flex items-center justify-between">
                 <span className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
@@ -2833,7 +2834,7 @@ function App() {
               )}
             </div>
             <GoalWizard initial={goal} onSave={saveGoal} />
-          </>
+          </div>
         )}
 
         {goal && !editingGoal && (
@@ -2853,9 +2854,9 @@ function App() {
             )}
 
             {tab === "importer" && (
-              <div className="space-y-4">
+              <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
                 {!storageOk && (
-                  <div className="rounded-lg px-3 py-2 text-xs" style={{ background: "#2A2018", color: "#D9793C", border: "1px solid #3A2C1C" }}>
+                  <div className="rounded-lg px-3 py-2 text-xs lg:col-span-2" style={{ background: "#2A2018", color: "#D9793C", border: "1px solid #3A2C1C" }}>
                     La sauvegarde automatique ne fonctionne pas dans ce contexte. Utilise la sauvegarde manuelle ci-dessous avant de fermer l'app.
                   </div>
                 )}
@@ -2907,14 +2908,18 @@ function App() {
                 </div>
               </div>
             )}
-            {tab === "ajouter" && <SessionForm onAdd={addSession} />}
+            {tab === "ajouter" && (
+              <div className="lg:max-w-xl">
+                <SessionForm onAdd={addSession} />
+              </div>
+            )}
             {tab === "nutrition" && (
               <NutritionTab goal={goal} weightKg={weightKg} onWeightChange={setWeightKg} targetWeight={targetWeight} onTargetChange={setTargetWeight} />
             )}
             {tab === "stats" && <Stats sessions={sessions} />}
             {tab === "historique" && (
-              <div className="space-y-3">
-                {past.length === 0 && <p className="text-sm text-center py-6" style={{ color: "#5A6259" }}>Pas encore de séance réalisée.</p>}
+              <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
+                {past.length === 0 && <p className="text-sm text-center py-6 lg:col-span-2" style={{ color: "#5A6259" }}>Pas encore de séance réalisée.</p>}
                 {past.map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} />)}
               </div>
             )}
