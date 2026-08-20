@@ -1875,6 +1875,36 @@ function SessionForm({ onAdd }) {
   const [notes, setNotes] = useState("");
   const [alreadyDone, setAlreadyDone] = useState(true);
   const [msg, setMsg] = useState("");
+  const [fcMax, setFcMax] = useState("");
+  const [cadence, setCadence] = useState("");
+  const [paste, setPaste] = useState("");
+  const [pasteErr, setPasteErr] = useState("");
+  const [lapsText, setLapsText] = useState("");
+
+  // Même format que l'import d'une séance du plan :
+  // date ; km ; D+ ; minutes ; ressenti ; FC moy ; FC max ; cadence
+  const applyPaste = () => {
+    const parts = paste.split(";").map(x => x.trim());
+    if (!parts[0] || !/^\d{4}-\d{2}-\d{2}$/.test(parts[0])) {
+      setPasteErr("Format attendu : date ; km ; D+ ; min ; ressenti ; FC ; FCmax ; cadence");
+      return;
+    }
+    setDate(parts[0]);
+    if (parts[1]) setDistance(parts[1]);
+    if (parts[2]) setDplus(parts[2]);
+    if (parts[3]) setDuree(parts[3]);
+    if (parts[4]) setFeeling(Number(parts[4]));
+    if (parts[5]) setFc(parts[5]);
+    if (parts[6]) setFcMax(parts[6]);
+    if (parts[7]) setCadence(parts[7]);
+    setAlreadyDone(true);
+    setPaste(""); setPasteErr("");
+  };
+
+  const parseLaps = () => lapsText.split("\n").map(x => x.trim()).filter(Boolean).map(line => {
+    const [sec, m, hr] = line.split(";").map(v => v.trim());
+    return { sec: Number(sec) || 0, m: Number(m) || 0, fc: hr ? Number(hr) : null };
+  }).filter(l => l.sec > 0);
 
   const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
   const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
@@ -1890,10 +1920,17 @@ function SessionForm({ onAdd }) {
       notes, generated: false,
       done: alreadyDone,
       actual: alreadyDone
-        ? { distance: d, dplus: dp, duree: du, feeling, fc: fc ? Number(fc) : null, laps: [] }
+        ? {
+            distance: d, dplus: dp, duree: du, feeling,
+            fc: fc ? Number(fc) : null,
+            fcMax: fcMax ? Number(fcMax) : null,
+            cadence: cadence ? Number(cadence) : null,
+            laps: parseLaps(),
+          }
         : null,
     });
     setDistance(""); setDplus(""); setDuree(""); setFc(""); setNotes("");
+    setFcMax(""); setCadence(""); setLapsText("");
     setMsg(alreadyDone ? "Séance ajoutée à l'historique" : "Séance ajoutée au plan");
     setTimeout(() => setMsg(""), 3000);
   };
@@ -1907,6 +1944,17 @@ function SessionForm({ onAdd }) {
         Footing improvisé, renfo, vélo, natation… Les activités hors course sont
         suivies à part et n'entrent pas dans le volume de course à pied.
       </p>
+
+      <div className="flex gap-2">
+        <input type="text" value={paste} onChange={e => setPaste(e.target.value)}
+          placeholder="coller : 2026-08-19 ; 5.3 ; 39 ; 32 ; 2 ; ; ; 80"
+          className="flex-1 rounded-lg px-2 py-2 text-xs outline-none"
+          style={{ ...inputStyle, fontFamily: "'JetBrains Mono', monospace" }} />
+        <button onClick={applyPaste} className="rounded-lg px-3 text-xs" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
+          Remplir
+        </button>
+      </div>
+      {pasteErr && <p className="text-xs" style={{ color: "#D9793C" }}>{pasteErr}</p>}
 
       <div className="grid grid-cols-2 gap-2">
         <select value={type} onChange={e => setType(e.target.value)} className={inputCls} style={inputStyle}>
@@ -1929,7 +1977,21 @@ function SessionForm({ onAdd }) {
         )}
         <input type="number" placeholder="Durée (min)" value={duree} onChange={e => setDuree(e.target.value)} className={inputCls} style={inputStyle} />
         <input type="number" placeholder="FC moy" value={fc} onChange={e => setFc(e.target.value)} className={inputCls} style={inputStyle} />
+        <input type="number" placeholder="FC max" value={fcMax} onChange={e => setFcMax(e.target.value)} className={inputCls} style={inputStyle} />
+        <input type="number" placeholder="Cadence" value={cadence} onChange={e => setCadence(e.target.value)} className={inputCls} style={inputStyle} />
       </div>
+
+      {!isCross(type) && (
+        <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>
+            Détail des tours (optionnel) — <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>secondes ; mètres ; FC</span>
+          </label>
+          <textarea value={lapsText} onChange={e => setLapsText(e.target.value)} rows={3}
+            className="w-full rounded-lg px-2 py-1.5 text-xs outline-none mt-1"
+            style={{ ...inputStyle, fontFamily: "'JetBrains Mono', monospace" }}
+            placeholder={"334 ; 1000 ; 123\n326 ; 1000 ; 136"} />
+        </div>
+      )}
 
       <input type="text" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} className={inputCls} style={inputStyle} />
 
