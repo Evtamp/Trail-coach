@@ -1719,7 +1719,39 @@ function VegetarianGuide({ targetWeight }) {
   );
 }
 
-function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, onTargetChange }) {
+function ProductSettings({ products, onChange }) {
+  const p = { ...DEFAULT_PRODUCTS, ...(products || {}) };
+  const inputCls = "w-full rounded-lg px-2 py-1.5 text-sm outline-none";
+  const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+        Tes produits
+      </p>
+      <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
+        Glucides par unité, à relever sur l'emballage. Ces valeurs servent au calcul du
+        ravitaillement saisi après chaque séance.
+      </p>
+      <div className="grid grid-cols-5 gap-2">
+        {FUEL_ITEMS.map(it => (
+          <div key={it.key}>
+            <label className="text-xs" style={{ color: "#5A6259" }}>{it.label}</label>
+            <input type="number" min="0" value={p[it.key]}
+              onChange={e => onChange({ ...p, [it.key]: Number(e.target.value) || 0 })}
+              className={inputCls} style={inputStyle} />
+            <p className="text-xs" style={{ color: "#3A4A40", fontFamily: "'JetBrains Mono', monospace" }}>g / unité</p>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs" style={{ color: "#5A6259" }}>
+        Les séances déjà enregistrées conservent les valeurs en vigueur au moment de leur saisie.
+      </p>
+    </div>
+  );
+}
+
+function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, onTargetChange, products, onProductsChange }) {
   const [durationMin, setDurationMin] = useState(120);
   const [tempC, setTempC] = useState(18);
   const [intensity, setIntensity] = useState("moderee");
@@ -1808,6 +1840,8 @@ function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, 
 
       <VegetarianGuide targetWeight={targetWeight} />
 
+      <ProductSettings products={products} onChange={onProductsChange} />
+
       <WeekMenu sessions={sessions} goal={goal} />
 
       <MealIdeas proteinTarget={targetWeight ? `${Math.round(Number(targetWeight) * 1.6)}-${Math.round(Number(targetWeight) * 2)} g` : null} />
@@ -1864,7 +1898,7 @@ function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, 
   );
 }
 
-function SessionForm({ onAdd }) {
+function SessionForm({ onAdd, products }) {
   const [type, setType] = useState("recup");
   const [date, setDate] = useState(() => toISO(new Date()));
   const [distance, setDistance] = useState("");
@@ -1927,7 +1961,7 @@ function SessionForm({ onAdd }) {
             fcMax: fcMax ? Number(fcMax) : null,
             cadence: cadence ? Number(cadence) : null,
             laps: parseLaps(),
-            fueling,
+            fueling: { ...fueling, carbsPerUnit: { ...DEFAULT_PRODUCTS, ...(products || {}) } },
           }
         : null,
     });
@@ -1998,7 +2032,7 @@ function SessionForm({ onAdd }) {
       <input type="text" placeholder="Notes" value={notes} onChange={e => setNotes(e.target.value)} className={inputCls} style={inputStyle} />
 
       {alreadyDone && !isCross(type) && (
-        <FuelingInputs value={fueling} onChange={setFueling} dureeMin={Number(duree) || null} />
+        <FuelingInputs value={fueling} onChange={setFueling} dureeMin={Number(duree) || null} products={products} />
       )}
 
       <label className="flex items-center gap-2 text-sm" style={{ color: "#9CAA9E" }}>
@@ -2021,7 +2055,7 @@ function SessionForm({ onAdd }) {
   );
 }
 
-function ActualForm({ defaults, onSubmit, onCancel }) {
+function ActualForm({ defaults, onSubmit, onCancel, products }) {
   // Si la séance a déjà été validée, on repart de ce qui a été saisi ;
   // sinon on pré-remplit avec les valeurs prévues.
   const a = defaults.actual || {};
@@ -2128,7 +2162,7 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
           placeholder={"1200 ; 4000 ; 128\n30 ; 142 ; 131\n30 ; 60 ; 118"} />
       </div>
 
-      <FuelingInputs value={fueling} onChange={setFueling} dureeMin={Number(duree) || null} />
+      <FuelingInputs value={fueling} onChange={setFueling} dureeMin={Number(duree) || null} products={products} />
 
       <div className="flex gap-2">
         <button
@@ -2141,7 +2175,7 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
             fcMax: Number(fcMax) || null,
             cadence: Number(cadence) || null,
             laps: parseLaps(),
-            fueling,
+            fueling: { ...fueling, carbsPerUnit: { ...DEFAULT_PRODUCTS, ...(products || {}) } },
           }, date)}
           className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#7A8B5E", color: "#14201C" }}>
           {defaults.done ? "Mettre à jour" : "Valider cette séance"}
@@ -2152,7 +2186,7 @@ function ActualForm({ defaults, onSubmit, onCancel }) {
   );
 }
 
-function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma }) {
+function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
   const [showActual, setShowActual] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const t = TYPES[s.type];
@@ -2197,9 +2231,9 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma }) {
           </div>
         )}
       </div>
-      {showActual && <ActualForm defaults={s} onSubmit={complete} onCancel={() => setShowActual(false)} />}
+      {showActual && <ActualForm defaults={s} onSubmit={complete} onCancel={() => setShowActual(false)} products={products} />}
       {expanded && (
-        <SessionDetail s={s} vma={vma} onSaveNotes={onSaveNotes} onClose={() => setExpanded(false)} />
+        <SessionDetail s={s} vma={vma} onSaveNotes={onSaveNotes} onClose={() => setExpanded(false)} products={products} />
       )}
     </div>
   );
@@ -2466,33 +2500,54 @@ function LapAnalysis({ session, vma }) {
 // Teneur en glucides par unité — valeurs courantes, ajustables à la main
 // via le champ « autres » si tes produits diffèrent.
 const FUEL_ITEMS = [
-  { key: "gels", label: "Gels", carbs: 25 },
-  { key: "purees", label: "Purées de fruits", carbs: 20 },
+  { key: "gels", label: "Gels", carbs: 30 },
+  { key: "purees", label: "Purées", carbs: 15 },
   { key: "barres", label: "Barres", carbs: 20 },
-  { key: "sale", label: "Portions salées", carbs: 15 },
+  { key: "sale", label: "Salé", carbs: 15 },
+  { key: "pastilles", label: "Pastilles", carbs: 1, sodium: 300 },
 ];
 
-const EMPTY_FUEL = { gels: 0, purees: 0, barres: 0, sale: 0, drinkMl: 0, drinkCarbsPer500: 30, autresG: 0 };
+// Boisson : valeurs par dose de 500 ml
+const DEFAULT_DRINK = { carbsPer500: 35, sodiumPer500: 300 };
 
-function fuelTotals(f, dureeMin) {
+// Teneurs par défaut, remplaçables par tes produits réels dans l'onglet Nutrition
+const DEFAULT_PRODUCTS = FUEL_ITEMS.reduce((a, it) => ({ ...a, [it.key]: it.carbs }), {});
+const carbsOf = (key, products) => Number((products || DEFAULT_PRODUCTS)[key] ?? DEFAULT_PRODUCTS[key]) || 0;
+
+const EMPTY_FUEL = {
+  gels: 0, purees: 0, barres: 0, sale: 0, pastilles: 0,
+  drinkMl: 0, drinkCarbsPer500: DEFAULT_DRINK.carbsPer500,
+  drinkSodiumPer500: DEFAULT_DRINK.sodiumPer500, autresG: 0,
+};
+
+function fuelTotals(f, dureeMin, products) {
   if (!f) return null;
-  const fromItems = FUEL_ITEMS.reduce((a, it) => a + (Number(f[it.key]) || 0) * it.carbs, 0);
+  // une séance enregistrée garde la teneur des produits utilisés ce jour-là
+  const prod = f.carbsPerUnit || products;
+  const fromItems = FUEL_ITEMS.reduce((a, it) => a + (Number(f[it.key]) || 0) * carbsOf(it.key, prod), 0);
   const fromDrink = ((Number(f.drinkMl) || 0) / 500) * (Number(f.drinkCarbsPer500) || 0);
   const carbs = Math.round(fromItems + fromDrink + (Number(f.autresG) || 0));
   const ml = Number(f.drinkMl) || 0;
+
+  // Sodium : pastilles d'électrolytes + boisson d'effort
+  const naItems = FUEL_ITEMS.reduce((a, it) => a + (Number(f[it.key]) || 0) * (it.sodium || 0), 0);
+  const naDrink = (ml / 500) * (Number(f.drinkSodiumPer500) ?? DEFAULT_DRINK.sodiumPer500);
+  const sodium = Math.round(naItems + naDrink);
+
   const h = dureeMin ? dureeMin / 60 : 0;
   return {
-    carbs, ml,
+    carbs, ml, sodium,
     carbsPerH: h > 0 ? Math.round(carbs / h) : null,
     mlPerH: h > 0 ? Math.round(ml / h) : null,
-    isEmpty: carbs === 0 && ml === 0,
+    sodiumPerH: h > 0 ? Math.round(sodium / h) : null,
+    isEmpty: carbs === 0 && ml === 0 && sodium === 0,
   };
 }
 
-function FuelingInputs({ value, onChange, dureeMin }) {
+function FuelingInputs({ value, onChange, dureeMin, products }) {
   const f = value || EMPTY_FUEL;
   const set = (k, v) => onChange({ ...f, [k]: v });
-  const tot = fuelTotals(f, dureeMin);
+  const tot = fuelTotals(f, dureeMin, products);
   const inputCls = "w-full rounded-lg px-2 py-1.5 text-sm outline-none";
   const inputStyle = { background: "#14201C", color: "#EDE7D9", border: "1px solid #2C3A32" };
 
@@ -2502,19 +2557,19 @@ function FuelingInputs({ value, onChange, dureeMin }) {
         Ravitaillement pendant la séance (optionnel)
       </p>
 
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-5 gap-2">
         {FUEL_ITEMS.map(it => (
           <div key={it.key}>
             <label className="text-xs" style={{ color: "#5A6259" }}>{it.label}</label>
             <input type="number" min="0" value={f[it.key] || ""} placeholder="0"
               onChange={e => set(it.key, Number(e.target.value) || 0)}
               className={inputCls} style={inputStyle} />
-            <p className="text-xs" style={{ color: "#2C3A32", fontFamily: "'JetBrains Mono', monospace" }}>{it.carbs} g/u</p>
+            <p className="text-xs" style={{ color: "#3A4A40", fontFamily: "'JetBrains Mono', monospace" }}>{carbsOf(it.key, products)} g/u</p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-4 gap-2">
         <div>
           <label className="text-xs" style={{ color: "#5A6259" }}>Boisson (ml)</label>
           <input type="number" min="0" value={f.drinkMl || ""} placeholder="0"
@@ -2526,6 +2581,11 @@ function FuelingInputs({ value, onChange, dureeMin }) {
             onChange={e => set("drinkCarbsPer500", Number(e.target.value) || 0)} className={inputCls} style={inputStyle} />
         </div>
         <div>
+          <label className="text-xs" style={{ color: "#5A6259" }}>mg Na / 500 ml</label>
+          <input type="number" min="0" value={f.drinkSodiumPer500 ?? ""} placeholder="300"
+            onChange={e => set("drinkSodiumPer500", Number(e.target.value) || 0)} className={inputCls} style={inputStyle} />
+        </div>
+        <div>
           <label className="text-xs" style={{ color: "#5A6259" }}>Autres (g)</label>
           <input type="number" min="0" value={f.autresG || ""} placeholder="0"
             onChange={e => set("autresG", Number(e.target.value) || 0)} className={inputCls} style={inputStyle} />
@@ -2534,7 +2594,7 @@ function FuelingInputs({ value, onChange, dureeMin }) {
 
       {tot && !tot.isEmpty && (
         <p className="text-xs" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>
-          {tot.carbs} g de glucides · {(tot.ml / 1000).toFixed(1)} L
+          {tot.carbs} g de glucides · {(tot.ml / 1000).toFixed(1)} L · {tot.sodium} mg Na
           {tot.carbsPerH !== null && <span style={{ color: "#5A6259" }}> — soit {tot.carbsPerH} g/h et {tot.mlPerH} ml/h</span>}
         </p>
       )}
@@ -2543,10 +2603,10 @@ function FuelingInputs({ value, onChange, dureeMin }) {
 }
 
 // Comparaison de ce qui a été pris avec ce que la séance demandait
-function FuelingReport({ session }) {
+function FuelingReport({ session, products }) {
   const f = session.actual?.fueling;
   const duree = session.actual?.duree ?? session.duree;
-  const tot = fuelTotals(f, duree);
+  const tot = fuelTotals(f, duree, products);
   if (!tot || tot.isEmpty) return null;
 
   const target = fuelingPlan({ durationMin: duree, tempC: 18, weightKg: null, intensity: "moderee" });
@@ -2575,8 +2635,10 @@ function FuelingReport({ session }) {
       </p>
       {row("Glucides", tot.carbsPerH ?? "—", target.carbs, "g/h", carbGap)}
       {row("Boisson", tot.mlPerH ?? "—", target.fluid, "ml/h", fluidGap)}
+      {row("Sodium", tot.sodiumPerH ?? "—", target.sodium, "mg/h",
+        tot.sodiumPerH !== null ? tot.sodiumPerH - target.sodium : null)}
       <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
-        total : {tot.carbs} g · {(tot.ml / 1000).toFixed(1)} L
+        total : {tot.carbs} g · {(tot.ml / 1000).toFixed(1)} L · {tot.sodium} mg Na
       </p>
       {duree >= 150 && carbGap !== null && carbGap < -15 && (
         <p className="text-xs leading-relaxed" style={{ color: "#B0863C" }}>
@@ -2744,7 +2806,7 @@ function SessionReport({ s, vma }) {
   );
 }
 
-function SessionDetail({ s, onClose, onSaveNotes, vma }) {
+function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
   const [notes, setNotes] = useState(s.notes || "");
   const [saved, setSaved] = useState(false);
   const [exportMsg, setExportMsg] = useState("");
@@ -2905,7 +2967,7 @@ function SessionDetail({ s, onClose, onSaveNotes, vma }) {
         </div>
 
         {s.done && s.actual && <SessionReport s={s} vma={vma} />}
-        {s.done && s.actual?.fueling && <FuelingReport session={s} />}
+        {s.done && s.actual?.fueling && <FuelingReport session={s} products={products} />}
         {s.done && s.actual?.laps?.length > 0 && <LapAnalysis session={s} vma={vma} />}
 
         <button onClick={onClose} className="w-full rounded-lg py-2 text-sm" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
@@ -2919,7 +2981,7 @@ function SessionDetail({ s, onClose, onSaveNotes, vma }) {
 // Plan view (weeks grouped, with adjustment banners)
 // ======================================================================
 
-function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma }) {
+function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma, products }) {
   const weeks = useMemo(() => {
     const map = new Map();
     sessions.forEach(s => {
@@ -2956,7 +3018,7 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma 
             )}
             <div className="space-y-2">
               {weekSessions.sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || (a.date || "").localeCompare(b.date || "")).map(s => (
-                <SessionRow key={s.id} s={s} onToggle={onToggle} onDelete={onDelete} onSaveNotes={onSaveNotes} vma={vma} />
+                <SessionRow key={s.id} s={s} onToggle={onToggle} onDelete={onDelete} onSaveNotes={onSaveNotes} vma={vma} products={products} />
               ))}
             </div>
           </div>
@@ -3064,6 +3126,7 @@ function App() {
   const [showRestore, setShowRestore] = useState(false);
   const [weightKg, setWeightKg] = useState("");
   const [targetWeight, setTargetWeight] = useState("");
+  const [products, setProducts] = useState({ ...DEFAULT_PRODUCTS });
 
   useEffect(() => {
     (async () => {
@@ -3085,6 +3148,7 @@ function App() {
           setEvaluations(data.evaluations || {});
           setWeightKg(data.weightKg || "");
           setTargetWeight(data.targetWeight || "");
+          setProducts({ ...DEFAULT_PRODUCTS, ...(data.products || {}) });
           if (!data.goal) setEditingGoal(true);
         } else {
           setEditingGoal(true);
@@ -3114,7 +3178,7 @@ function App() {
           setStorageMsg("stockage indisponible");
           return;
         }
-        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight }), false);
+        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight, products }), false);
         const ok = r !== null && r !== undefined;
         setStorageOk(ok);
         setStorageMsg(ok ? `${window.STORAGE_MODE ? window.STORAGE_MODE() : "local"} · sauvegardé ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "échec de sauvegarde");
@@ -3123,12 +3187,12 @@ function App() {
         setStorageMsg("erreur : " + String(e).slice(0, 60));
       }
     })();
-  }, [goal, sessions, evaluations, weightKg, targetWeight, loaded]);
+  }, [goal, sessions, evaluations, weightKg, targetWeight, products, loaded]);
 
   const saveNotes = (id, notes) => setSessions(prev => prev.map(s => s.id === id ? { ...s, notes } : s));
 
   const exportBackup = () => {
-    setBackupText(JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight }));
+    setBackupText(JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight, products }));
     setBackupStatus("Copie ce texte et garde-le quelque part.");
   };
 
@@ -3140,6 +3204,7 @@ function App() {
       setEvaluations(data.evaluations || {});
       if (data.weightKg) setWeightKg(data.weightKg);
       if (data.targetWeight) setTargetWeight(data.targetWeight);
+      if (data.products) setProducts({ ...DEFAULT_PRODUCTS, ...data.products });
       setEditingGoal(!data.goal);
       setShowRestore(false);
       setTab("plan");
@@ -3303,7 +3368,7 @@ function App() {
 
             {tab === "plan" && (
               <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
-                onSaveNotes={saveNotes} vma={goal?.vma} />
+                onSaveNotes={saveNotes} vma={goal?.vma} products={products} />
             )}
 
             {tab === "importer" && (
@@ -3363,17 +3428,17 @@ function App() {
             )}
             {tab === "ajouter" && (
               <div className="lg:max-w-xl">
-                <SessionForm onAdd={addSession} />
+                <SessionForm onAdd={addSession} products={products} />
               </div>
             )}
             {tab === "nutrition" && (
-              <NutritionTab goal={goal} sessions={sessions} weightKg={weightKg} onWeightChange={setWeightKg} targetWeight={targetWeight} onTargetChange={setTargetWeight} />
+              <NutritionTab goal={goal} sessions={sessions} weightKg={weightKg} onWeightChange={setWeightKg} targetWeight={targetWeight} onTargetChange={setTargetWeight} products={products} onProductsChange={setProducts} />
             )}
             {tab === "stats" && <Stats sessions={sessions} />}
             {tab === "historique" && (
               <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
                 {past.length === 0 && <p className="text-sm text-center py-6 lg:col-span-2" style={{ color: "#5A6259" }}>Pas encore de séance réalisée.</p>}
-                {past.map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} />)}
+                {past.map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} products={products} />)}
               </div>
             )}
           </>
