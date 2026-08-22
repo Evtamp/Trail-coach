@@ -209,81 +209,116 @@ const ZONES = [
  * pour les séances de qualité, selon le type et la phase du plan.
  * Renvoie null pour les séances continues (longue, fonda, récup).
  */
+/**
+ * Catalogue de séances de qualité. Chaque phase propose plusieurs formats
+ * qui tournent d'une semaine à l'autre (session.variant), pour éviter de
+ * répéter la même séance pendant tout un bloc. Les formats exprimés en
+ * distance (200 m, 400 m, 1000 m) voient leur durée déduite de la VMA.
+ *
+ * sets/reps : nombre de séries et de répétitions
+ * workSec ou workM : durée ou distance de l'effort
+ * workPct : intensité en % de VMA · restSec/restPct : récupération
+ * betweenSec : récupération entre les séries
+ */
+const WORKOUTS = {
+  fractionne: {
+    base: [
+      { name: "30/30", sets: 2, reps: 8, workSec: 30, workPct: 100, restSec: 30, restPct: 50, betweenSec: 300 },
+      { name: "200 m", sets: 2, reps: 5, workM: 200, workPct: 105, restSec: 45, restPct: 50, betweenSec: 240 },
+      { name: "45/30", sets: 2, reps: 6, workSec: 45, workPct: 100, restSec: 30, restPct: 50, betweenSec: 300 },
+      { name: "1'/1'", sets: 1, reps: 8, workSec: 60, workPct: 98, restSec: 60, restPct: 55, betweenSec: 0 },
+    ],
+    build: [
+      { name: "30/30", sets: 2, reps: 10, workSec: 30, workPct: 102, restSec: 30, restPct: 50, betweenSec: 300 },
+      { name: "400 m", sets: 3, reps: 4, workM: 400, workPct: 100, restSec: 75, restPct: 50, betweenSec: 240 },
+      { name: "1'30/1'", sets: 1, reps: 8, workSec: 90, workPct: 98, restSec: 60, restPct: 55, betweenSec: 0 },
+      { name: "300 m", sets: 2, reps: 6, workM: 300, workPct: 103, restSec: 60, restPct: 50, betweenSec: 300 },
+    ],
+    peak: [
+      { name: "1000 m", sets: 1, reps: 5, workM: 1000, workPct: 93, restSec: 180, restPct: 55, betweenSec: 0 },
+      { name: "3 min", sets: 1, reps: 6, workSec: 180, workPct: 92, restSec: 90, restPct: 55, betweenSec: 0 },
+      { name: "2 min", sets: 1, reps: 8, workSec: 120, workPct: 95, restSec: 90, restPct: 55, betweenSec: 0 },
+      { name: "400 m", sets: 3, reps: 5, workM: 400, workPct: 100, restSec: 75, restPct: 50, betweenSec: 240 },
+    ],
+    taper: [
+      { name: "30/30", sets: 1, reps: 8, workSec: 30, workPct: 100, restSec: 30, restPct: 50, betweenSec: 0 },
+      { name: "200 m", sets: 1, reps: 6, workM: 200, workPct: 103, restSec: 60, restPct: 50, betweenSec: 0 },
+    ],
+  },
+  seuil: {
+    base:  [{ name: "2 × 8 min", sets: 1, reps: 2, workSec: 480, workPct: 85, restSec: 180, restPct: 60, betweenSec: 0 },
+            { name: "3 × 6 min", sets: 1, reps: 3, workSec: 360, workPct: 86, restSec: 150, restPct: 60, betweenSec: 0 }],
+    build: [{ name: "3 × 8 min", sets: 1, reps: 3, workSec: 480, workPct: 87, restSec: 180, restPct: 60, betweenSec: 0 },
+            { name: "2 × 12 min", sets: 1, reps: 2, workSec: 720, workPct: 86, restSec: 240, restPct: 60, betweenSec: 0 },
+            { name: "5 × 5 min", sets: 1, reps: 5, workSec: 300, workPct: 89, restSec: 120, restPct: 60, betweenSec: 0 }],
+    peak:  [{ name: "2 × 15 min", sets: 1, reps: 2, workSec: 900, workPct: 88, restSec: 240, restPct: 60, betweenSec: 0 },
+            { name: "20 min continu", sets: 1, reps: 1, workSec: 1200, workPct: 87, restSec: 0, restPct: 60, betweenSec: 0 },
+            { name: "3 × 10 min", sets: 1, reps: 3, workSec: 600, workPct: 88, restSec: 180, restPct: 60, betweenSec: 0 }],
+    taper: [{ name: "2 × 6 min", sets: 1, reps: 2, workSec: 360, workPct: 87, restSec: 180, restPct: 60, betweenSec: 0 }],
+  },
+  cotes: {
+    base:  [{ name: "2 × 6 × 45s", sets: 2, reps: 6, workSec: 45, workPct: 97, restSec: 75, restPct: 45, betweenSec: 270, hill: true },
+            { name: "10 × 1 min", sets: 1, reps: 10, workSec: 60, workPct: 95, restSec: 90, restPct: 45, betweenSec: 0, hill: true }],
+    build: [{ name: "3 × 6 × 1 min", sets: 3, reps: 6, workSec: 60, workPct: 97, restSec: 90, restPct: 45, betweenSec: 270, hill: true },
+            { name: "8 × 1 min 30", sets: 1, reps: 8, workSec: 90, workPct: 94, restSec: 120, restPct: 45, betweenSec: 0, hill: true },
+            { name: "2 × 5 × 90s", sets: 2, reps: 5, workSec: 90, workPct: 95, restSec: 120, restPct: 45, betweenSec: 300, hill: true }],
+    peak:  [{ name: "3 × 5 × 2 min", sets: 3, reps: 5, workSec: 120, workPct: 92, restSec: 150, restPct: 45, betweenSec: 300, hill: true },
+            { name: "6 × 4 min", sets: 1, reps: 6, workSec: 240, workPct: 90, restSec: 240, restPct: 45, betweenSec: 0, hill: true },
+            { name: "4 × 6 min", sets: 1, reps: 4, workSec: 360, workPct: 88, restSec: 300, restPct: 45, betweenSec: 0, hill: true }],
+    taper: [{ name: "6 × 45s", sets: 1, reps: 6, workSec: 45, workPct: 95, restSec: 90, restPct: 45, betweenSec: 0, hill: true }],
+  },
+};
+
+// Sélectionne le format de la semaine
+function workoutSpec(session, vma) {
+  const fam = WORKOUTS[session.type];
+  if (!fam || !vma) return null;
+  const list = fam[session.phase || "build"] || fam.build;
+  const v = list[(session.variant ?? 0) % list.length];
+  // une distance se convertit en durée à l'intensité visée
+  const workSec = v.workSec ?? Math.round(v.workM / (vma * v.workPct / 100 / 3.6));
+  return { ...v, workSec, workM: v.workM ?? null };
+}
+
 function buildStructuredWorkout(session, vma) {
-  if (!vma) return null;
-  const { type, phase } = session;
-  const ph = phase || "build";
+  const sp = workoutSpec(session, vma);
+  if (!sp) return null;
 
-  if (type === "fractionne") {
-    const plans = {
-      base:  { name: "30/30", sets: 2, reps: 8,  workSec: 30, restSec: 30, pct: 100, restPct: 50 },
-      build: { name: "30/30", sets: 2, reps: 10, workSec: 30, restSec: 30, pct: 102, restPct: 50 },
-      peak:  { name: "400 m", sets: 3, reps: 5,  workSec: 90, restSec: 75, pct: 100, restPct: 50 },
-      taper: { name: "30/30", sets: 1, reps: 8,  workSec: 30, restSec: 30, pct: 100, restPct: 50 },
-    };
-    const p = plans[ph];
-    return {
-      title: `${p.sets} × ${p.reps} × ${p.name}`,
-      warmup: { text: "20 min en endurance fondamentale + 3-4 lignes droites progressives", pace: paceAtPct(vma, 68) },
-      blocks: [{
-        repeats: `${p.sets} série(s) de ${p.reps} répétitions`,
-        work: `${p.workSec}s à ${p.pct}% VMA (~${metersIn(vma, p.pct, p.workSec)} m)`,
-        workPace: paceAtPct(vma, p.pct),
-        rest: `${p.restSec}s en trot très lent`,
-        restPace: paceAtPct(vma, p.restPct),
-        between: p.sets > 1 ? "5 min de récupération entre les séries" : null,
-      }],
-      cooldown: { text: "10-15 min en endurance fondamentale", pace: paceAtPct(vma, 65) },
-    };
-  }
+  const t = sessionTargets(session);
+  const totalReps = sp.sets * sp.reps;
+  const title = sp.sets > 1 ? `${sp.sets} × ${sp.reps} × ${sp.name}` : `${sp.reps} × ${sp.name}`;
 
-  if (type === "seuil") {
-    const plans = {
-      base:  { sets: 2, minutes: 8,  pct: 85, rest: 3 },
-      build: { sets: 3, minutes: 8,  pct: 87, rest: 3 },
-      peak:  { sets: 2, minutes: 15, pct: 88, rest: 4 },
-      taper: { sets: 2, minutes: 6,  pct: 87, rest: 3 },
-    };
-    const p = plans[ph];
-    return {
-      title: `${p.sets} × ${p.minutes} min au seuil`,
-      warmup: { text: "20 min en endurance fondamentale", pace: paceAtPct(vma, 68) },
-      blocks: [{
-        repeats: `${p.sets} blocs`,
-        work: `${p.minutes} min à ${p.pct}% VMA (~${(vma * p.pct / 100 * p.minutes / 60).toFixed(1)} km)`,
-        workPace: paceAtPct(vma, p.pct),
-        rest: `${p.rest} min en trot`,
-        restPace: paceAtPct(vma, 60),
-        between: null,
-      }],
-      cooldown: { text: "10 min en endurance fondamentale", pace: paceAtPct(vma, 65) },
-    };
-  }
+  const workDesc = sp.hill
+    ? `${sp.workSec}s en montée à ${sp.workPct}% VMA — pente 6-10%`
+    : sp.workM
+      ? `${sp.workM} m à ${sp.workPct}% VMA (~${sp.workSec}s)`
+      : `${sp.workSec >= 120 ? `${Math.round(sp.workSec / 60)} min` : `${sp.workSec}s`} à ${sp.workPct}% VMA (~${metersIn(vma, sp.workPct, sp.workSec)} m)`;
 
-  if (type === "cotes") {
-    const plans = {
-      base:  { sets: 2, reps: 6, workSec: 45, effort: "95-100% VMA" },
-      build: { sets: 3, reps: 6, workSec: 60, effort: "95-100% VMA" },
-      peak:  { sets: 3, reps: 5, workSec: 120, effort: "90-95% VMA" },
-      taper: { sets: 1, reps: 6, workSec: 45, effort: "95% VMA" },
-    };
-    const p = plans[ph];
-    return {
-      title: `${p.sets} × ${p.reps} × ${p.workSec}s en côte`,
-      warmup: { text: "20 min en endurance fondamentale jusqu'au pied de la côte", pace: paceAtPct(vma, 68) },
-      blocks: [{
-        repeats: `${p.sets} série(s) de ${p.reps} montées`,
-        work: `${p.workSec}s en montée à ${p.effort} — pente 6-10%`,
-        workPace: "à l'effort, pas au chrono",
-        rest: "descente en trot souple (récupération complète)",
-        restPace: paceAtPct(vma, 55),
-        between: p.sets > 1 ? "4-5 min de récupération entre les séries" : null,
-      }],
-      cooldown: { text: "10-15 min en endurance fondamentale", pace: paceAtPct(vma, 65) },
-    };
-  }
+  const restDesc = sp.hill
+    ? "descente en trot souple (récupération complète)"
+    : `${sp.restSec >= 120 ? `${Math.round(sp.restSec / 60)} min` : `${sp.restSec}s`} en trot`;
 
-  return null;
+  const warmupText = sp.hill
+    ? "20 min en endurance fondamentale jusqu'au pied de la côte"
+    : "20 min en endurance fondamentale + 3-4 lignes droites progressives";
+
+  return {
+    spec: sp,
+    title,
+    warmup: { text: warmupText, pace: paceAtPct(vma, t.warmup) },
+    blocks: [{
+      repeats: sp.sets > 1
+        ? `${sp.sets} séries de ${sp.reps} répétitions`
+        : `${sp.reps} répétitions`,
+      work: workDesc,
+      workPace: sp.hill ? "à l'effort, pas au chrono" : paceAtPct(vma, sp.workPct),
+      rest: restDesc,
+      restPace: paceAtPct(vma, sp.restPct),
+      between: sp.sets > 1 && sp.betweenSec ? `${Math.round(sp.betweenSec / 60)} min de récupération entre les séries` : null,
+    }],
+    cooldown: { text: "10-15 min en endurance fondamentale", pace: paceAtPct(vma, t.cooldown) },
+    totalReps,
+  };
 }
 
 // ======================================================================
@@ -341,59 +376,44 @@ function workoutToFitSteps(session, vma) {
   const steps = [];
 
   if (!w) {
-    // Séance continue (longue, EF, récup) : une seule étape sur la distance
     const pct = { longue: 70, fonda: 68, recup: 62 }[session.type] || 68;
     steps.push({
-      name: TYPES[session.type].label.slice(0, NAME_LEN - 1),
-      durType: DUR_DISTANCE, durValue: Math.round((session.distance || 10) * 100000), // cm
+      name: (TYPES[session.type]?.label || "Seance").slice(0, NAME_LEN - 1),
+      durType: DUR_DISTANCE, durValue: Math.round((session.distance || 10) * 100000),
       tgtType: TGT_SPEED, lo: speedMs(vma, pct - 4), hi: speedMs(vma, pct + 4),
       intensity: INT_ACTIVE,
     });
     return steps;
   }
 
-  // Échauffement (20 min par défaut)
+  const sp = w.spec;
+  const t = sessionTargets(session);
+  const isHill = !!sp.hill;
+
   steps.push({
     name: "Echauffement", durType: DUR_TIME, durValue: 20 * 60 * 1000,
-    tgtType: TGT_SPEED, lo: speedMs(vma, 63), hi: speedMs(vma, 72), intensity: INT_WARMUP,
+    tgtType: TGT_SPEED, lo: speedMs(vma, t.warmup - 5), hi: speedMs(vma, t.warmup + 4), intensity: INT_WARMUP,
   });
 
-  const b = w.blocks[0];
-  const setsMatch = /^(\d+)/.exec(b.repeats);
-  const sets = setsMatch ? Number(setsMatch[1]) : 1;
-  const repsMatch = /de (\d+)/.exec(b.repeats);
-  const reps = repsMatch ? Number(repsMatch[1]) : 1;
-
-  // Durée et intensité du travail, extraites de la séance structurée
-  const secMatch = /(\d+)s/.exec(b.work);
-  const minMatch = /(\d+) min/.exec(b.work);
-  const workMs = secMatch ? Number(secMatch[1]) * 1000 : (minMatch ? Number(minMatch[1]) * 60000 : 60000);
-  const pctMatch = /(\d+)(?:-\d+)?% VMA/.exec(b.work);
-  const workPct = pctMatch ? Number(pctMatch[1]) : 100;
-
-  const restSecMatch = /(\d+)s/.exec(b.rest);
-  const restMinMatch = /(\d+) min/.exec(b.rest);
-  const restMs = restSecMatch ? Number(restSecMatch[1]) * 1000
-               : (restMinMatch ? Number(restMinMatch[1]) * 60000 : 60000);
-  const isHill = session.type === "cotes";
-
-  for (let set = 0; set < sets; set++) {
+  for (let set = 0; set < sp.sets; set++) {
     const loopStart = steps.length;
     steps.push({
-      name: isHill ? "Montee" : "Effort", durType: DUR_TIME, durValue: workMs,
+      name: isHill ? "Montee" : "Effort", durType: DUR_TIME, durValue: sp.workSec * 1000,
       tgtType: isHill ? TGT_OPEN : TGT_SPEED,
-      lo: speedMs(vma, workPct - 3), hi: speedMs(vma, workPct + 3), intensity: INT_ACTIVE,
+      lo: speedMs(vma, sp.workPct - 3), hi: speedMs(vma, sp.workPct + 3), intensity: INT_ACTIVE,
     });
-    steps.push({
-      name: isHill ? "Descente" : "Recup", durType: DUR_TIME, durValue: restMs,
-      tgtType: TGT_OPEN, lo: 0, hi: 0, intensity: INT_REST,
-    });
-    if (reps > 1) {
-      steps.push({ name: "", durType: DUR_REPEAT, durValue: loopStart, tgtType: null, repeatCount: reps });
-    }
-    if (b.between && set < sets - 1) {
+    if (sp.restSec > 0) {
       steps.push({
-        name: "Recup serie", durType: DUR_TIME, durValue: 5 * 60 * 1000,
+        name: isHill ? "Descente" : "Recup", durType: DUR_TIME, durValue: sp.restSec * 1000,
+        tgtType: TGT_OPEN, lo: 0, hi: 0, intensity: INT_REST,
+      });
+    }
+    if (sp.reps > 1) {
+      steps.push({ name: "", durType: DUR_REPEAT, durValue: loopStart, tgtType: null, repeatCount: sp.reps });
+    }
+    if (sp.betweenSec > 0 && set < sp.sets - 1) {
+      steps.push({
+        name: "Recup serie", durType: DUR_TIME, durValue: sp.betweenSec * 1000,
         tgtType: TGT_OPEN, lo: 0, hi: 0, intensity: INT_REST,
       });
     }
@@ -401,7 +421,7 @@ function workoutToFitSteps(session, vma) {
 
   steps.push({
     name: "Retour au calme", durType: DUR_TIME, durValue: 12 * 60 * 1000,
-    tgtType: TGT_SPEED, lo: speedMs(vma, 60), hi: speedMs(vma, 70), intensity: INT_COOLDOWN,
+    tgtType: TGT_SPEED, lo: speedMs(vma, t.cooldown - 5), hi: speedMs(vma, t.cooldown + 5), intensity: INT_COOLDOWN,
   });
 
   return steps;
@@ -526,30 +546,18 @@ function workoutToText(session, vma) {
 function expandWorkout(session, vma) {
   const w = buildStructuredWorkout(session, vma);
   if (!w) return null;
+  const sp = w.spec;
   const t = sessionTargets(session);
-  const b = w.blocks[0];
 
-  const sets = Number((/^(\d+)/.exec(b.repeats) || [])[1]) || 1;
-  const reps = Number((/de (\d+)/.exec(b.repeats) || [])[1]) || 1;
-
-  const wSec = /(\d+)s/.exec(b.work);
-  const wMin = /(\d+) min/.exec(b.work);
-  const workSec = wSec ? Number(wSec[1]) : (wMin ? Number(wMin[1]) * 60 : 60);
-  const pctM = /(\d+)(?:-\d+)?% VMA/.exec(b.work);
-  const workPct = pctM ? Number(pctM[1]) : t.work;
-
-  const rSec = /(\d+)s/.exec(b.rest);
-  const rMin = /(\d+) min/.exec(b.rest);
-  const restSec = rSec ? Number(rSec[1]) : (rMin ? Number(rMin[1]) * 60 : 60);
-
-  const isHill = session.type === "cotes";
   const segs = [{ kind: "echauffement", sec: 20 * 60, pct: t.warmup }];
-  for (let set = 0; set < sets; set++) {
-    for (let r = 0; r < reps; r++) {
-      segs.push({ kind: "effort", sec: workSec, pct: workPct, hill: isHill });
-      segs.push({ kind: "recup", sec: restSec, pct: t.rest });
+  for (let set = 0; set < sp.sets; set++) {
+    for (let r = 0; r < sp.reps; r++) {
+      segs.push({ kind: "effort", sec: sp.workSec, pct: sp.workPct, hill: !!sp.hill });
+      if (sp.restSec > 0) segs.push({ kind: "recup", sec: sp.restSec, pct: sp.restPct });
     }
-    if (b.between && set < sets - 1) segs.push({ kind: "recup", sec: 5 * 60, pct: t.rest, serie: true });
+    if (sp.betweenSec > 0 && set < sp.sets - 1) {
+      segs.push({ kind: "recup", sec: sp.betweenSec, pct: sp.restPct, serie: true });
+    }
   }
   segs.push({ kind: "calme", sec: 12 * 60, pct: t.cooldown });
   return segs;
@@ -683,7 +691,7 @@ function generatePlan(goal) {
     let qualityKm = 0;
     template.forEach(type => {
       if (QUALITY.includes(type) && !totalsByType[type]) {
-        const tot = structuredTotals({ type, phase }, goal.vma);
+        const tot = structuredTotals({ type, phase, variant: weekIdx }, goal.vma);
         if (tot) { totalsByType[type] = tot; qualityKm += tot.distance; }
       }
     });
@@ -755,6 +763,7 @@ function generatePlan(goal) {
         actual: null,
         generated: true,
         phase,
+        variant: weekIdx,      // fait tourner le format d'une semaine à l'autre
         weekStart: toISO(weekStart),
       });
     });
@@ -2249,17 +2258,11 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
 
 // Pourcentages de VMA visés pour chaque phase de la séance
 function sessionTargets(session) {
-  const ph = session.phase || "build";
-  if (session.type === "fractionne") {
-    const work = { base: 100, build: 102, peak: 100, taper: 100 }[ph];
-    return { warmup: 68, work, rest: 50, cooldown: 65 };
-  }
-  if (session.type === "seuil") {
-    const work = { base: 85, build: 87, peak: 88, taper: 87 }[ph];
-    return { warmup: 68, work, rest: 55, cooldown: 65 };
-  }
-  if (session.type === "cotes") {
-    return { warmup: 68, work: 95, rest: 45, cooldown: 65 };
+  const fam = WORKOUTS[session.type];
+  if (fam) {
+    const list = fam[session.phase || "build"] || fam.build;
+    const v = list[(session.variant ?? 0) % list.length];
+    return { warmup: 68, work: v.workPct, rest: v.restPct, cooldown: 65 };
   }
   const cont = { longue: 70, fonda: 68, recup: 62 }[session.type] || 68;
   return { warmup: cont, work: cont, rest: cont, cooldown: cont };
