@@ -1239,163 +1239,1139 @@ function raceWeightPlan({ current, target, raceDate }) {
 // ======================================================================
 
 const MEAL_DAYS = {
-  repos: {
+  "repos": {
     label: "Journée sans course",
     intro: "Glucides plus modérés, protéines et légumes en avant. C'est la journée idéale pour creuser le déficit sans pénaliser l'entraînement.",
-    protein: 119,
-    meals: [
-      { t: "Petit-déjeuner", n: "Skyr, fruits rouges et graines", p: 33, temps: "5 min",
-        d: "Sans cuisson, à préparer la veille si tu es pressé le matin.",
-        ing: ["200 g de skyr nature", "100 g de fruits rouges (frais ou surgelés)", "15 g de graines de chanvre décortiquées", "30 g d'amandes", "1 c. à café de miel", "cannelle"],
-        steps: ["Concasse grossièrement les amandes au couteau (elles restent plus croquantes qu'en poudre).",
-                "Si tu utilises des fruits surgelés, sors-les 10 min avant : ils rendent un jus qui parfume le skyr.",
-                "Mélange skyr, miel et cannelle dans un bol.",
-                "Ajoute les fruits, les graines de chanvre et les amandes par-dessus, sans mélanger."] },
-
-      { t: "Déjeuner", n: "Bowl lentilles-quinoa aux légumes rôtis", p: 35, temps: "35 min",
-        d: "Se prépare en double pour le lendemain — les lentilles se bonifient une nuit au frais.",
-        ing: ["80 g de lentilles vertes sèches", "60 g de quinoa", "1 poivron rouge", "1 courgette", "40 g de feta", "1 poignée de roquette", "1 citron", "2 c. à soupe d'huile d'olive", "1 c. à café de cumin", "sel, poivre"],
-        steps: ["Préchauffe le four à 200 °C.",
-                "Coupe poivron et courgette en gros morceaux, mélange-les avec 1 c. à soupe d'huile, le cumin, sel et poivre. Étale sur une plaque sans les superposer.",
-                "Enfourne 25 min, en remuant à mi-cuisson : tu cherches des bords colorés, pas des légumes mous.",
-                "Pendant ce temps, rince les lentilles et cuis-les 20 min dans 3 fois leur volume d'eau non salée (le sel durcit la peau). Sale en fin de cuisson.",
-                "Cuis le quinoa 12 min dans 2 fois son volume d'eau salée, puis laisse gonfler 5 min hors du feu, à couvert.",
-                "Assemble lentilles, quinoa et légumes. Assaisonne avec le jus du citron et le reste d'huile.",
-                "Ajoute la roquette et la feta émiettée au dernier moment."],
-        note: "Le jus de citron n'est pas décoratif : la vitamine C multiplie l'absorption du fer des lentilles." },
-
-      { t: "Collation", n: "Fromage blanc, noix et chocolat noir", p: 18, temps: "2 min",
-        d: "À prendre en milieu d'après-midi pour lisser les apports protéiques.",
-        ing: ["200 g de fromage blanc à 3 %", "25 g de noix", "1 carré de chocolat noir 70 %", "1 c. à café de miel (facultatif)"],
-        steps: ["Concasse les noix et le chocolat.", "Mélange le tout au fromage blanc."] },
-
-      { t: "Dîner", n: "Curry de pois chiches, épinards et tofu", p: 33, temps: "30 min",
-        d: "Un plat unique complet, meilleur réchauffé le lendemain.",
-        ing: ["120 g de tofu ferme", "150 g de pois chiches cuits (égouttés)", "200 g d'épinards frais (ou 150 g surgelés)", "200 ml de lait de coco léger", "1 oignon", "2 gousses d'ail", "2 cm de gingembre frais", "1 c. à café de curcuma", "1 c. à café de garam masala", "70 g de riz complet", "1 c. à soupe d'huile", "1/2 citron"],
-        steps: ["Presse le tofu 10 min sous un poids (une assiette avec une boîte de conserve suffit) : il dore beaucoup mieux sec.",
-                "Lance le riz complet : 35 min dans 2,5 fois son volume d'eau salée.",
-                "Coupe le tofu en cubes de 2 cm et fais-les dorer à feu vif dans l'huile, 6-8 min, sans y toucher les 3 premières minutes. Réserve.",
-                "Dans la même poêle, fais suer l'oignon émincé 5 min, puis ajoute ail et gingembre râpés, 1 min.",
-                "Ajoute les épices, remue 30 secondes pour les réveiller, puis verse le lait de coco.",
-                "Ajoute les pois chiches, laisse mijoter 10 min à feu doux.",
-                "Incorpore les épinards, ils fondent en 2 min. Remets le tofu, coupe le feu.",
-                "Un trait de citron au moment de servir, avec le riz."],
-        note: "Les épices ont besoin de 30 secondes dans le gras chaud pour libérer leurs arômes : ne saute pas cette étape." },
-    ],
     tip: "Le thé et le café bloquent l'absorption du fer : garde-les à distance des repas riches en légumineuses.",
+    slots: [
+      {
+        t: "Petit-déjeuner",
+        options: [
+          {
+            t: "Petit-déjeuner",
+            n: "Skyr, fruits rouges et graines",
+            temps: "5 min",
+            d: "Sans cuisson, se prépare la veille.",
+            kcal: 464,
+            p: 34,
+            g: 28,
+            l: 24,
+            ing: [
+              "200 g de skyr",
+              "100 g de fruits rouges",
+              "15 g de graines de chanvre",
+              "30 g de amandes",
+              "10 g de miel"
+            ],
+            steps: [
+              "Concasse les amandes au couteau : elles restent plus croquantes qu'en poudre.",
+              "Sors les fruits surgelés 10 min avant, ils rendent un jus qui parfume le skyr.",
+              "Mélange skyr, miel et cannelle.",
+              "Ajoute fruits, graines et amandes par-dessus, sans mélanger."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Petit-déjeuner",
+            n: "Porridge protéiné avoine-fromage blanc",
+            temps: "10 min",
+            d: "Le fromage blanc ajouté à froid double les protéines sans dénaturer la texture.",
+            kcal: 592,
+            p: 29,
+            g: 73,
+            l: 20,
+            ing: [
+              "60 g de flocons d'avoine",
+              "150 g de lait demi-écrémé",
+              "150 g de fromage blanc 3%",
+              "100 g de banane",
+              "15 g de beurre d'amande"
+            ],
+            steps: [
+              "Chauffe le lait avec les flocons, 5 min à feu doux en remuant.",
+              "Coupe le feu, laisse tiédir 2 min : le fromage blanc ne doit pas cuire.",
+              "Incorpore le fromage blanc hors du feu, il apporte l'onctuosité.",
+              "Ajoute banane en rondelles et beurre d'amande."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Petit-déjeuner",
+            n: "Porridge pomme-noix et cannelle",
+            temps: "12 min",
+            d: "Automne : la pomme compotée sucre le porridge sans sucre ajouté.",
+            kcal: 717,
+            p: 31,
+            g: 91,
+            l: 25,
+            ing: [
+              "70 g de flocons d'avoine",
+              "200 g de lait demi-écrémé",
+              "150 g de pomme",
+              "25 g de noix",
+              "15 g de miel",
+              "100 g de skyr"
+            ],
+            steps: [
+              "Fais compoter la pomme en dés 5 min à la poêle avec la cannelle, sans matière grasse.",
+              "Cuis les flocons dans le lait 5 min à feu doux.",
+              "Hors du feu, incorpore le skyr pour l'onctuosité et les protéines.",
+              "Ajoute la compotée et les noix concassées."
+            ],
+            saison: "automne"
+          },
+          {
+            t: "Petit-déjeuner",
+            n: "Tartines avocat et œufs pochés",
+            temps: "12 min",
+            d: "",
+            kcal: 529,
+            p: 24,
+            g: 37,
+            l: 30,
+            ing: [
+              "80 g de pain complet",
+              "120 g de œuf",
+              "70 g de avocat",
+              "20 g de roquette",
+              "5 g de huile d'olive"
+            ],
+            steps: [
+              "Porte une casserole d'eau à frémissement avec un trait de vinaigre — surtout pas à ébullition.",
+              "Casse chaque œuf dans un ramequin, fais tourner l'eau puis verse l'œuf au centre.",
+              "3 min exactement, puis égoutte sur papier absorbant.",
+              "Écrase l'avocat sur le pain grillé, sel et poivre, pose les œufs et la roquette."
+            ],
+            saison: "ete"
+          }
+        ]
+      },
+      {
+        t: "Déjeuner",
+        options: [
+          {
+            t: "Déjeuner",
+            n: "Bowl lentilles-quinoa aux légumes rôtis",
+            temps: "35 min",
+            d: "Se prépare en double, les lentilles se bonifient une nuit au frais.",
+            kcal: 850,
+            p: 37,
+            g: 91,
+            l: 34,
+            ing: [
+              "80 g de lentilles vertes",
+              "60 g de quinoa",
+              "150 g de poivron",
+              "150 g de courgette",
+              "40 g de feta",
+              "20 g de huile d'olive"
+            ],
+            steps: [
+              "Préchauffe à 200 °C. Coupe les légumes en gros morceaux, mélange avec la moitié de l'huile et du cumin.",
+              "Étale sans les superposer, 25 min en remuant à mi-cuisson : tu cherches des bords colorés.",
+              "Cuis les lentilles 20 min dans 3 fois leur volume d'eau NON salée — le sel durcit la peau. Sale à la fin.",
+              "Quinoa : 12 min dans 2 fois son volume, puis 5 min à couvert hors du feu.",
+              "Assemble, assaisonne au jus de citron et au reste d'huile, feta émiettée au dernier moment."
+            ],
+            saison: "ete",
+            note: "Le citron n'est pas décoratif : la vitamine C multiplie l'absorption du fer des lentilles."
+          },
+          {
+            t: "Déjeuner",
+            n: "Salade de boulgour, pois chiches et feta",
+            temps: "20 min",
+            d: "Meilleure après 1 h au frais, parfaite en lunch box.",
+            kcal: 809,
+            p: 32,
+            g: 85,
+            l: 35,
+            ing: [
+              "70 g de boulgour",
+              "150 g de pois chiches cuits",
+              "100 g de concombre",
+              "120 g de tomate",
+              "40 g de feta",
+              "15 g de huile d'olive",
+              "15 g de graines de courge"
+            ],
+            steps: [
+              "Verse le boulgour dans un saladier, couvre d'eau bouillante à hauteur + 1 cm, couvre 12 min.",
+              "Égrène à la fourchette et laisse refroidir.",
+              "Coupe concombre et tomates en dés, ajoute les pois chiches rincés.",
+              "Assaisonne huile-citron-menthe, ajoute feta et graines de courge."
+            ],
+            saison: "ete"
+          },
+          {
+            t: "Déjeuner",
+            n: "Bowl potimarron rôti, quinoa et feta",
+            temps: "35 min",
+            d: "Automne. Le potimarron rôti gagne beaucoup à être bien coloré.",
+            kcal: 884,
+            p: 34,
+            g: 96,
+            l: 38,
+            ing: [
+              "300 g de potimarron",
+              "70 g de quinoa",
+              "120 g de pois chiches cuits",
+              "40 g de feta",
+              "15 g de graines de courge",
+              "15 g de huile d'olive"
+            ],
+            steps: [
+              "Le potimarron ne se pèle pas : la peau devient fondante à la cuisson. Coupe en quartiers de 2 cm.",
+              "Rôtis 25 min à 200 °C avec huile, cumin et paprika fumé.",
+              "Quinoa 12 min puis 5 min à couvert hors du feu.",
+              "Ajoute les pois chiches sur la plaque les 10 dernières minutes, ils croustillent.",
+              "Assemble, feta émiettée et graines de courge par-dessus."
+            ],
+            saison: "automne"
+          },
+          {
+            t: "Déjeuner",
+            n: "Curry de tofu, brocoli et riz complet",
+            temps: "30 min",
+            d: "",
+            kcal: 764,
+            p: 38,
+            g: 73,
+            l: 36,
+            ing: [
+              "150 g de tofu ferme",
+              "200 g de brocoli",
+              "70 g de riz complet",
+              "150 g de lait de coco léger",
+              "80 g de oignon",
+              "10 g de huile neutre"
+            ],
+            steps: [
+              "Presse le tofu 10 min sous un poids : sec, il dore ; humide, il bout.",
+              "Lance le riz complet, 35 min dans 2,5 fois son volume.",
+              "Dore les cubes de tofu à feu vif 6-8 min sans y toucher les 3 premières minutes. Réserve.",
+              "Fais suer l'oignon, ajoute ail-gingembre puis les épices 30 s dans le gras chaud.",
+              "Verse le lait de coco, ajoute le brocoli, 8 min à couvert. Remets le tofu, coupe le feu."
+            ],
+            saison: "ete"
+          }
+        ]
+      },
+      {
+        t: "Collation",
+        options: [
+          {
+            t: "Collation",
+            n: "Fromage blanc, noix et chocolat noir",
+            temps: "2 min",
+            d: "",
+            kcal: 382,
+            p: 21,
+            g: 13,
+            l: 27,
+            ing: [
+              "200 g de fromage blanc 3%",
+              "25 g de noix",
+              "10 g de chocolat noir 70%"
+            ],
+            steps: [
+              "Concasse noix et chocolat.",
+              "Mélange au fromage blanc."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Collation",
+            n: "Compote pomme-poire et amandes",
+            temps: "15 min",
+            d: "Automne. Se garde 4 jours au frais, à faire en grande quantité.",
+            kcal: 438,
+            p: 23,
+            g: 59,
+            l: 14,
+            ing: [
+              "150 g de pomme",
+              "150 g de poire",
+              "25 g de amandes",
+              "150 g de skyr",
+              "10 g de miel"
+            ],
+            steps: [
+              "Coupe pomme et poire en dés, 12 min à couvert avec 2 c. à soupe d'eau et une pincée de cannelle.",
+              "Écrase grossièrement à la fourchette : on veut des morceaux, pas une purée.",
+              "Sers tiède ou froid sur le skyr, amandes concassées par-dessus."
+            ],
+            saison: "automne"
+          },
+          {
+            t: "Collation",
+            n: "Houmous et bâtonnets de légumes",
+            temps: "5 min",
+            d: "",
+            kcal: 349,
+            p: 11,
+            g: 43,
+            l: 14,
+            ing: [
+              "80 g de houmous",
+              "100 g de carotte",
+              "80 g de poivron",
+              "40 g de pain complet"
+            ],
+            steps: [
+              "Coupe les légumes en bâtonnets.",
+              "Sers avec le houmous et le pain grillé."
+            ],
+            saison: "toute"
+          }
+        ]
+      },
+      {
+        t: "Dîner",
+        options: [
+          {
+            t: "Dîner",
+            n: "Curry de pois chiches, épinards et tofu",
+            temps: "30 min",
+            d: "Meilleur réchauffé le lendemain.",
+            kcal: 946,
+            p: 45,
+            g: 99,
+            l: 40,
+            ing: [
+              "120 g de tofu ferme",
+              "150 g de pois chiches cuits",
+              "200 g de épinards",
+              "200 g de lait de coco léger",
+              "80 g de oignon",
+              "70 g de riz complet",
+              "10 g de huile neutre"
+            ],
+            steps: [
+              "Presse le tofu 10 min, coupe en cubes de 2 cm, dore-les à feu vif. Réserve.",
+              "Fais suer l'oignon 5 min, ajoute ail et gingembre râpés 1 min.",
+              "Épices 30 s dans le gras chaud, puis lait de coco.",
+              "Pois chiches, 10 min à feu doux. Épinards, ils fondent en 2 min.",
+              "Remets le tofu, citron au moment de servir."
+            ],
+            saison: "toute",
+            note: "Les épices ont besoin de 30 s dans le gras chaud pour libérer leurs arômes."
+          },
+          {
+            t: "Dîner",
+            n: "Chili sin carne aux haricots rouges",
+            temps: "35 min",
+            d: "Encore meilleur le lendemain.",
+            kcal: 870,
+            p: 37,
+            g: 124,
+            l: 21,
+            ing: [
+              "250 g de haricots rouges cuits",
+              "200 g de tomates concassées",
+              "120 g de poivron",
+              "80 g de oignon",
+              "70 g de riz basmati",
+              "10 g de huile d'olive",
+              "25 g de comté"
+            ],
+            steps: [
+              "Fais revenir oignon et poivron 8 min.",
+              "Cumin, paprika fumé et piment 30 s, puis tomates et haricots rincés.",
+              "Mijote 20 min à découvert : le chili doit épaissir, pas rester liquide.",
+              "Riz en parallèle. Sers avec le fromage râpé par-dessus."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Dîner",
+            n: "Curry de potimarron, pois chiches et épinards",
+            temps: "35 min",
+            d: "Automne. Écrase quelques cubes pour épaissir la sauce naturellement.",
+            kcal: 958,
+            p: 32,
+            g: 137,
+            l: 30,
+            ing: [
+              "350 g de potimarron",
+              "180 g de pois chiches cuits",
+              "150 g de épinards",
+              "200 g de lait de coco léger",
+              "80 g de oignon",
+              "70 g de riz basmati",
+              "10 g de huile neutre"
+            ],
+            steps: [
+              "Potimarron en cubes de 2 cm, peau comprise.",
+              "Oignon 5 min, ail-gingembre, puis épices 30 s dans le gras chaud.",
+              "Lait de coco et potimarron, 20 min à couvert : il doit s'écraser à la fourchette.",
+              "Pois chiches 5 min, épinards 2 min, citron pour finir."
+            ],
+            saison: "automne"
+          },
+          {
+            t: "Dîner",
+            n: "Gratin de lentilles corail et patate douce",
+            temps: "40 min",
+            d: "",
+            kcal: 827,
+            p: 37,
+            g: 108,
+            l: 26,
+            ing: [
+              "80 g de lentilles corail",
+              "250 g de patate douce",
+              "150 g de tomates concassées",
+              "70 g de oignon",
+              "40 g de comté",
+              "10 g de huile d'olive"
+            ],
+            steps: [
+              "Cuis les lentilles corail 15 min avec les tomates et l'oignon : elles se délitent et lient le tout.",
+              "Coupe la patate douce en rondelles de 4 mm, précuis 8 min à l'eau bouillante.",
+              "Alterne couches de lentilles et de patate douce dans un plat.",
+              "Fromage râpé sur le dessus, 20 min à 200 °C jusqu'à gratiner."
+            ],
+            saison: "toute"
+          }
+        ]
+      }
+    ]
   },
-
-  seance: {
+  "seance": {
     label: "Journée avec séance",
     intro: "Glucides répartis autour de la séance, sans excès sur le reste de la journée. Digestion terminée avant l'effort.",
-    protein: 118,
-    meals: [
-      { t: "Petit-déjeuner", n: "Omelette aux herbes et pain complet", p: 27, temps: "10 min",
-        d: "",
-        ing: ["3 œufs", "2 tranches de pain complet (80 g)", "1 tomate", "persil et ciboulette", "1 c. à café d'huile d'olive", "1 fruit", "sel, poivre"],
-        steps: ["Bats les œufs à la fourchette 20 secondes, juste pour homogénéiser — trop battus, ils deviennent caoutchouteux.",
-                "Chauffe l'huile à feu moyen, pas plus : une omelette se cuit doucement.",
-                "Verse les œufs, laisse prendre 30 secondes, puis ramène les bords vers le centre avec une spatule.",
-                "Quand le dessus est encore légèrement baveux, ajoute tomate en dés et herbes, plie en deux et coupe le feu.",
-                "Sers avec le pain grillé et le fruit."] },
-
-      { t: "90 min avant la séance", n: "Collation glucidique", p: 3, temps: "1 min",
-        d: "Peu de fibres, pas de gras : ce qui compte est que l'estomac soit vide au départ.",
-        ing: ["1 banane bien mûre", "ou 2 tranches de pain blanc + miel", "un verre d'eau"],
-        steps: ["Mange sans traîner, puis bois un verre d'eau.",
-                "Si tu supportes mal de courir l'estomac plein, recule à 2 h avant plutôt que de sauter la collation."] },
-
-      { t: "Dans les 30 min après", n: "Smoothie de récupération", p: 30, temps: "3 min",
-        d: "La fenêtre où le muscle capte le mieux glucides et acides aminés.",
-        ing: ["180 g de skyr", "1 banane", "20 g de beurre de cacahuète", "150 ml de lait (ou boisson de soja)", "1 c. à café de cacao non sucré", "2 glaçons"],
-        steps: ["Mixe tout ensemble 30 secondes.",
-                "Trop épais ? Ajoute du lait par petites quantités.",
-                "Bois-le dans la demi-heure qui suit la séance."] },
-
-      { t: "Déjeuner ou dîner", n: "Pâtes complètes, sauce lentilles corail", p: 32, temps: "25 min",
-        d: "Les lentilles corail fondent dans la sauce : la texture rappelle une bolognaise.",
-        ing: ["100 g de pâtes complètes", "60 g de lentilles corail", "400 g de tomates concassées", "1 oignon", "2 gousses d'ail", "1 c. à café d'origan", "20 g de parmesan (ou équivalent végétarien)", "basilic frais", "1 c. à soupe d'huile d'olive"],
-        steps: ["Fais revenir l'oignon émincé 5 min dans l'huile, ajoute l'ail 1 min.",
-                "Ajoute les lentilles corail rincées, les tomates et l'origan. Complète avec 150 ml d'eau.",
-                "Laisse mijoter 15 min à couvert, en remuant : les lentilles se délitent et épaississent la sauce.",
-                "Cuis les pâtes al dente pendant ce temps, garde une louche d'eau de cuisson.",
-                "Mélange pâtes et sauce hors du feu, détends avec l'eau de cuisson si besoin.",
-                "Parmesan et basilic au moment de servir."] },
-
-      { t: "Second repas", n: "Sauté de tofu et nouilles soba", p: 26, temps: "20 min",
-        d: "",
-        ing: ["150 g de tofu ferme", "80 g de nouilles soba (sarrasin)", "1 brocoli (200 g)", "1 poivron", "2 c. à soupe de sauce soja", "1 c. à soupe de vinaigre de riz", "2 cm de gingembre", "1 gousse d'ail", "1 c. à soupe de graines de sésame", "1 c. à soupe d'huile neutre"],
-        steps: ["Coupe le tofu en cubes et fais-le mariner 10 min dans la sauce soja, le vinaigre, l'ail et le gingembre râpés.",
-                "Cuis les soba 4-5 min seulement, puis rince-les à l'eau froide : sinon elles collent en refroidissant.",
-                "Égoutte le tofu (garde la marinade) et fais-le dorer à feu vif 5 min.",
-                "Ajoute brocoli en petits bouquets et poivron en lanières, saute 4 min à feu vif : ils doivent rester croquants.",
-                "Verse la marinade, laisse réduire 1 min, puis ajoute les nouilles et mélange.",
-                "Graines de sésame par-dessus."] },
-    ],
     tip: "Si la séance est en soirée, décale le smoothie en collation d'après-séance et allège le dîner.",
+    slots: [
+      {
+        t: "Petit-déjeuner",
+        options: [
+          {
+            t: "Petit-déjeuner",
+            n: "Omelette aux herbes et pain complet",
+            temps: "10 min",
+            d: "",
+            kcal: 591,
+            p: 31,
+            g: 60,
+            l: 26,
+            ing: [
+              "180 g de œuf",
+              "80 g de pain complet",
+              "100 g de tomate",
+              "5 g de huile d'olive",
+              "150 g de pomme"
+            ],
+            steps: [
+              "Bats les œufs 20 secondes, juste pour homogénéiser — trop battus, ils deviennent caoutchouteux.",
+              "Feu moyen, pas plus : une omelette se cuit doucement.",
+              "Laisse prendre 30 s, ramène les bords vers le centre à la spatule.",
+              "Dessus encore baveux : ajoute tomate et herbes, plie et coupe le feu."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Petit-déjeuner",
+            n: "Pain perdu protéiné",
+            temps: "12 min",
+            d: "",
+            kcal: 595,
+            p: 28,
+            g: 76,
+            l: 20,
+            ing: [
+              "90 g de pain complet",
+              "120 g de œuf",
+              "100 g de lait demi-écrémé",
+              "100 g de banane",
+              "10 g de miel",
+              "5 g de beurre"
+            ],
+            steps: [
+              "Bats œufs, lait et cannelle dans une assiette creuse.",
+              "Trempe le pain 30 s par face — pas plus, sinon il se délite.",
+              "Poêle à feu moyen avec un peu de beurre, 3 min par face.",
+              "Sers avec banane et miel."
+            ],
+            saison: "toute"
+          }
+        ]
+      },
+      {
+        t: "90 min avant la séance",
+        options: [
+          {
+            t: "90 min avant",
+            n: "Banane et miel",
+            temps: "1 min",
+            d: "Peu de fibres, pas de gras : l'estomac doit être vide au départ.",
+            kcal: 152,
+            p: 1,
+            g: 40,
+            l: 0,
+            ing: [
+              "120 g de banane",
+              "15 g de miel"
+            ],
+            steps: [
+              "Mange sans traîner, puis bois un grand verre d'eau.",
+              "Si tu digères mal en courant, recule à 2 h avant plutôt que de sauter la collation."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "90 min avant",
+            n: "Tartines de pain blanc au miel",
+            temps: "2 min",
+            d: "",
+            kcal: 223,
+            p: 5,
+            g: 48,
+            l: 1,
+            ing: [
+              "60 g de pain blanc",
+              "20 g de miel"
+            ],
+            steps: [
+              "Pain blanc volontairement, plus digeste que le complet avant l'effort.",
+              "Accompagne d'un verre d'eau."
+            ],
+            saison: "toute"
+          }
+        ]
+      },
+      {
+        t: "Dans les 30 min après",
+        options: [
+          {
+            t: "Après la séance",
+            n: "Smoothie skyr-banane-cacahuète",
+            temps: "3 min",
+            d: "La fenêtre où le muscle capte le mieux glucides et acides aminés.",
+            kcal: 427,
+            p: 32,
+            g: 45,
+            l: 14,
+            ing: [
+              "180 g de skyr",
+              "120 g de banane",
+              "20 g de beurre de cacahuète",
+              "150 g de lait demi-écrémé",
+              "5 g de cacao non sucré"
+            ],
+            steps: [
+              "Mixe 30 secondes.",
+              "Trop épais ? Ajoute du lait par petites quantités.",
+              "Bois dans la demi-heure."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Après la séance",
+            n: "Bol de fromage blanc, muesli et fruits",
+            temps: "3 min",
+            d: "",
+            kcal: 513,
+            p: 26,
+            g: 54,
+            l: 20,
+            ing: [
+              "200 g de fromage blanc 3%",
+              "40 g de flocons d'avoine",
+              "100 g de fruits rouges",
+              "15 g de miel",
+              "20 g de amandes"
+            ],
+            steps: [
+              "Mélange le tout.",
+              "Version à mâcher, pour ceux qui digèrent mal les smoothies."
+            ],
+            saison: "toute"
+          }
+        ]
+      },
+      {
+        t: "Déjeuner",
+        options: [
+          {
+            t: "Déjeuner",
+            n: "Pâtes complètes, sauce lentilles corail",
+            temps: "25 min",
+            d: "Les lentilles corail fondent : la texture rappelle une bolognaise.",
+            kcal: 824,
+            p: 37,
+            g: 114,
+            l: 20,
+            ing: [
+              "100 g de pâtes complètes",
+              "60 g de lentilles corail",
+              "200 g de tomates concassées",
+              "70 g de oignon",
+              "20 g de parmesan",
+              "10 g de huile d'olive"
+            ],
+            steps: [
+              "Fais revenir l'oignon 5 min, ajoute l'ail 1 min.",
+              "Lentilles corail rincées, tomates, origan et 150 ml d'eau.",
+              "15 min à couvert en remuant : les lentilles se délitent et épaississent la sauce.",
+              "Pâtes al dente, garde une louche d'eau de cuisson.",
+              "Mélange hors du feu, détends avec l'eau de cuisson."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Déjeuner",
+            n: "Buddha bowl quinoa, tempeh et légumes",
+            temps: "25 min",
+            d: "",
+            kcal: 696,
+            p: 41,
+            g: 73,
+            l: 29,
+            ing: [
+              "70 g de quinoa",
+              "120 g de tempeh",
+              "100 g de carotte",
+              "150 g de chou-fleur",
+              "20 g de tahini",
+              "15 g de sauce soja"
+            ],
+            steps: [
+              "Rôtis chou-fleur et carotte 20 min à 200 °C.",
+              "Coupe le tempeh en tranches, dore-les 5 min puis déglace à la sauce soja.",
+              "Quinoa : 12 min, puis 5 min à couvert hors du feu.",
+              "Sauce : tahini + jus de citron + eau tiède jusqu'à consistance crémeuse."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Déjeuner",
+            n: "Pâtes aux champignons et aux noix",
+            temps: "25 min",
+            d: "Automne, pleine saison des champignons.",
+            kcal: 856,
+            p: 38,
+            g: 76,
+            l: 41,
+            ing: [
+              "100 g de pâtes complètes",
+              "250 g de champignons",
+              "25 g de noix",
+              "60 g de ricotta",
+              "20 g de parmesan",
+              "10 g de huile d'olive",
+              "50 g de oignon"
+            ],
+            steps: [
+              "Champignons à feu vif 6 min SANS sel au début, sinon ils rendent leur eau et bouillent.",
+              "Ajoute l'oignon et l'ail 3 min, sale maintenant.",
+              "Pâtes al dente, garde une louche d'eau de cuisson.",
+              "Hors du feu, ricotta et eau de cuisson pour lier, puis noix concassées et parmesan."
+            ],
+            saison: "automne"
+          },
+          {
+            t: "Déjeuner",
+            n: "Wrap houmous, falafels et crudités",
+            temps: "15 min",
+            d: "",
+            kcal: 721,
+            p: 23,
+            g: 88,
+            l: 30,
+            ing: [
+              "100 g de tortilla de blé",
+              "60 g de houmous",
+              "120 g de pois chiches cuits",
+              "80 g de concombre",
+              "80 g de tomate",
+              "10 g de huile d'olive"
+            ],
+            steps: [
+              "Écrase les pois chiches avec ail, cumin et persil, forme des galettes.",
+              "Poêle 4 min par face à feu moyen jusqu'à croûte dorée.",
+              "Tartine la tortilla de houmous, garnis et roule serré."
+            ],
+            saison: "ete"
+          }
+        ]
+      },
+      {
+        t: "Dîner",
+        options: [
+          {
+            t: "Dîner",
+            n: "Sauté de tofu et nouilles soba",
+            temps: "20 min",
+            d: "",
+            kcal: 752,
+            p: 46,
+            g: 74,
+            l: 31,
+            ing: [
+              "150 g de tofu ferme",
+              "80 g de nouilles soba",
+              "200 g de brocoli",
+              "100 g de poivron",
+              "25 g de sauce soja",
+              "10 g de graines de sésame",
+              "10 g de huile neutre"
+            ],
+            steps: [
+              "Marine le tofu 10 min dans sauce soja, vinaigre de riz, ail et gingembre râpés.",
+              "Cuis les soba 4-5 min puis rince à l'eau froide, sinon elles collent en refroidissant.",
+              "Égoutte le tofu (garde la marinade), dore 5 min à feu vif.",
+              "Brocoli et poivron 4 min à feu vif : ils doivent rester croquants.",
+              "Verse la marinade, réduis 1 min, ajoute les nouilles."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Dîner",
+            n: "Poêlée de chou kale, patate douce et tofu",
+            temps: "30 min",
+            d: "Automne. Le massage du kale change complètement sa texture.",
+            kcal: 798,
+            p: 39,
+            g: 80,
+            l: 36,
+            ing: [
+              "150 g de chou kale",
+              "300 g de patate douce",
+              "150 g de tofu ferme",
+              "25 g de noix de cajou",
+              "20 g de sauce soja",
+              "10 g de huile neutre"
+            ],
+            steps: [
+              "Patate douce en cubes, 20 min au four à 200 °C.",
+              "Tofu pressé puis doré à feu vif 6 min, déglacé à la sauce soja.",
+              "Masse le kale 30 secondes avec un filet d'huile : ça brise les fibres et le rend tendre.",
+              "Saute le kale 3 min, mélange le tout, cajous concassés."
+            ],
+            saison: "automne"
+          },
+          {
+            t: "Dîner",
+            n: "Risotto de quinoa aux champignons",
+            temps: "30 min",
+            d: "",
+            kcal: 613,
+            p: 33,
+            g: 58,
+            l: 25,
+            ing: [
+              "80 g de quinoa",
+              "250 g de champignons",
+              "70 g de oignon",
+              "30 g de parmesan",
+              "10 g de huile d'olive",
+              "100 g de épinards"
+            ],
+            steps: [
+              "Dore les champignons à feu vif 6 min SANS sel au début, sinon ils rendent leur eau et bouillent.",
+              "Fais suer l'oignon, ajoute le quinoa et remue 2 min.",
+              "Bouillon chaud louche par louche, 15 min.",
+              "Épinards en fin de cuisson, parmesan hors du feu."
+            ],
+            saison: "toute"
+          }
+        ]
+      }
+    ]
   },
-
-  longue: {
+  "longue": {
     label: "Journée de sortie longue",
-    intro: "Charge glucidique nette la veille au soir et le matin, ravitaillement pendant, recharge dans les deux heures qui suivent. Ce n'est pas la journée pour creuser un déficit.",
-    protein: 122,
-    meals: [
-      { t: "La veille au soir", n: "Risotto d'orge aux champignons", p: 20, temps: "45 min",
-        d: "Riche en glucides et pauvre en fibres irritantes — l'orge passe mieux que le riz complet la veille d'une sortie.",
-        ing: ["90 g d'orge perlé", "250 g de champignons de Paris", "1 oignon", "1 gousse d'ail", "1 litre de bouillon de légumes chaud", "25 g de parmesan", "1 c. à soupe d'huile d'olive", "10 g de beurre", "persil"],
-        steps: ["Garde le bouillon frémissant sur un feu à côté : versé froid, il casse la cuisson à chaque louche.",
-                "Fais dorer les champignons émincés à feu vif 6 min, sans sel au début (il les ferait rendre leur eau). Réserve.",
-                "Fais suer l'oignon dans l'huile 5 min, ajoute l'ail puis l'orge, remue 2 min jusqu'à ce qu'il devienne translucide.",
-                "Verse une louche de bouillon, remue jusqu'à absorption, recommence — compte 30 à 35 min pour l'orge, plus long que le riz.",
-                "Remets les champignons en fin de cuisson.",
-                "Hors du feu, incorpore beurre et parmesan et laisse reposer 2 min à couvert : c'est ce qui donne le crémeux.",
-                "Persil ciselé au moment de servir."] },
-
-      { t: "2 à 3 h avant", n: "Porridge avoine-banane", p: 20, temps: "10 min",
-        d: "Évite le son d'avoine et les fruits secs le jour J : trop de fibres avant l'effort.",
-        ing: ["80 g de flocons d'avoine", "200 ml de lait (ou boisson végétale)", "100 ml d'eau", "1 banane bien mûre", "1 c. à soupe de miel", "15 g de beurre d'amande", "1 pincée de sel"],
-        steps: ["Porte lait, eau et sel à frémissement.",
-                "Verse les flocons, baisse le feu, remue 5 min jusqu'à épaississement.",
-                "Écrase la moitié de la banane dans le porridge : elle sucre et lie sans ajouter de fibres dures.",
-                "Hors du feu, ajoute miel et beurre d'amande.",
-                "Décore avec le reste de banane en rondelles."] },
-
-      { t: "Pendant la sortie", n: "Ravitaillement — voir le calculateur", p: 0, temps: "",
-        d: "Teste ici exactement ce que tu prévois pour la course.",
-        ing: ["boisson d'effort selon le calculateur", "gels ou purées de fruits", "au-delà de 2 h : du salé (petits sandwichs, olives, chips)"],
-        steps: ["Commence à t'alimenter dès la 40e minute, avant d'avoir faim.",
-                "Puis toutes les 20 à 25 minutes, par petites quantités.",
-                "Bois régulièrement plutôt qu'en grandes gorgées espacées."] },
-
-      { t: "Dans les 30 min", n: "Boisson de récupération", p: 18, temps: "2 min",
-        d: "Le rapport glucides/protéines du lait chocolaté est proche de l'idéal pour relancer le glycogène.",
-        ing: ["400 ml de lait (ou boisson de soja)", "2 c. à café de cacao non sucré", "1 c. à soupe de sucre ou de miel", "1 banane"],
-        steps: ["Mixe ou secoue énergiquement le lait, le cacao et le sucre.",
-                "Bois-le avec la banane, sans attendre le repas."] },
-
-      { t: "Repas suivant", n: "Dahl de lentilles corail et riz basmati", p: 29, temps: "30 min",
-        d: "",
-        ing: ["80 g de lentilles corail", "80 g de riz basmati", "200 g de tomates concassées", "150 ml de lait de coco léger", "1 oignon", "2 gousses d'ail", "2 cm de gingembre", "1 c. à café de cumin, 1 de curcuma, 1/2 de coriandre moulue", "100 g de yaourt nature", "coriandre fraîche", "1/2 citron"],
-        steps: ["Rince les lentilles corail à l'eau claire jusqu'à ce qu'elle sorte limpide.",
-                "Fais suer l'oignon 5 min, ajoute ail et gingembre râpés, puis les épices 30 secondes.",
-                "Ajoute lentilles, tomates, lait de coco et 200 ml d'eau.",
-                "Laisse mijoter 20 min à découvert, en remuant de temps en temps — les lentilles doivent se défaire complètement.",
-                "Cuis le riz basmati en parallèle : 11 min dans 1,5 fois son volume, puis 5 min hors du feu à couvert.",
-                "Sers le dahl sur le riz, avec le yaourt, la coriandre et un trait de citron."] },
-
-      { t: "Dîner", n: "Frittata pommes de terre-épinards", p: 34, temps: "30 min",
-        d: "Se mange aussi froide le lendemain.",
-        ing: ["4 œufs", "300 g de pommes de terre", "150 g d'épinards frais", "1 oignon", "30 g de comté râpé", "2 c. à soupe d'huile d'olive", "sel, poivre, muscade"],
-        steps: ["Coupe les pommes de terre en rondelles de 5 mm et fais-les cuire 10 min à la poêle à couvert, feu moyen, avec l'huile.",
-                "Ajoute l'oignon émincé, poursuis 5 min à découvert pour colorer.",
-                "Ajoute les épinards, ils fondent en 2 min. Assaisonne avec sel, poivre et muscade.",
-                "Bats les œufs avec le comté, verse dans la poêle et répartis uniformément.",
-                "Cuis 8 min à feu doux, à couvert : le dessous prend pendant que le dessus reste moelleux.",
-                "Termine 2 min sous le gril du four pour dorer, ou retourne la frittata à l'aide d'une assiette."] },
-    ],
+    intro: "Charge glucidique la veille au soir et le matin, ravitaillement pendant, recharge dans les deux heures. Ce n'est pas la journée pour creuser un déficit.",
     tip: "Resale davantage tes repas ce jour-là : sur une sortie longue tu perds facilement 1 à 2 g de sodium.",
-  },
+    slots: [
+      {
+        t: "La veille au soir",
+        options: [
+          {
+            t: "La veille au soir",
+            n: "Risotto d'orge aux champignons",
+            temps: "45 min",
+            d: "Riche en glucides, pauvre en fibres irritantes.",
+            kcal: 665,
+            p: 26,
+            g: 72,
+            l: 28,
+            ing: [
+              "90 g de orge perlé",
+              "250 g de champignons",
+              "70 g de oignon",
+              "25 g de parmesan",
+              "10 g de huile d'olive",
+              "10 g de beurre"
+            ],
+            steps: [
+              "Garde le bouillon frémissant à côté : versé froid, il casse la cuisson à chaque louche.",
+              "Dore les champignons à feu vif 6 min sans sel au début. Réserve.",
+              "Fais suer l'oignon, ajoute l'orge, remue 2 min jusqu'à ce qu'il devienne translucide.",
+              "Bouillon louche par louche, 30-35 min — plus long que le riz.",
+              "Hors du feu, beurre et parmesan, repos 2 min à couvert : c'est ce qui donne le crémeux."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "La veille au soir",
+            n: "Risotto d'orge au potimarron",
+            temps: "45 min",
+            d: "Automne. Riche en glucides et doux pour l'estomac la veille d'une sortie.",
+            kcal: 723,
+            p: 22,
+            g: 92,
+            l: 28,
+            ing: [
+              "90 g de orge perlé",
+              "250 g de potimarron",
+              "70 g de oignon",
+              "25 g de parmesan",
+              "10 g de huile d'olive",
+              "10 g de beurre"
+            ],
+            steps: [
+              "Bouillon frémissant à côté, sinon il casse la cuisson à chaque louche.",
+              "Fais suer l'oignon, ajoute l'orge, remue 2 min.",
+              "Ajoute le potimarron en petits dés dès le début : il fond et colore le risotto.",
+              "Bouillon louche par louche, 30-35 min.",
+              "Hors du feu, beurre et parmesan, 2 min à couvert."
+            ],
+            saison: "automne"
+          },
+          {
+            t: "La veille au soir",
+            n: "Gnocchis à la crème de courge et sauge",
+            temps: "25 min",
+            d: "",
+            kcal: 698,
+            p: 23,
+            g: 96,
+            l: 23,
+            ing: [
+              "300 g de pommes de terre",
+              "60 g de semoule",
+              "100 g de lait de coco léger",
+              "25 g de parmesan",
+              "10 g de beurre"
+            ],
+            steps: [
+              "Cuis les pommes de terre à l'eau 20 min, écrase-les encore chaudes.",
+              "Incorpore la semoule et un œuf, forme un boudin puis coupe des tronçons de 2 cm.",
+              "Pochage : 2 min dans l'eau frémissante, ils remontent quand ils sont prêts.",
+              "Poêle avec beurre et sauge, nappe de crème de courge."
+            ],
+            saison: "toute"
+          }
+        ]
+      },
+      {
+        t: "2 à 3 h avant",
+        options: [
+          {
+            t: "2 à 3 h avant",
+            n: "Porridge avoine-banane",
+            temps: "10 min",
+            d: "Évite le son d'avoine et les fruits secs le jour J : trop de fibres.",
+            kcal: 641,
+            p: 21,
+            g: 99,
+            l: 17,
+            ing: [
+              "80 g de flocons d'avoine",
+              "200 g de lait demi-écrémé",
+              "120 g de banane",
+              "15 g de miel",
+              "15 g de beurre d'amande"
+            ],
+            steps: [
+              "Porte lait, eau et une pincée de sel à frémissement.",
+              "Verse les flocons, feu doux, 5 min en remuant.",
+              "Écrase la moitié de la banane dedans : elle sucre et lie sans fibres dures.",
+              "Hors du feu, miel et beurre d'amande."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "2 à 3 h avant",
+            n: "Riz au lait à la cannelle",
+            temps: "20 min",
+            d: "",
+            kcal: 552,
+            p: 16,
+            g: 112,
+            l: 5,
+            ing: [
+              "70 g de riz basmati",
+              "300 g de lait demi-écrémé",
+              "20 g de sucre",
+              "100 g de banane"
+            ],
+            steps: [
+              "Cuis le riz dans le lait à feu très doux, 18 min en remuant régulièrement.",
+              "Sucre et cannelle en fin de cuisson.",
+              "Très digeste, idéal si tu supportes mal le porridge."
+            ],
+            saison: "toute"
+          }
+        ]
+      },
+      {
+        t: "Pendant la sortie",
+        options: [
+          {
+            t: "Pendant",
+            n: "Ravitaillement — voir le calculateur",
+            temps: "",
+            d: "Teste ici exactement ce que tu prévois pour la course.",
+            kcal: 0,
+            p: 0,
+            g: 0,
+            l: 0,
+            ing: [
+              "boisson d'effort selon le calculateur",
+              "gels ou purées",
+              "au-delà de 2 h : du salé"
+            ],
+            steps: [
+              "Commence dès la 40e minute, avant d'avoir faim.",
+              "Puis toutes les 20 à 25 minutes, par petites quantités.",
+              "Bois régulièrement plutôt qu'en grandes gorgées espacées."
+            ],
+            saison: "toute"
+          }
+        ]
+      },
+      {
+        t: "Dans les 30 min",
+        options: [
+          {
+            t: "Dans les 30 min",
+            n: "Lait chocolaté maison",
+            temps: "2 min",
+            d: "Le rapport glucides/protéines du lait chocolaté est proche de l'idéal pour relancer le glycogène.",
+            kcal: 386,
+            p: 16,
+            g: 63,
+            l: 8,
+            ing: [
+              "400 g de lait demi-écrémé",
+              "10 g de cacao non sucré",
+              "15 g de sucre",
+              "120 g de banane"
+            ],
+            steps: [
+              "Mixe ou secoue énergiquement lait, cacao et sucre.",
+              "Bois avec la banane, sans attendre le repas."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Dans les 30 min",
+            n: "Smoothie soja-fruits rouges",
+            temps: "3 min",
+            d: "",
+            kcal: 360,
+            p: 14,
+            g: 56,
+            l: 8,
+            ing: [
+              "350 g de boisson de soja",
+              "150 g de fruits rouges",
+              "100 g de banane",
+              "15 g de miel"
+            ],
+            steps: [
+              "Mixe le tout.",
+              "Version sans lactose, à la même efficacité de récupération."
+            ],
+            saison: "toute"
+          }
+        ]
+      },
+      {
+        t: "Repas suivant",
+        options: [
+          {
+            t: "Repas suivant",
+            n: "Dahl de lentilles corail et riz basmati",
+            temps: "30 min",
+            d: "",
+            kcal: 824,
+            p: 33,
+            g: 131,
+            l: 16,
+            ing: [
+              "80 g de lentilles corail",
+              "80 g de riz basmati",
+              "200 g de tomates concassées",
+              "150 g de lait de coco léger",
+              "70 g de oignon",
+              "100 g de yaourt nature"
+            ],
+            steps: [
+              "Rince les lentilles jusqu'à ce que l'eau sorte limpide.",
+              "Oignon 5 min, ail et gingembre râpés, puis épices 30 s.",
+              "Lentilles, tomates, lait de coco et 200 ml d'eau.",
+              "20 min à découvert : les lentilles doivent se défaire complètement.",
+              "Riz basmati : 11 min puis 5 min hors du feu à couvert.",
+              "Yaourt, coriandre et un trait de citron."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Repas suivant",
+            n: "Velouté de potimarron et lentilles corail",
+            temps: "30 min",
+            d: "Automne. Le velouté seul manque de protéines : les lentilles corail règlent ça.",
+            kcal: 761,
+            p: 34,
+            g: 111,
+            l: 18,
+            ing: [
+              "400 g de potimarron",
+              "70 g de lentilles corail",
+              "70 g de oignon",
+              "100 g de lait de coco léger",
+              "60 g de pain complet",
+              "15 g de graines de courge"
+            ],
+            steps: [
+              "Potimarron en cubes avec l'oignon, couvre de bouillon.",
+              "Ajoute les lentilles corail rincées : elles épaississent et apportent les protéines.",
+              "20 min à couvert, puis mixe avec le lait de coco.",
+              "Croûtons dorés et graines de courge par-dessus."
+            ],
+            saison: "automne"
+          },
+          {
+            t: "Repas suivant",
+            n: "Couscous de légumes aux pois chiches",
+            temps: "30 min",
+            d: "",
+            kcal: 756,
+            p: 27,
+            g: 115,
+            l: 21,
+            ing: [
+              "90 g de semoule",
+              "150 g de pois chiches cuits",
+              "120 g de carotte",
+              "120 g de courgette",
+              "70 g de oignon",
+              "15 g de huile d'olive"
+            ],
+            steps: [
+              "Fais mijoter les légumes 20 min avec ras el-hanout et bouillon.",
+              "Semoule : volume égal d'eau bouillante, couvre 5 min, égrène à la fourchette avec un filet d'huile.",
+              "Sers le bouillon généreusement sur la semoule."
+            ],
+            saison: "toute"
+          }
+        ]
+      },
+      {
+        t: "Dîner",
+        options: [
+          {
+            t: "Dîner",
+            n: "Frittata pommes de terre-épinards",
+            temps: "30 min",
+            d: "Se mange aussi froide le lendemain.",
+            kcal: 942,
+            p: 50,
+            g: 62,
+            l: 54,
+            ing: [
+              "240 g de œuf",
+              "300 g de pommes de terre",
+              "150 g de épinards",
+              "70 g de oignon",
+              "30 g de comté",
+              "20 g de huile d'olive"
+            ],
+            steps: [
+              "Rondelles de 5 mm, 10 min à la poêle à couvert, feu moyen.",
+              "Oignon émincé, 5 min à découvert pour colorer.",
+              "Épinards 2 min, sel, poivre, muscade.",
+              "Bats les œufs avec le comté, verse et répartis.",
+              "8 min à feu doux à couvert : le dessous prend, le dessus reste moelleux.",
+              "2 min sous le gril, ou retourne à l'aide d'une assiette."
+            ],
+            saison: "toute"
+          },
+          {
+            t: "Dîner",
+            n: "Frittata poireaux-pommes de terre",
+            temps: "30 min",
+            d: "Automne. Le poireau fondu apporte une douceur que l'oignon n'a pas.",
+            kcal: 862,
+            p: 46,
+            g: 56,
+            l: 49,
+            ing: [
+              "240 g de œuf",
+              "200 g de poireau",
+              "250 g de pommes de terre",
+              "30 g de comté",
+              "15 g de huile d'olive"
+            ],
+            steps: [
+              "Lave bien les poireaux fendus en deux : la terre se loge entre les feuilles.",
+              "Émince-les et fais-les fondre 10 min à feu doux avec les pommes de terre en rondelles.",
+              "Bats les œufs avec le comté, verse et répartis.",
+              "8 min à feu doux à couvert, puis 2 min sous le gril."
+            ],
+            saison: "automne"
+          },
+          {
+            t: "Dîner",
+            n: "Soupe épaisse de pois cassés et croûtons",
+            temps: "40 min",
+            d: "",
+            kcal: 805,
+            p: 38,
+            g: 96,
+            l: 27,
+            ing: [
+              "100 g de pois cassés",
+              "120 g de carotte",
+              "70 g de oignon",
+              "60 g de pain complet",
+              "15 g de huile d'olive",
+              "25 g de comté"
+            ],
+            steps: [
+              "Fais suer oignon et carotte 5 min.",
+              "Ajoute les pois cassés rincés et 800 ml de bouillon.",
+              "35 min à couvert, jusqu'à ce que les pois se défassent.",
+              "Mixe grossièrement, sers avec croûtons dorés et fromage râpé."
+            ],
+            saison: "toute"
+          }
+        ]
+      }
+    ]
+  }
 };
+
+// Saison courante d'après le mois. Le bloc d'entraînement traverse
+// la fin d'été puis l'automne, les recettes suivent.
+function currentSeason(d = new Date()) {
+  const m = d.getMonth() + 1;
+  if (m >= 4 && m <= 9) return "ete";
+  return "automne";
+}
+const SEASON_LABEL = { ete: "Été", automne: "Automne", toute: "Toutes saisons" };
+
+// Options d'un repas retenues pour la saison ; jamais vide (repli sur tout)
+function slotOptions(slot, season) {
+  if (season === "toute") return slot.options;
+  const filtered = slot.options.filter(o => o.saison === season || o.saison === "toute");
+  const list = filtered.length ? filtered : slot.options;
+  // les recettes propres à la saison passent devant les recettes permanentes
+  return [...list].sort((a, b) => (a.saison === season ? 0 : 1) - (b.saison === season ? 0 : 1));
+}
 
 // Jours conseillés pour répartir les séances de la semaine. Les séances
 // n'ont pas de date imposée : cette répartition sert uniquement à construire
@@ -1465,16 +2441,21 @@ function WeekMenu({ sessions, goal }) {
                   </span>
                 </div>
                 <p className="text-xs mt-0.5" style={{ color: "#9CAA9E" }}>
-                  {menu.meals.filter(m => m.p > 0).map(m => m.n).join(" · ")}
+                  {menu.slots.map(sl => slotOptions(sl, currentSeason())[0].n).filter(Boolean).join(" · ")}
                 </p>
                 <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
-                  menu {mt === "repos" ? "repos" : mt === "longue" ? "sortie longue" : "séance"} · ~{menu.protein} g protéines
+                  menu {mt === "repos" ? "repos" : mt === "longue" ? "sortie longue" : "séance"} · {dayTotals(menu, [], currentSeason()).kcal} kcal · {dayTotals(menu, [], currentSeason()).p} g prot.
                 </p>
               </button>
 
               {openDay === i && (
                 <div className="mt-2 space-y-2.5">
-                  {menu.meals.map((m, j) => <RecipeCard key={j} m={m} />)}
+                  {menu.slots.map((sl, j) => (
+                    <div key={j}>
+                      <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>{sl.t}</p>
+                      <RecipeCard m={slotOptions(sl, currentSeason())[0]} />
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -1492,27 +2473,37 @@ function WeekMenu({ sessions, goal }) {
   );
 }
 
+function MacroBadges({ m }) {
+  if (!m.kcal) return null;
+  return (
+    <div className="flex gap-2 mt-1 flex-wrap">
+      {[["kcal", m.kcal, "#EDE7D9"], ["P", m.p + " g", "#C1622B"],
+        ["G", m.g + " g", "#7A8B5E"], ["L", m.l + " g", "#5C7A99"]].map(([k, v, c]) => (
+        <span key={k} className="text-xs px-1.5 py-0.5 rounded"
+          style={{ background: "#1C2B24", color: c, fontFamily: "'JetBrains Mono', monospace" }}>
+          {k === "kcal" ? v + " kcal" : `${k} ${v}`}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function RecipeCard({ m }) {
   const [open, setOpen] = useState(false);
   const hasRecipe = m.ing && m.ing.length > 0;
 
   return (
     <div className="pl-2" style={{ borderLeft: "2px solid #2C3A32" }}>
-      <div className="flex justify-between items-baseline">
-        <span className="text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>{m.t}</span>
-        <span className="text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-          {m.temps && <span style={{ color: "#5A6259" }}>{m.temps} </span>}
-          {m.p > 0 && <span style={{ color: "#C1622B" }}>{m.p} g prot.</span>}
-        </span>
-      </div>
-
       <button onClick={() => hasRecipe && setOpen(v => !v)} className="text-left w-full">
-        <p className="text-sm" style={{ color: "#EDE7D9" }}>
-          {m.n}
-          {hasRecipe && <span style={{ color: "#5A6259" }}> {open ? "▾" : "▸"}</span>}
-        </p>
+        <div className="flex justify-between items-baseline">
+          <span className="text-sm" style={{ color: "#EDE7D9" }}>
+            {m.n}{hasRecipe && <span style={{ color: "#5A6259" }}> {open ? "▾" : "▸"}</span>}
+          </span>
+          {m.temps && <span className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>{m.temps}</span>}
+        </div>
+        <MacroBadges m={m} />
       </button>
-      {m.d && <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>{m.d}</p>}
+      {m.d && <p className="text-xs leading-relaxed mt-1" style={{ color: "#9CAA9E" }}>{m.d}</p>}
 
       {open && hasRecipe && (
         <div className="mt-2 mb-1 rounded-lg p-3 space-y-3" style={{ background: "#1C2B24" }}>
@@ -1521,12 +2512,9 @@ function RecipeCard({ m }) {
               Ingrédients · 1 personne
             </p>
             <ul className="space-y-0.5">
-              {m.ing.map((x, i) => (
-                <li key={i} className="text-sm" style={{ color: "#EDE7D9" }}>· {x}</li>
-              ))}
+              {m.ing.map((x, i) => <li key={i} className="text-sm" style={{ color: "#EDE7D9" }}>· {x}</li>)}
             </ul>
           </div>
-
           <div>
             <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
               Préparation
@@ -1540,11 +2528,7 @@ function RecipeCard({ m }) {
               ))}
             </ol>
           </div>
-
-          {m.note && (
-            <p className="text-xs leading-relaxed" style={{ color: "#B0863C" }}>{m.note}</p>
-          )}
-
+          {m.note && <p className="text-xs leading-relaxed" style={{ color: "#B0863C" }}>{m.note}</p>}
           <button onClick={() => setOpen(false)} className="w-full rounded-lg py-1.5 text-xs" style={{ background: "#22302A", color: "#7A8B5E" }}>
             Replier
           </button>
@@ -1554,10 +2538,53 @@ function RecipeCard({ m }) {
   );
 }
 
+// Un repas = plusieurs recettes possibles, navigables
+function MealSlot({ slot, index, onCycle, season }) {
+  const opts = slotOptions(slot, season);
+  const n = opts.length;
+  const m = opts[index % n];
+  return (
+    <div>
+      <div className="flex items-baseline justify-between">
+        <span className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          {slot.t}
+        </span>
+        {n > 1 && (
+          <div className="flex items-center gap-1">
+            <button onClick={() => onCycle(-1)} className="text-xs px-1.5 rounded" style={{ background: "#1C2B24", color: "#9CAA9E" }}>‹</button>
+            <span className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>{(index % n) + 1}/{n}</span>
+            <button onClick={() => onCycle(1)} className="text-xs px-1.5 rounded" style={{ background: "#1C2B24", color: "#9CAA9E" }}>›</button>
+          </div>
+        )}
+      </div>
+      <RecipeCard m={m} />
+    </div>
+  );
+}
+
+function dayTotals(day, picks, season) {
+  return day.slots.reduce((a, slot, i) => {
+    const opts = slotOptions(slot, season || "toute");
+    const m = opts[(picks[i] || 0) % opts.length];
+    return { kcal: a.kcal + m.kcal, p: a.p + m.p, g: a.g + m.g, l: a.l + m.l };
+  }, { kcal: 0, p: 0, g: 0, l: 0 });
+}
+
 function MealIdeas({ proteinTarget }) {
   const [day, setDay] = useState("seance");
+  const [picks, setPicks] = useState({});
+  const [season, setSeason] = useState(currentSeason());
   const d = MEAL_DAYS[day];
+  const dayPicks = picks[day] || [];
+  const tot = dayTotals(d, dayPicks, season);
   const card = { background: "#182420", border: "1px solid #2C3A32" };
+
+  const cycle = (i, dir) => setPicks(p => {
+    const cur = [...(p[day] || [])];
+    const n = slotOptions(d.slots[i], season).length;
+    cur[i] = ((cur[i] || 0) + dir + n * 10) % n;
+    return { ...p, [day]: cur };
+  });
 
   return (
     <div className="rounded-xl p-4 space-y-3" style={card}>
@@ -1567,8 +2594,7 @@ function MealIdeas({ proteinTarget }) {
 
       <div className="flex gap-1 rounded-lg p-1" style={{ background: "#1C2B24" }}>
         {Object.entries(MEAL_DAYS).map(([k]) => (
-          <button key={k} onClick={() => setDay(k)}
-            className="flex-1 py-1.5 rounded-md text-xs"
+          <button key={k} onClick={() => setDay(k)} className="flex-1 py-1.5 rounded-md text-xs"
             style={{ background: day === k ? "#C1622B" : "transparent", color: day === k ? "#14201C" : "#9CAA9E" }}>
             {k === "repos" ? "Repos" : k === "seance" ? "Séance" : "Longue"}
           </button>
@@ -1576,18 +2602,48 @@ function MealIdeas({ proteinTarget }) {
       </div>
 
       <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>{d.intro}</p>
-      <p className="text-xs" style={{ color: "#5A6259" }}>Touche un plat pour voir quantités et préparation.</p>
 
-      <div className="space-y-2.5">
-        {d.meals.map((m, i) => <RecipeCard key={i} m={m} />)}
+      <div className="flex items-center gap-2">
+        <span className="text-xs" style={{ color: "#5A6259" }}>Saison</span>
+        <div className="flex gap-1 rounded-lg p-0.5 flex-1" style={{ background: "#1C2B24" }}>
+          {["ete", "automne", "toute"].map(k => (
+            <button key={k} onClick={() => { setSeason(k); setPicks(p => ({ ...p, [day]: [] })); }}
+              className="flex-1 py-1 rounded-md text-xs"
+              style={{ background: season === k ? "#7A8B5E" : "transparent", color: season === k ? "#14201C" : "#9CAA9E" }}>
+              {SEASON_LABEL[k]}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex justify-between text-sm pt-2" style={{ borderTop: "1px solid #2C3A32" }}>
-        <span style={{ color: "#9CAA9E" }}>Total protéines</span>
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>
-          ~{d.protein} g
-          {proteinTarget ? <span style={{ color: "#5A6259" }}> / cible {proteinTarget}</span> : null}
-        </span>
+      <p className="text-xs" style={{ color: "#5A6259" }}>
+        Les flèches font défiler les variantes de chaque repas · touche un plat pour la recette complète.
+      </p>
+
+      <div className="space-y-3">
+        {d.slots.map((slot, i) => (
+          <MealSlot key={i} slot={slot} index={dayPicks[i] || 0} onCycle={dir => cycle(i, dir)} season={season} />
+        ))}
+      </div>
+
+      <div className="pt-2 space-y-1" style={{ borderTop: "1px solid #2C3A32" }}>
+        <div className="flex justify-between text-sm">
+          <span style={{ color: "#9CAA9E" }}>Total de la journée</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{tot.kcal} kcal</span>
+        </div>
+        <div className="flex justify-between text-xs">
+          <span style={{ color: "#5A6259" }}>protéines / glucides / lipides</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+            <span style={{ color: "#C1622B" }}>{tot.p} g</span>
+            <span style={{ color: "#5A6259" }}> · </span>
+            <span style={{ color: "#7A8B5E" }}>{tot.g} g</span>
+            <span style={{ color: "#5A6259" }}> · </span>
+            <span style={{ color: "#5C7A99" }}>{tot.l} g</span>
+          </span>
+        </div>
+        {proteinTarget && (
+          <p className="text-xs" style={{ color: "#5A6259" }}>cible protéines : {proteinTarget}</p>
+        )}
       </div>
 
       <p className="text-xs leading-relaxed" style={{ color: "#5A6259" }}>{d.tip}</p>
