@@ -176,18 +176,18 @@ const CHARTS_OK = !!BarChart;
 // ======================================================================
 
 const TYPES = {
-  longue:     { label: "Sortie longue",         color: "var(--accent)" },
-  fractionne: { label: "Fractionné",            color: "var(--accent2)" },
-  cotes:      { label: "Côtes / renfo dénivelé",color: "var(--accent3)" },
-  seuil:      { label: "Seuil / allure course", color: "var(--accent2)" },
-  fonda:      { label: "Endurance fondamentale",color: "var(--green)" },
-  recup:      { label: "Récupération",          color: "var(--blue)" },
-  repos:      { label: "Repos",                 color: "var(--muted)" },
+  longue:     { label: "Sortie longue",         color: "#C1622B" },
+  fractionne: { label: "Fractionné",            color: "#D9793C" },
+  cotes:      { label: "Côtes / renfo dénivelé",color: "#B8562A" },
+  seuil:      { label: "Seuil / allure course", color: "#D9793C" },
+  fonda:      { label: "Endurance fondamentale",color: "#7A8B5E" },
+  recup:      { label: "Récupération",          color: "#5C7A99" },
+  repos:      { label: "Repos",                 color: "#5A6259" },
   // Activités complémentaires : comptées à part du volume course
-  renfo:      { label: "Renforcement",          color: "var(--cross1)", cross: true },
-  velo:       { label: "Vélo",                  color: "var(--cross2)", cross: true },
-  natation:   { label: "Natation",              color: "var(--cross3)", cross: true },
-  autre:      { label: "Autre sport",           color: "var(--cross4)", cross: true },
+  renfo:      { label: "Renforcement",          color: "#A8845C", cross: true },
+  velo:       { label: "Vélo",                  color: "#4F7A8C", cross: true },
+  natation:   { label: "Natation",              color: "#5C8C9E", cross: true },
+  autre:      { label: "Autre sport",           color: "#6E7A6B", cross: true },
 };
 
 // true si la séance ne compte pas dans le volume de course à pied
@@ -918,7 +918,7 @@ function GoalWizard({ initial, onSave }) {
   const [newFreq, setNewFreq] = useState(1);
 
   const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
-  const inputStyle = { background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)" };
+  const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
   const labelCls = "text-xs mb-1 block";
 
   const addSport = () => {
@@ -929,8 +929,8 @@ function GoalWizard({ initial, onSave }) {
   const canSave = raceDate && distanceKm && daysPerWeek && vma && startVolumeKm && (type === "route" || dPlus);
 
   return (
-    <div className="rounded-xl p-4 space-y-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-      <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+    <div className="rounded-xl p-4 space-y-4" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
         Objectif
       </p>
 
@@ -938,7 +938,7 @@ function GoalWizard({ initial, onSave }) {
         {["trail", "route"].map(t => (
           <button key={t} onClick={() => setType(t)}
             className="flex-1 py-2 rounded-lg text-sm"
-            style={{ background: type === t ? "var(--accent)" : "var(--surface2)", color: type === t ? "var(--bg)" : "var(--muted2)" }}>
+            style={{ background: type === t ? "#C1622B" : "#1C2B24", color: type === t ? "#14201C" : "#9CAA9E" }}>
             {t === "trail" ? "Trail" : "Route"}
           </button>
         ))}
@@ -946,29 +946,29 @@ function GoalWizard({ initial, onSave }) {
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className={labelCls} style={{ color: "var(--muted)" }}>Date de la course</label>
+          <label className={labelCls} style={{ color: "#5A6259" }}>Date de la course</label>
           <input type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className={labelCls} style={{ color: "var(--muted)" }}>Distance (km)</label>
+          <label className={labelCls} style={{ color: "#5A6259" }}>Distance (km)</label>
           <input type="number" value={distanceKm} onChange={e => setDistanceKm(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
         {type === "trail" && (
           <div>
-            <label className={labelCls} style={{ color: "var(--muted)" }}>D+ (m)</label>
+            <label className={labelCls} style={{ color: "#5A6259" }}>D+ (m)</label>
             <input type="number" value={dPlus} onChange={e => setDPlus(e.target.value)} className={inputCls} style={inputStyle} />
           </div>
         )}
         <div>
-          <label className={labelCls} style={{ color: "var(--muted)" }}>VMA (km/h)</label>
+          <label className={labelCls} style={{ color: "#5A6259" }}>VMA (km/h)</label>
           <input type="number" value={vma} onChange={e => setVma(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className={labelCls} style={{ color: "var(--muted)" }}>Volume actuel (km/semaine)</label>
+          <label className={labelCls} style={{ color: "#5A6259" }}>Volume actuel (km/semaine)</label>
           <input type="number" value={startVolumeKm} onChange={e => setStartVolumeKm(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className={labelCls} style={{ color: "var(--muted)" }}>Jours dispo/semaine</label>
+          <label className={labelCls} style={{ color: "#5A6259" }}>Jours dispo/semaine</label>
           <select value={daysPerWeek} onChange={e => setDaysPerWeek(Number(e.target.value))} className={inputCls} style={inputStyle}>
             {[2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} jours</option>)}
           </select>
@@ -976,19 +976,19 @@ function GoalWizard({ initial, onSave }) {
       </div>
 
       <div>
-        <label className={labelCls} style={{ color: "var(--muted)" }}>Autres sports pratiqués</label>
+        <label className={labelCls} style={{ color: "#5A6259" }}>Autres sports pratiqués</label>
         <div className="flex gap-2 mb-2">
           <select value={newSport} onChange={e => setNewSport(e.target.value)} className={inputCls} style={inputStyle}>
             {SPORT_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
           <input type="number" min="1" max="7" value={newFreq} onChange={e => setNewFreq(e.target.value)}
             className="w-20 rounded-lg px-2 py-2 text-sm" style={inputStyle} />
-          <button onClick={addSport} className="px-3 rounded-lg text-sm" style={{ background: "var(--border)", color: "var(--text)" }}>+</button>
+          <button onClick={addSport} className="px-3 rounded-lg text-sm" style={{ background: "#2C3A32", color: "#EDE7D9" }}>+</button>
         </div>
         {otherSports.map((s, i) => (
-          <div key={i} className="flex items-center justify-between text-sm py-1" style={{ color: "var(--muted2)" }}>
+          <div key={i} className="flex items-center justify-between text-sm py-1" style={{ color: "#9CAA9E" }}>
             <span>{s.name} · {s.freq}×/sem</span>
-            <button onClick={() => removeSport(i)} style={{ color: "var(--muted)" }}>✕</button>
+            <button onClick={() => removeSport(i)} style={{ color: "#5A6259" }}>✕</button>
           </div>
         ))}
       </div>
@@ -997,7 +997,7 @@ function GoalWizard({ initial, onSave }) {
         disabled={!canSave}
         onClick={() => onSave({ type, raceDate, distanceKm: Number(distanceKm), dPlus: Number(dPlus) || 0, daysPerWeek, vma: Number(vma), startVolumeKm: Number(startVolumeKm), otherSports })}
         className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
-        style={{ background: "var(--accent)", color: "var(--bg)" }}
+        style={{ background: "#C1622B", color: "#14201C" }}
       >
         Générer le plan
       </button>
@@ -1020,38 +1020,38 @@ function ElevationHero({ goal, progress, daysLeft }) {
     if (markerX >= x1 && markerX <= x2) { const t = x2 === x1 ? 0 : (markerX - x1) / (x2 - x1); markerY = y1 + (y2 - y1) * t; break; }
   }
   return (
-    <div className="relative w-full overflow-hidden rounded-2xl" style={{ background: "linear-gradient(180deg, var(--surface2) 0%, var(--bg) 100%)" }}>
+    <div className="relative w-full overflow-hidden rounded-2xl" style={{ background: "linear-gradient(180deg, #1C2B24 0%, #14201C 100%)" }}>
       <div className="px-6 pt-6 flex items-baseline justify-between">
         <div>
-          <p className="uppercase tracking-[0.2em] text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="uppercase tracking-[0.2em] text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
             {goal ? (goal.type === "trail" ? "Objectif trail" : "Objectif route") : "Aucun objectif"}
           </p>
-          <h1 className="text-2xl sm:text-3xl mt-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "var(--text)" }}>
+          <h1 className="text-2xl sm:text-3xl mt-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#EDE7D9" }}>
             {goal ? `${goal.distanceKm} km${goal.type === "trail" ? ` · ${goal.dPlus} m D+` : ""}` : "—"}
           </h1>
         </div>
         <div className="text-right">
-          <p className="uppercase tracking-[0.2em] text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>Départ</p>
-          <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{goal ? `${daysLeft} j` : "—"}</p>
+          <p className="uppercase tracking-[0.2em] text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Départ</p>
+          <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{goal ? `${daysLeft} j` : "—"}</p>
         </div>
       </div>
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-40 sm:h-48 mt-4">
         <defs>
           <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="var(--green)" stopOpacity="0.35" />
-            <stop offset="100%" stopColor="var(--green)" stopOpacity="0" />
+            <stop offset="0%" stopColor="#7A8B5E" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#7A8B5E" stopOpacity="0" />
           </linearGradient>
         </defs>
         <path d={areaPath} fill="url(#fillGrad)" />
-        <path d={path} fill="none" strokeWidth="0.6" vectorEffect="non-scaling-stroke" style={{ stroke: "var(--muted2)" }}/>
+        <path d={path} fill="none" stroke="#9CAA9E" strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
         {goal && (<>
-          <circle cx={markerX} cy={markerY} r="1.6" strokeWidth="0.8" vectorEffect="non-scaling-stroke" style={{ fill: "var(--text)", stroke: "var(--accent)" }}/>
-          <line x1={markerX} y1={markerY} x2={markerX} y2="100" strokeWidth="0.3" strokeDasharray="1,1" vectorEffect="non-scaling-stroke" style={{ stroke: "var(--accent)" }}/>
+          <circle cx={markerX} cy={markerY} r="1.6" fill="#EDE7D9" stroke="#C1622B" strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
+          <line x1={markerX} y1={markerY} x2={markerX} y2="100" stroke="#C1622B" strokeWidth="0.3" strokeDasharray="1,1" vectorEffect="non-scaling-stroke" />
         </>)}
       </svg>
-      <div className="px-6 pb-5 -mt-2 flex justify-between text-xs" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--muted)" }}>
+      <div className="px-6 pb-5 -mt-2 flex justify-between text-xs" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5A6259" }}>
         <span>Bloc en cours</span>
-        {goal && <span style={{ color: "var(--accent)" }}>vous êtes ici</span>}
+        {goal && <span style={{ color: "#C1622B" }}>vous êtes ici</span>}
         <span>{goal ? fmtDate(goal.raceDate) : ""}</span>
       </div>
     </div>
@@ -1078,7 +1078,7 @@ function Ring({ value, target, unit, label, color, format }) {
     <div className="flex flex-col items-center">
       <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
         {/* piste = objectif de la semaine */}
-        <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" strokeWidth={STROKE} style={{ stroke: "var(--border)" }}/>
+        <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="#2C3A32" strokeWidth={STROKE} />
         {/* arc = réalisé */}
         <circle
           cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none"
@@ -1091,16 +1091,16 @@ function Ring({ value, target, unit, label, color, format }) {
           <circle cx={SIZE / 2} cy={SIZE / 2} r={R - STROKE} fill="none" stroke={color} strokeWidth="1" opacity="0.5" />
         )}
         <text x={SIZE / 2} y={SIZE / 2 + 1} textAnchor="middle"
-          fontSize="15" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--text)" }}>
+          fontSize="15" fill="#EDE7D9" fontFamily="'JetBrains Mono', monospace">
           {fmt(value)}
         </text>
         <text x={SIZE / 2} y={SIZE / 2 + 12} textAnchor="middle"
-          fontSize="7.5" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--muted)" }}>
+          fontSize="7.5" fill="#5A6259" fontFamily="'JetBrains Mono', monospace">
           / {fmt(target)}
         </text>
       </svg>
-      <p className="text-xs mt-1" style={{ color: "var(--muted2)" }}>{label}</p>
-      <p className="text-xs" style={{ color: done ? color : "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+      <p className="text-xs mt-1" style={{ color: "#9CAA9E" }}>{label}</p>
+      <p className="text-xs" style={{ color: done ? color : "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
         {target > 0 ? `${Math.round(ratio * 100)}%` : "—"} {unit}
       </p>
     </div>
@@ -1131,20 +1131,20 @@ function WeekRings({ sessions }) {
   const hrs = v => (v >= 60 ? `${Math.floor(v / 60)}h${String(Math.round(v % 60)).padStart(2, "0")}` : `${Math.round(v)}′`);
 
   return (
-    <div className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+    <div className="rounded-xl p-4" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
       <div className="flex items-center justify-between mb-1 gap-2">
         <button onClick={() => setOffset(o => o - 1)} aria-label="Semaine précédente"
           className="px-2 py-1 rounded-lg text-sm shrink-0"
-          style={{ background: "var(--surface2)", color: "var(--muted2)" }}>‹</button>
+          style={{ background: "#1C2B24", color: "#9CAA9E" }}>‹</button>
 
         <button onClick={() => setOffset(0)} className="text-center flex-1 min-w-0" disabled={isCurrent}>
-          <p className="text-xs uppercase tracking-wider truncate" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="text-xs uppercase tracking-wider truncate" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
             {isCurrent ? "Semaine en cours"
               : offset === -1 ? "Semaine dernière"
               : offset === 1 ? "Semaine prochaine"
               : `Semaine du ${fmtDate(wk)}`}
           </p>
-          <p className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
             {isCurrent ? `${doneRun.length}/${planned.length} séances`
                        : `${fmtDate(wk)} — ${fmtDate(addDays(wk, 6))}`}
           </p>
@@ -1152,31 +1152,31 @@ function WeekRings({ sessions }) {
 
         <button onClick={() => setOffset(o => o + 1)} aria-label="Semaine suivante"
           className="px-2 py-1 rounded-lg text-sm shrink-0"
-          style={{ background: "var(--surface2)", color: "var(--muted2)" }}>›</button>
+          style={{ background: "#1C2B24", color: "#9CAA9E" }}>›</button>
       </div>
 
       {!isCurrent && (
-        <p className="text-xs text-center mb-2" style={{ color: "var(--muted)" }}>
+        <p className="text-xs text-center mb-2" style={{ color: "#5A6259" }}>
           {doneRun.length}/{planned.length} séances · touche le titre pour revenir à aujourd'hui
         </p>
       )}
 
       {!targetKm && !realKm && (
-        <p className="text-xs text-center py-4" style={{ color: "var(--muted)" }}>
+        <p className="text-xs text-center py-4" style={{ color: "#5A6259" }}>
           Aucune séance sur cette semaine.
         </p>
       )}
 
       {(targetKm > 0 || realKm > 0) && (
       <div className="grid grid-cols-3 gap-2">
-        <Ring value={realKm} target={targetKm} label="Distance" unit="km" color="var(--accent)" format={v => Math.round(v)} />
-        <Ring value={realD} target={targetD} label="Dénivelé" unit="m D+" color="var(--amber)" format={v => Math.round(v)} />
-        <Ring value={realMin} target={targetMin} label="Temps" unit="" color="var(--green)" format={hrs} />
+        <Ring value={realKm} target={targetKm} label="Distance" unit="km" color="#C1622B" format={v => Math.round(v)} />
+        <Ring value={realD} target={targetD} label="Dénivelé" unit="m D+" color="#B0863C" format={v => Math.round(v)} />
+        <Ring value={realMin} target={targetMin} label="Temps" unit="" color="#7A8B5E" format={hrs} />
       </div>
       )}
 
       {crossMin > 0 && (
-        <p className="text-xs mt-3 text-center" style={{ color: "var(--blue)" }}>
+        <p className="text-xs mt-3 text-center" style={{ color: "#5C7A99" }}>
           + {hrs(crossMin)} d'activité complémentaire (hors objectifs course)
         </p>
       )}
@@ -1310,10 +1310,10 @@ function raceWeightPlan({ current, target, raceDate }) {
   // au-delà de 0,7 % du poids par semaine, la masse musculaire et les
   // adaptations à l'entraînement commencent à en pâtir
   let verdict, verdictColor;
-  if (toLose <= 0) { verdict = "Objectif déjà atteint — passe en maintien."; verdictColor = "var(--green)"; }
-  else if (pctPerWeek <= 0.5) { verdict = "Rythme prudent, compatible avec le bloc d'entraînement."; verdictColor = "var(--green)"; }
-  else if (pctPerWeek <= 0.7) { verdict = "Rythme soutenu — surveille ta fraîcheur sur les séances de qualité."; verdictColor = "var(--amber)"; }
-  else { verdict = "Rythme trop rapide sur une prépa d'ultra : allonge le délai ou revois l'objectif à la hausse."; verdictColor = "var(--red)"; }
+  if (toLose <= 0) { verdict = "Objectif déjà atteint — passe en maintien."; verdictColor = "#7A8B5E"; }
+  else if (pctPerWeek <= 0.5) { verdict = "Rythme prudent, compatible avec le bloc d'entraînement."; verdictColor = "#7A8B5E"; }
+  else if (pctPerWeek <= 0.7) { verdict = "Rythme soutenu — surveille ta fraîcheur sur les séances de qualité."; verdictColor = "#B0863C"; }
+  else { verdict = "Rythme trop rapide sur une prépa d'ultra : allonge le délai ou revois l'objectif à la hausse."; verdictColor = "#C0522B"; }
 
   return {
     cur, tgt, toLose, daysToRace, deficitDays,
@@ -2494,22 +2494,22 @@ function WeekMenu({ sessions, goal }) {
   const byDay = {};
   weekSessions.forEach((s, i) => { if (offsets[i] !== undefined) byDay[offsets[i]] = s; });
 
-  const card = { background: "var(--surface)", border: "1px solid var(--border)" };
+  const card = { background: "#182420", border: "1px solid #2C3A32" };
   const longCount = weekSessions.filter(s => s.type === "longue").length;
   const restCount = 7 - Object.keys(byDay).length;
 
   return (
     <div className="rounded-xl p-4 space-y-3" style={card}>
       <div className="flex items-baseline justify-between">
-        <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+        <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
           Semaine type
         </p>
-        <p className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+        <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
           {weekSessions.length} séances · {restCount} jours sans course
         </p>
       </div>
 
-      <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+      <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
         Menus calés sur ton plan de la semaine en cours. Les séances n'ayant pas de jour
         imposé, cette répartition est une proposition — si tu décales une séance, décale
         le menu avec elle.
@@ -2520,23 +2520,23 @@ function WeekMenu({ sessions, goal }) {
           const s = byDay[i];
           const mt = menuTypeFor(s?.type);
           const menu = MEAL_DAYS[mt];
-          const color = s ? TYPES[s.type].color : "var(--muted)";
+          const color = s ? TYPES[s.type].color : "#5A6259";
 
           return (
             <div key={day} className="pl-2 py-1" style={{ borderLeft: `2px solid ${color}` }}>
               <button onClick={() => setOpenDay(openDay === i ? null : i)} className="text-left w-full">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-sm" style={{ color: "var(--text)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                    {day} <span style={{ color: "var(--muted)" }}>{openDay === i ? "▾" : "▸"}</span>
+                  <span className="text-sm" style={{ color: "#EDE7D9", fontFamily: "'Space Grotesk', sans-serif" }}>
+                    {day} <span style={{ color: "#5A6259" }}>{openDay === i ? "▾" : "▸"}</span>
                   </span>
                   <span className="text-xs" style={{ color, fontFamily: "'JetBrains Mono', monospace" }}>
                     {s ? `${TYPES[s.type].label}${s.distance ? ` · ${s.distance} km` : ""}` : "Repos"}
                   </span>
                 </div>
-                <p className="text-xs mt-0.5" style={{ color: "var(--muted2)" }}>
+                <p className="text-xs mt-0.5" style={{ color: "#9CAA9E" }}>
                   {menu.slots.map(sl => slotOptions(sl, currentSeason())[0].n).filter(Boolean).join(" · ")}
                 </p>
-                <p className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+                <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
                   menu {mt === "repos" ? "repos" : mt === "longue" ? "sortie longue" : "séance"} · {dayTotals(menu, [], currentSeason()).kcal} kcal · {dayTotals(menu, [], currentSeason()).p} g prot.
                 </p>
               </button>
@@ -2545,7 +2545,7 @@ function WeekMenu({ sessions, goal }) {
                 <div className="mt-2 space-y-2.5">
                   {menu.slots.map((sl, j) => (
                     <div key={j}>
-                      <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>{sl.t}</p>
+                      <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>{sl.t}</p>
                       <RecipeCard m={slotOptions(sl, currentSeason())[0]} />
                     </div>
                   ))}
@@ -2556,7 +2556,7 @@ function WeekMenu({ sessions, goal }) {
         })}
       </div>
 
-      <div className="pt-2 text-xs leading-relaxed" style={{ borderTop: "1px solid var(--border)", color: "var(--muted2)" }}>
+      <div className="pt-2 text-xs leading-relaxed" style={{ borderTop: "1px solid #2C3A32", color: "#9CAA9E" }}>
         {longCount > 0
           ? "La veille de ta sortie longue, applique le repas du soir du menu « sortie longue » — la charge glucidique se prépare la veille, pas le matin même."
           : "Pas de sortie longue cette semaine : c'est la semaine idéale pour tenir le déficit sans compromettre l'entraînement."}
@@ -2570,10 +2570,10 @@ function MacroBadges({ m }) {
   if (!m.kcal) return null;
   return (
     <div className="flex gap-2 mt-1 flex-wrap">
-      {[["kcal", m.kcal, "var(--text)"], ["P", m.p + " g", "var(--accent)"],
-        ["G", m.g + " g", "var(--green)"], ["L", m.l + " g", "var(--blue)"]].map(([k, v, c]) => (
+      {[["kcal", m.kcal, "#EDE7D9"], ["P", m.p + " g", "#C1622B"],
+        ["G", m.g + " g", "#7A8B5E"], ["L", m.l + " g", "#5C7A99"]].map(([k, v, c]) => (
         <span key={k} className="text-xs px-1.5 py-0.5 rounded"
-          style={{ background: "var(--surface2)", color: c, fontFamily: "'JetBrains Mono', monospace" }}>
+          style={{ background: "#1C2B24", color: c, fontFamily: "'JetBrains Mono', monospace" }}>
           {k === "kcal" ? v + " kcal" : `${k} ${v}`}
         </span>
       ))}
@@ -2586,43 +2586,43 @@ function RecipeCard({ m }) {
   const hasRecipe = m.ing && m.ing.length > 0;
 
   return (
-    <div className="pl-2" style={{ borderLeft: "2px solid var(--border)" }}>
+    <div className="pl-2" style={{ borderLeft: "2px solid #2C3A32" }}>
       <button onClick={() => hasRecipe && setOpen(v => !v)} className="text-left w-full">
         <div className="flex justify-between items-baseline">
-          <span className="text-sm" style={{ color: "var(--text)" }}>
-            {m.n}{hasRecipe && <span style={{ color: "var(--muted)" }}> {open ? "▾" : "▸"}</span>}
+          <span className="text-sm" style={{ color: "#EDE7D9" }}>
+            {m.n}{hasRecipe && <span style={{ color: "#5A6259" }}> {open ? "▾" : "▸"}</span>}
           </span>
-          {m.temps && <span className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>{m.temps}</span>}
+          {m.temps && <span className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>{m.temps}</span>}
         </div>
         <MacroBadges m={m} />
       </button>
-      {m.d && <p className="text-xs leading-relaxed mt-1" style={{ color: "var(--muted2)" }}>{m.d}</p>}
+      {m.d && <p className="text-xs leading-relaxed mt-1" style={{ color: "#9CAA9E" }}>{m.d}</p>}
 
       {open && hasRecipe && (
-        <div className="mt-2 mb-1 rounded-lg p-3 space-y-3" style={{ background: "var(--surface2)" }}>
+        <div className="mt-2 mb-1 rounded-lg p-3 space-y-3" style={{ background: "#1C2B24" }}>
           <div>
-            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
               Ingrédients · 1 personne
             </p>
             <ul className="space-y-0.5">
-              {m.ing.map((x, i) => <li key={i} className="text-sm" style={{ color: "var(--text)" }}>· {x}</li>)}
+              {m.ing.map((x, i) => <li key={i} className="text-sm" style={{ color: "#EDE7D9" }}>· {x}</li>)}
             </ul>
           </div>
           <div>
-            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
               Préparation
             </p>
             <ol className="space-y-1.5">
               {m.steps.map((x, i) => (
-                <li key={i} className="text-sm leading-relaxed flex gap-2" style={{ color: "var(--text)" }}>
-                  <span style={{ color: "var(--accent)", fontFamily: "'JetBrains Mono', monospace" }}>{i + 1}.</span>
+                <li key={i} className="text-sm leading-relaxed flex gap-2" style={{ color: "#EDE7D9" }}>
+                  <span style={{ color: "#C1622B", fontFamily: "'JetBrains Mono', monospace" }}>{i + 1}.</span>
                   <span>{x}</span>
                 </li>
               ))}
             </ol>
           </div>
-          {m.note && <p className="text-xs leading-relaxed" style={{ color: "var(--amber)" }}>{m.note}</p>}
-          <button onClick={() => setOpen(false)} className="w-full rounded-lg py-1.5 text-xs" style={{ background: "var(--surface3)", color: "var(--green)" }}>
+          {m.note && <p className="text-xs leading-relaxed" style={{ color: "#B0863C" }}>{m.note}</p>}
+          <button onClick={() => setOpen(false)} className="w-full rounded-lg py-1.5 text-xs" style={{ background: "#22302A", color: "#7A8B5E" }}>
             Replier
           </button>
         </div>
@@ -2639,14 +2639,14 @@ function MealSlot({ slot, index, onCycle, season }) {
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <span className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+        <span className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
           {slot.t}
         </span>
         {n > 1 && (
           <div className="flex items-center gap-1">
-            <button onClick={() => onCycle(-1)} className="text-xs px-1.5 rounded" style={{ background: "var(--surface2)", color: "var(--muted2)" }}>‹</button>
-            <span className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>{(index % n) + 1}/{n}</span>
-            <button onClick={() => onCycle(1)} className="text-xs px-1.5 rounded" style={{ background: "var(--surface2)", color: "var(--muted2)" }}>›</button>
+            <button onClick={() => onCycle(-1)} className="text-xs px-1.5 rounded" style={{ background: "#1C2B24", color: "#9CAA9E" }}>‹</button>
+            <span className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>{(index % n) + 1}/{n}</span>
+            <button onClick={() => onCycle(1)} className="text-xs px-1.5 rounded" style={{ background: "#1C2B24", color: "#9CAA9E" }}>›</button>
           </div>
         )}
       </div>
@@ -2670,7 +2670,7 @@ function MealIdeas({ proteinTarget }) {
   const d = MEAL_DAYS[day];
   const dayPicks = picks[day] || [];
   const tot = dayTotals(d, dayPicks, season);
-  const card = { background: "var(--surface)", border: "1px solid var(--border)" };
+  const card = { background: "#182420", border: "1px solid #2C3A32" };
 
   const cycle = (i, dir) => setPicks(p => {
     const cur = [...(p[day] || [])];
@@ -2681,35 +2681,35 @@ function MealIdeas({ proteinTarget }) {
 
   return (
     <div className="rounded-xl p-4 space-y-3" style={card}>
-      <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
         Idées de repas
       </p>
 
-      <div className="flex gap-1 rounded-lg p-1" style={{ background: "var(--surface2)" }}>
+      <div className="flex gap-1 rounded-lg p-1" style={{ background: "#1C2B24" }}>
         {Object.entries(MEAL_DAYS).map(([k]) => (
           <button key={k} onClick={() => setDay(k)} className="flex-1 py-1.5 rounded-md text-xs"
-            style={{ background: day === k ? "var(--accent)" : "transparent", color: day === k ? "var(--bg)" : "var(--muted2)" }}>
+            style={{ background: day === k ? "#C1622B" : "transparent", color: day === k ? "#14201C" : "#9CAA9E" }}>
             {k === "repos" ? "Repos" : k === "seance" ? "Séance" : "Longue"}
           </button>
         ))}
       </div>
 
-      <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>{d.intro}</p>
+      <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>{d.intro}</p>
 
       <div className="flex items-center gap-2">
-        <span className="text-xs" style={{ color: "var(--muted)" }}>Saison</span>
-        <div className="flex gap-1 rounded-lg p-0.5 flex-1" style={{ background: "var(--surface2)" }}>
+        <span className="text-xs" style={{ color: "#5A6259" }}>Saison</span>
+        <div className="flex gap-1 rounded-lg p-0.5 flex-1" style={{ background: "#1C2B24" }}>
           {["ete", "automne", "toute"].map(k => (
             <button key={k} onClick={() => { setSeason(k); setPicks(p => ({ ...p, [day]: [] })); }}
               className="flex-1 py-1 rounded-md text-xs"
-              style={{ background: season === k ? "var(--green)" : "transparent", color: season === k ? "var(--bg)" : "var(--muted2)" }}>
+              style={{ background: season === k ? "#7A8B5E" : "transparent", color: season === k ? "#14201C" : "#9CAA9E" }}>
               {SEASON_LABEL[k]}
             </button>
           ))}
         </div>
       </div>
 
-      <p className="text-xs" style={{ color: "var(--muted)" }}>
+      <p className="text-xs" style={{ color: "#5A6259" }}>
         Les flèches font défiler les variantes de chaque repas · touche un plat pour la recette complète.
       </p>
 
@@ -2719,71 +2719,71 @@ function MealIdeas({ proteinTarget }) {
         ))}
       </div>
 
-      <div className="pt-2 space-y-1" style={{ borderTop: "1px solid var(--border)" }}>
+      <div className="pt-2 space-y-1" style={{ borderTop: "1px solid #2C3A32" }}>
         <div className="flex justify-between text-sm">
-          <span style={{ color: "var(--muted2)" }}>Total de la journée</span>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{tot.kcal} kcal</span>
+          <span style={{ color: "#9CAA9E" }}>Total de la journée</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{tot.kcal} kcal</span>
         </div>
         <div className="flex justify-between text-xs">
-          <span style={{ color: "var(--muted)" }}>protéines / glucides / lipides</span>
+          <span style={{ color: "#5A6259" }}>protéines / glucides / lipides</span>
           <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-            <span style={{ color: "var(--accent)" }}>{tot.p} g</span>
-            <span style={{ color: "var(--muted)" }}> · </span>
-            <span style={{ color: "var(--green)" }}>{tot.g} g</span>
-            <span style={{ color: "var(--muted)" }}> · </span>
-            <span style={{ color: "var(--blue)" }}>{tot.l} g</span>
+            <span style={{ color: "#C1622B" }}>{tot.p} g</span>
+            <span style={{ color: "#5A6259" }}> · </span>
+            <span style={{ color: "#7A8B5E" }}>{tot.g} g</span>
+            <span style={{ color: "#5A6259" }}> · </span>
+            <span style={{ color: "#5C7A99" }}>{tot.l} g</span>
           </span>
         </div>
         {proteinTarget && (
-          <p className="text-xs" style={{ color: "var(--muted)" }}>cible protéines : {proteinTarget}</p>
+          <p className="text-xs" style={{ color: "#5A6259" }}>cible protéines : {proteinTarget}</p>
         )}
       </div>
 
-      <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>{d.tip}</p>
+      <p className="text-xs leading-relaxed" style={{ color: "#5A6259" }}>{d.tip}</p>
     </div>
   );
 }
 
 function RaceWeightPlan({ goal, weightKg, targetWeight, onTargetChange }) {
   const p = raceWeightPlan({ current: weightKg, target: targetWeight, raceDate: goal?.raceDate });
-  const card = { background: "var(--surface)", border: "1px solid var(--border)" };
+  const card = { background: "#182420", border: "1px solid #2C3A32" };
   const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
-  const inputStyle = { background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)" };
+  const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
 
   return (
     <div className="rounded-xl p-4 space-y-3" style={card}>
-      <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
         Poids de forme
       </p>
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>Poids visé (kg)</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Poids visé (kg)</label>
           <input type="number" value={targetWeight} onChange={e => onTargetChange(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
         <div className="flex items-end">
-          <p className="text-xs" style={{ color: "var(--muted)" }}>
+          <p className="text-xs" style={{ color: "#5A6259" }}>
             Poids actuel : {weightKg || "—"} kg (modifiable plus haut)
           </p>
         </div>
       </div>
 
       {!p ? (
-        <p className="text-xs" style={{ color: "var(--muted)" }}>Renseigne ton poids actuel et ton poids visé.</p>
+        <p className="text-xs" style={{ color: "#5A6259" }}>Renseigne ton poids actuel et ton poids visé.</p>
       ) : (
         <>
           <div className="grid grid-cols-3 gap-2">
-            <div className="rounded-lg p-3 text-center" style={{ background: "var(--surface2)" }}>
-              <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--accent)" }}>{p.toLose > 0 ? `-${p.toLose}` : "0"}</p>
-              <p className="text-xs" style={{ color: "var(--muted)" }}>kg à perdre</p>
+            <div className="rounded-lg p-3 text-center" style={{ background: "#1C2B24" }}>
+              <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>{p.toLose > 0 ? `-${p.toLose}` : "0"}</p>
+              <p className="text-xs" style={{ color: "#5A6259" }}>kg à perdre</p>
             </div>
-            <div className="rounded-lg p-3 text-center" style={{ background: "var(--surface2)" }}>
-              <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--amber)" }}>{p.kgPerWeek}</p>
-              <p className="text-xs" style={{ color: "var(--muted)" }}>kg/semaine</p>
+            <div className="rounded-lg p-3 text-center" style={{ background: "#1C2B24" }}>
+              <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#B0863C" }}>{p.kgPerWeek}</p>
+              <p className="text-xs" style={{ color: "#5A6259" }}>kg/semaine</p>
             </div>
-            <div className="rounded-lg p-3 text-center" style={{ background: "var(--surface2)" }}>
-              <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--green)" }}>{p.kcalPerDay}</p>
-              <p className="text-xs" style={{ color: "var(--muted)" }}>kcal/jour</p>
+            <div className="rounded-lg p-3 text-center" style={{ background: "#1C2B24" }}>
+              <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#7A8B5E" }}>{p.kcalPerDay}</p>
+              <p className="text-xs" style={{ color: "#5A6259" }}>kcal/jour</p>
             </div>
           </div>
 
@@ -2791,16 +2791,16 @@ function RaceWeightPlan({ goal, weightKg, targetWeight, onTargetChange }) {
 
           {/* fenêtre de perte, puis stabilisation obligatoire */}
           <div>
-            <div className="flex h-2 rounded-full overflow-hidden" style={{ background: "var(--border)" }}>
-              <div style={{ width: `${(p.deficitDays / Math.max(1, p.daysToRace)) * 100}%`, background: "var(--accent)" }} />
-              <div style={{ flex: 1, background: "var(--blue)" }} />
+            <div className="flex h-2 rounded-full overflow-hidden" style={{ background: "#2C3A32" }}>
+              <div style={{ width: `${(p.deficitDays / Math.max(1, p.daysToRace)) * 100}%`, background: "#C1622B" }} />
+              <div style={{ flex: 1, background: "#5C7A99" }} />
             </div>
             <div className="flex justify-between text-xs mt-1">
-              <span style={{ color: "var(--accent)" }}>déficit · {Math.round(p.deficitDays / 7)} sem.</span>
-              <span style={{ color: "var(--blue)" }}>maintien · 4 sem.</span>
+              <span style={{ color: "#C1622B" }}>déficit · {Math.round(p.deficitDays / 7)} sem.</span>
+              <span style={{ color: "#5C7A99" }}>maintien · 4 sem.</span>
             </div>
-            <p className="text-xs mt-2 leading-relaxed" style={{ color: "var(--muted2)" }}>
-              Arrête le déficit le <span style={{ color: "var(--text)" }}>{fmtDate(p.stopDate)}</span>.
+            <p className="text-xs mt-2 leading-relaxed" style={{ color: "#9CAA9E" }}>
+              Arrête le déficit le <span style={{ color: "#EDE7D9" }}>{fmtDate(p.stopDate)}</span>.
               Les quatre dernières semaines couvrent la fin du bloc spécifique et l'affûtage :
               c'est là que tu dois être pleinement ravitaillé pour absorber la charge, refaire
               tes réserves de glycogène et arriver frais. Perdre du poids sur cette période
@@ -2808,14 +2808,14 @@ function RaceWeightPlan({ goal, weightKg, targetWeight, onTargetChange }) {
             </p>
           </div>
 
-          <div className="rounded-lg p-3 space-y-2" style={{ background: "var(--surface2)" }}>
-            <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <div className="rounded-lg p-3 space-y-2" style={{ background: "#1C2B24" }}>
+            <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
               Protéines — priorité n°1 en déficit
             </p>
-            <p className="text-sm" style={{ color: "var(--text)" }}>
-              <span style={{ color: "var(--accent)" }}>{p.proteinMin}-{p.proteinMax} g par jour</span>, réparties sur 4 prises
+            <p className="text-sm" style={{ color: "#EDE7D9" }}>
+              <span style={{ color: "#C1622B" }}>{p.proteinMin}-{p.proteinMax} g par jour</span>, réparties sur 4 prises
             </p>
-            <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+            <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
               En déficit, c'est ce qui protège la masse musculaire. En végétarien, les protéines
               végétales sont moins bien assimilées : vise le haut de la fourchette et varie les
               sources dans la même journée.
@@ -2828,7 +2828,7 @@ function RaceWeightPlan({ goal, weightKg, targetWeight, onTargetChange }) {
 }
 
 function VegetarianGuide({ targetWeight }) {
-  const card = { background: "var(--surface)", border: "1px solid var(--border)" };
+  const card = { background: "#182420", border: "1px solid #2C3A32" };
   const sources = [
     ["Légumineuses", "lentilles, pois chiches, haricots rouges", "~9 g / 100 g cuits"],
     ["Tofu ferme / tempeh", "à faire sauter, mariner, griller", "15-19 g / 100 g"],
@@ -2840,7 +2840,7 @@ function VegetarianGuide({ targetWeight }) {
 
   return (
     <div className="rounded-xl p-4 space-y-3" style={card}>
-      <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
         Végétarien · sources et points de vigilance
       </p>
 
@@ -2848,16 +2848,16 @@ function VegetarianGuide({ targetWeight }) {
         {sources.map(([n, d, q]) => (
           <div key={n}>
             <div className="flex justify-between text-sm">
-              <span style={{ color: "var(--text)" }}>{n}</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--accent)" }}>{q}</span>
+              <span style={{ color: "#EDE7D9" }}>{n}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>{q}</span>
             </div>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>{d}</p>
+            <p className="text-xs" style={{ color: "#5A6259" }}>{d}</p>
           </div>
         ))}
       </div>
 
-      <div className="pt-2 space-y-2" style={{ borderTop: "1px solid var(--border)" }}>
-        <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+      <div className="pt-2 space-y-2" style={{ borderTop: "1px solid #2C3A32" }}>
+        <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
           À surveiller en endurance
         </p>
         {[
@@ -2868,8 +2868,8 @@ function VegetarianGuide({ targetWeight }) {
           ["Créatine", "Naturellement plus basse en végétarien. Sans intérêt direct sur un 100 km, mais utile si tu ajoutes du renforcement."],
         ].map(([t, d]) => (
           <div key={t}>
-            <p className="text-sm" style={{ color: "var(--amber)" }}>{t}</p>
-            <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>{d}</p>
+            <p className="text-sm" style={{ color: "#B0863C" }}>{t}</p>
+            <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>{d}</p>
           </div>
         ))}
       </div>
@@ -2880,29 +2880,29 @@ function VegetarianGuide({ targetWeight }) {
 function ProductSettings({ products, onChange }) {
   const p = { ...DEFAULT_PRODUCTS, ...(products || {}) };
   const inputCls = "w-full rounded-lg px-2 py-1.5 text-sm outline-none";
-  const inputStyle = { background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)" };
+  const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
 
   return (
-    <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-      <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+    <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
         Tes produits
       </p>
-      <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+      <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
         Glucides par unité, à relever sur l'emballage. Ces valeurs servent au calcul du
         ravitaillement saisi après chaque séance.
       </p>
       <div className="grid grid-cols-5 gap-2">
         {FUEL_ITEMS.map(it => (
           <div key={it.key}>
-            <label className="text-xs" style={{ color: "var(--muted)" }}>{it.label}</label>
+            <label className="text-xs" style={{ color: "#5A6259" }}>{it.label}</label>
             <input type="number" min="0" value={p[it.key]}
               onChange={e => onChange({ ...p, [it.key]: Number(e.target.value) || 0 })}
               className={inputCls} style={inputStyle} />
-            <p className="text-xs" style={{ color: "var(--border2)", fontFamily: "'JetBrains Mono', monospace" }}>g / unité</p>
+            <p className="text-xs" style={{ color: "#3A4A40", fontFamily: "'JetBrains Mono', monospace" }}>g / unité</p>
           </div>
         ))}
       </div>
-      <p className="text-xs" style={{ color: "var(--muted)" }}>
+      <p className="text-xs" style={{ color: "#5A6259" }}>
         Les séances déjà enregistrées conservent les valeurs en vigueur au moment de leur saisie.
       </p>
     </div>
@@ -2917,29 +2917,29 @@ function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, 
 
   const plan = fuelingPlan({ durationMin, tempC, weightKg: Number(weightKg) || null, intensity });
   const adv = NUTRITION_ADVICE[adviceType];
-  const card = { background: "var(--surface)", border: "1px solid var(--border)" };
+  const card = { background: "#182420", border: "1px solid #2C3A32" };
   const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
-  const inputStyle = { background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)" };
+  const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
 
   return (
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
       {/* ---------- calculateur ---------- */}
       <div className="rounded-xl p-4 space-y-3" style={card}>
-        <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+        <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
           Apports pendant l'effort
         </p>
 
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Durée (min)</label>
+            <label className="text-xs" style={{ color: "#5A6259" }}>Durée (min)</label>
             <input type="number" value={durationMin} onChange={e => setDurationMin(Number(e.target.value) || 0)} className={inputCls} style={inputStyle} />
           </div>
           <div>
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Température (°C)</label>
+            <label className="text-xs" style={{ color: "#5A6259" }}>Température (°C)</label>
             <input type="number" value={tempC} onChange={e => setTempC(Number(e.target.value))} className={inputCls} style={inputStyle} />
           </div>
           <div>
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Intensité</label>
+            <label className="text-xs" style={{ color: "#5A6259" }}>Intensité</label>
             <select value={intensity} onChange={e => setIntensity(e.target.value)} className={inputCls} style={inputStyle}>
               <option value="facile">Facile</option>
               <option value="moderee">Modérée</option>
@@ -2947,41 +2947,41 @@ function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, 
             </select>
           </div>
           <div>
-            <label className="text-xs" style={{ color: "var(--muted)" }}>Poids (kg)</label>
+            <label className="text-xs" style={{ color: "#5A6259" }}>Poids (kg)</label>
             <input type="number" value={weightKg} onChange={e => onWeightChange(e.target.value)} placeholder="pour les g/kg" className={inputCls} style={inputStyle} />
           </div>
         </div>
 
         {plan.carbs === 0 ? (
-          <div className="rounded-lg p-3 text-sm" style={{ background: "var(--surface2)", color: "var(--muted2)" }}>
+          <div className="rounded-lg p-3 text-sm" style={{ background: "#1C2B24", color: "#9CAA9E" }}>
             Sous une heure d'effort, tes réserves suffisent : de l'eau, rien d'autre.
           </div>
         ) : (
           <>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { v: plan.carbs, u: "g/h", l: "Glucides", c: "var(--accent)", tot: `${plan.totalCarbs} g` },
-                { v: plan.fluid, u: "ml/h", l: "Boisson", c: "var(--blue)", tot: `${(plan.totalFluid / 1000).toFixed(1)} L` },
-                { v: plan.sodium, u: "mg/h", l: "Sodium", c: "var(--amber)", tot: `${plan.totalSodium} mg` },
+                { v: plan.carbs, u: "g/h", l: "Glucides", c: "#C1622B", tot: `${plan.totalCarbs} g` },
+                { v: plan.fluid, u: "ml/h", l: "Boisson", c: "#5C7A99", tot: `${(plan.totalFluid / 1000).toFixed(1)} L` },
+                { v: plan.sodium, u: "mg/h", l: "Sodium", c: "#B0863C", tot: `${plan.totalSodium} mg` },
               ].map(x => (
-                <div key={x.l} className="rounded-lg p-3 text-center" style={{ background: "var(--surface2)" }}>
+                <div key={x.l} className="rounded-lg p-3 text-center" style={{ background: "#1C2B24" }}>
                   <p className="text-xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: x.c }}>{x.v}</p>
-                  <p className="text-xs" style={{ color: "var(--muted)" }}>{x.u}</p>
-                  <p className="text-xs mt-1" style={{ color: "var(--muted2)" }}>{x.l}</p>
-                  <p className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>{x.tot}</p>
+                  <p className="text-xs" style={{ color: "#5A6259" }}>{x.u}</p>
+                  <p className="text-xs mt-1" style={{ color: "#9CAA9E" }}>{x.l}</p>
+                  <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>{x.tot}</p>
                 </div>
               ))}
             </div>
 
-            <div className="rounded-lg p-3" style={{ background: "var(--surface2)" }}>
-              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+            <div className="rounded-lg p-3" style={{ background: "#1C2B24" }}>
+              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
                 Concrètement, à emporter
               </p>
-              <p className="text-sm" style={{ color: "var(--text)" }}>
+              <p className="text-sm" style={{ color: "#EDE7D9" }}>
                 environ {plan.gels} gel{plan.gels > 1 ? "s" : ""} ({Math.round(plan.totalCarbs * 0.5)} g)
                 + {(plan.drinkMl / 1000).toFixed(1)} L de boisson d'effort dosée à {plan.drinkCarbs} g
               </p>
-              <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+              <p className="text-xs mt-1" style={{ color: "#5A6259" }}>
                 Une répartition parmi d'autres — barres, purées de fruits ou salé remplacent très bien les gels.
               </p>
             </div>
@@ -2989,7 +2989,7 @@ function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, 
         )}
 
         {plan.notes.map((n, i) => (
-          <p key={i} className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>— {n}</p>
+          <p key={i} className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>— {n}</p>
         ))}
       </div>
 
@@ -3007,10 +3007,10 @@ function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, 
       {/* ---------- entraînement digestif ---------- */}
       {goal?.type === "trail" && (
         <div className="rounded-xl p-4 space-y-2" style={card}>
-          <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
             Entraînement digestif
           </p>
-          <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+          <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
             L'intestin s'entraîne comme un muscle. Passer directement à 80 g/h le jour de la course est la cause la plus fréquente d'abandon sur ultra. Progresse sur tes sorties longues :
           </p>
           <div className="space-y-1">
@@ -3021,9 +3021,9 @@ function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, 
               ["Affûtage", "comme en course", "aucune nouveauté"],
             ].map(([ph, val, note]) => (
               <div key={ph} className="flex justify-between text-xs">
-                <span style={{ color: "var(--muted2)" }}>{ph}</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--accent)" }}>
-                  {val} <span style={{ color: "var(--muted)" }}>· {note}</span>
+                <span style={{ color: "#9CAA9E" }}>{ph}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>
+                  {val} <span style={{ color: "#5A6259" }}>· {note}</span>
                 </span>
               </div>
             ))}
@@ -3033,7 +3033,7 @@ function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, 
 
       {/* ---------- fiche par type de séance ---------- */}
       <div className="rounded-xl p-4 space-y-3" style={card}>
-        <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+        <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
           Autour de la séance
         </p>
         <select value={adviceType} onChange={e => setAdviceType(e.target.value)} className={inputCls} style={inputStyle}>
@@ -3043,13 +3043,13 @@ function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, 
         </select>
         {[["Avant", adv.avant], ["Pendant", adv.pendant], ["Après", adv.apres]].map(([t, txt]) => (
           <div key={t}>
-            <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>{t}</p>
-            <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>{txt}</p>
+            <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>{t}</p>
+            <p className="text-sm leading-relaxed" style={{ color: "#EDE7D9" }}>{txt}</p>
           </div>
         ))}
       </div>
 
-      <p className="text-xs leading-relaxed px-1" style={{ color: "var(--muted)" }}>
+      <p className="text-xs leading-relaxed px-1" style={{ color: "#5A6259" }}>
         Ces repères sont des points de départ issus des recommandations générales en nutrition sportive. La tolérance digestive varie beaucoup d'une personne à l'autre : teste tout à l'entraînement. Pour un besoin médical ou un suivi personnalisé, un diététicien du sport reste la bonne adresse.
       </p>
     </div>
@@ -3100,7 +3100,7 @@ function SessionForm({ onAdd, products }) {
   }).filter(l => l.sec > 0);
 
   const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
-  const inputStyle = { background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)" };
+  const inputStyle = { background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" };
   const cross = isCross(type);
 
   const submit = () => {
@@ -3130,11 +3130,11 @@ function SessionForm({ onAdd, products }) {
   };
 
   return (
-    <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-      <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+    <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
         Ajouter une séance hors plan
       </p>
-      <p className="text-xs" style={{ color: "var(--muted2)" }}>
+      <p className="text-xs" style={{ color: "#9CAA9E" }}>
         Footing improvisé, renfo, vélo, natation… Les activités hors course sont
         suivies à part et n'entrent pas dans le volume de course à pied.
       </p>
@@ -3144,11 +3144,11 @@ function SessionForm({ onAdd, products }) {
           placeholder="coller : 2026-08-19 ; 5.3 ; 39 ; 32 ; 2 ; ; ; 80"
           className="flex-1 rounded-lg px-2 py-2 text-xs outline-none"
           style={{ ...inputStyle, fontFamily: "'JetBrains Mono', monospace" }} />
-        <button onClick={applyPaste} className="rounded-lg px-3 text-xs" style={{ background: "var(--border)", color: "var(--text)" }}>
+        <button onClick={applyPaste} className="rounded-lg px-3 text-xs" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
           Remplir
         </button>
       </div>
-      {pasteErr && <p className="text-xs" style={{ color: "var(--accent2)" }}>{pasteErr}</p>}
+      {pasteErr && <p className="text-xs" style={{ color: "#D9793C" }}>{pasteErr}</p>}
 
       <div className="grid grid-cols-2 gap-2">
         <select value={type} onChange={e => setType(e.target.value)} className={inputCls} style={inputStyle}>
@@ -3177,8 +3177,8 @@ function SessionForm({ onAdd, products }) {
 
       {!isCross(type) && (
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>
-            Détail des tours (optionnel) — <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--blue)" }}>secondes ; mètres ; FC</span>
+          <label className="text-xs" style={{ color: "#5A6259" }}>
+            Détail des tours (optionnel) — <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>secondes ; mètres ; FC</span>
           </label>
           <textarea value={lapsText} onChange={e => setLapsText(e.target.value)} rows={3}
             className="w-full rounded-lg px-2 py-1.5 text-xs outline-none mt-1"
@@ -3193,22 +3193,22 @@ function SessionForm({ onAdd, products }) {
         <FuelingInputs value={fueling} onChange={setFueling} dureeMin={Number(duree) || null} products={products} />
       )}
 
-      <label className="flex items-center gap-2 text-sm" style={{ color: "var(--muted2)" }}>
+      <label className="flex items-center gap-2 text-sm" style={{ color: "#9CAA9E" }}>
         <input type="checkbox" checked={alreadyDone} onChange={e => setAlreadyDone(e.target.checked)} />
         Séance déjà réalisée
       </label>
 
       {alreadyDone && (
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>Ressenti : {feeling}/5</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Ressenti : {feeling}/5</label>
           <input type="range" min="1" max="5" value={feeling} onChange={e => setFeeling(Number(e.target.value))} className="w-full" />
         </div>
       )}
 
-      <button onClick={submit} className="w-full rounded-lg py-2.5 text-sm font-medium hover:opacity-90" style={{ background: "var(--accent)", color: "var(--bg)" }}>
+      <button onClick={submit} className="w-full rounded-lg py-2.5 text-sm font-medium hover:opacity-90" style={{ background: "#C1622B", color: "#14201C" }}>
         Ajouter
       </button>
-      {msg && <p className="text-xs text-center" style={{ color: "var(--green)" }}>{msg}</p>}
+      {msg && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{msg}</p>}
     </div>
   );
 }
@@ -3238,7 +3238,7 @@ function ActualForm({ defaults, onSubmit, onCancel, products }) {
   }).filter(l => l.sec > 0);
 
   const inputCls = "w-full rounded-lg px-2 py-1.5 text-sm outline-none";
-  const inputStyle = { background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" };
+  const inputStyle = { background: "#14201C", color: "#EDE7D9", border: "1px solid #2C3A32" };
 
   // Colle une ligne "date ; km ; D+ ; min ; ressenti" -> remplit les champs
   const applyPaste = () => {
@@ -3259,60 +3259,60 @@ function ActualForm({ defaults, onSubmit, onCancel, products }) {
   };
 
   return (
-    <div className="mt-3 pt-3 space-y-2" style={{ borderTop: "1px solid var(--border)" }}>
+    <div className="mt-3 pt-3 space-y-2" style={{ borderTop: "1px solid #2C3A32" }}>
       <div className="flex gap-2">
         <input type="text" value={paste} onChange={e => setPaste(e.target.value)}
           placeholder="coller : date ; km ; D+ ; min ; ressenti ; FC ; FCmax ; cad"
           className="flex-1 rounded-lg px-2 py-1.5 text-xs outline-none"
           style={{ ...inputStyle, fontFamily: "'JetBrains Mono', monospace" }} />
-        <button onClick={applyPaste} className="rounded-lg px-3 text-xs" style={{ background: "var(--border)", color: "var(--text)" }}>
+        <button onClick={applyPaste} className="rounded-lg px-3 text-xs" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
           Remplir
         </button>
       </div>
-      {pasteErr && <p className="text-xs" style={{ color: "var(--accent2)" }}>{pasteErr}</p>}
+      {pasteErr && <p className="text-xs" style={{ color: "#D9793C" }}>{pasteErr}</p>}
 
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>Jour réalisé</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Jour réalisé</label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>Distance (km)</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Distance (km)</label>
           <input type="number" value={distance} onChange={e => setDistance(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>D+ (m)</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>D+ (m)</label>
           <input type="number" value={dplus} onChange={e => setDplus(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>Durée (min)</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Durée (min)</label>
           <input type="number" value={duree} onChange={e => setDuree(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>FC moy</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>FC moy</label>
           <input type="number" value={fc} onChange={e => setFc(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>FC max</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>FC max</label>
           <input type="number" value={fcMax} onChange={e => setFcMax(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>Cadence</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Cadence</label>
           <input type="number" value={cadence} onChange={e => setCadence(e.target.value)} className={inputCls} style={inputStyle} />
         </div>
       </div>
 
       <div>
-        <label className="text-xs" style={{ color: "var(--muted)" }}>Ressenti : {feeling}/5</label>
+        <label className="text-xs" style={{ color: "#5A6259" }}>Ressenti : {feeling}/5</label>
         <input type="range" min="1" max="5" value={feeling} onChange={e => setFeeling(Number(e.target.value))} className="w-full" />
       </div>
 
       <div>
-        <label className="text-xs" style={{ color: "var(--muted)" }}>
-          Détail des tours (optionnel) — une ligne par tour : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--blue)" }}>secondes ; mètres ; FC</span>
+        <label className="text-xs" style={{ color: "#5A6259" }}>
+          Détail des tours (optionnel) — une ligne par tour : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>secondes ; mètres ; FC</span>
         </label>
         <textarea value={lapsText} onChange={e => setLapsText(e.target.value)} rows={4}
           className="w-full rounded-lg px-2 py-1.5 text-xs outline-none mt-1"
@@ -3335,10 +3335,10 @@ function ActualForm({ defaults, onSubmit, onCancel, products }) {
             laps: parseLaps(),
             fueling: { ...fueling, carbsPerUnit: { ...DEFAULT_PRODUCTS, ...(products || {}) } },
           }, date)}
-          className="flex-1 rounded-lg py-2 text-sm" style={{ background: "var(--green)", color: "var(--bg)" }}>
+          className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#7A8B5E", color: "#14201C" }}>
           {defaults.done ? "Mettre à jour" : "Valider cette séance"}
         </button>
-        <button onClick={onCancel} className="rounded-lg py-2 px-3 text-sm" style={{ color: "var(--muted)" }}>Annuler</button>
+        <button onClick={onCancel} className="rounded-lg py-2 px-3 text-sm" style={{ color: "#5A6259" }}>Annuler</button>
       </div>
     </div>
   );
@@ -3351,39 +3351,39 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
   const complete = (actual, date) => { onToggle(s.id, { done: true, actual, date }); setShowActual(false); };
 
   return (
-    <div className="rounded-xl p-3" style={{ background: s.done ? "var(--surface)" : "var(--surface2)", border: "1px solid var(--border)" }}>
+    <div className="rounded-xl p-3" style={{ background: s.done ? "#182420" : "#1C2B24", border: "1px solid #2C3A32" }}>
       <div className="flex items-center gap-3">
         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(v => !v)}>
-          <p className="text-sm" style={{ color: "var(--text)", fontFamily: "'Space Grotesk', sans-serif" }}>
-            {t.label} {s.generated && <span style={{ color: "var(--muted)" }}>· plan</span>}
+          <p className="text-sm" style={{ color: "#EDE7D9", fontFamily: "'Space Grotesk', sans-serif" }}>
+            {t.label} {s.generated && <span style={{ color: "#5A6259" }}>· plan</span>}
           </p>
-          <p className="text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
             {s.date ? fmtDate(s.date) : "à placer"} · {s.distance ? `${s.distance} km` : "—"} {s.dplus ? `· ${s.dplus} m D+` : ""} {s.duree ? `· ${s.duree} min` : ""}
           </p>
           {s.done && s.actual && (
-            <p className="text-xs mt-1" style={{ color: "var(--blue)", fontFamily: "'JetBrains Mono', monospace" }}>
+            <p className="text-xs mt-1" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>
               réel: {s.actual.distance || "—"} km{s.actual.dplus ? ` · ${s.actual.dplus} m D+` : ""}{s.actual.duree ? ` · ${s.actual.duree} min` : ""}{s.actual.fc ? ` · ${s.actual.fc} bpm` : ""}{s.actual.feeling ? ` · ressenti ${s.actual.feeling}/5` : ""}
             </p>
           )}
         </div>
-        <button onClick={() => onDelete(s.id)} className="text-xs px-2 py-1 rounded" style={{ color: "var(--muted)" }}>✕</button>
+        <button onClick={() => onDelete(s.id)} className="text-xs px-2 py-1 rounded" style={{ color: "#5A6259" }}>✕</button>
         {!s.done ? (
-          <button onClick={() => setShowActual(v => !v)} className="text-xs px-3 py-1.5 rounded-lg shrink-0" style={{ background: "var(--accent)", color: "var(--bg)" }}>Importer</button>
+          <button onClick={() => setShowActual(v => !v)} className="text-xs px-3 py-1.5 rounded-lg shrink-0" style={{ background: "#C1622B", color: "#14201C" }}>Importer</button>
         ) : (
           <div className="flex gap-1 shrink-0">
             <button
               onClick={() => setShowActual(v => !v)}
               title="Corriger ou compléter les données réalisées"
               className="text-xs px-3 py-1.5 rounded-lg"
-              style={{ background: "var(--accent)", color: "var(--bg)" }}>
+              style={{ background: "#C1622B", color: "#14201C" }}>
               Modifier
             </button>
             <button
               onClick={() => onToggle(s.id, { done: false, actual: null, date: s.generated ? null : s.date })}
               title="Annuler la validation — la séance retourne dans le planning"
               className="text-xs px-2 py-1.5 rounded-lg"
-              style={{ background: "var(--border)", color: "var(--green)" }}>
+              style={{ background: "#2C3A32", color: "#7A8B5E" }}>
               ↺
             </button>
           </div>
@@ -3463,10 +3463,10 @@ function deltaOk(kind, delta) {
   if (delta === null) return true;
   return FASTER_IS_BETTER[kind] ? delta <= 15 : delta >= -15;
 }
-const deltaColor = (kind, delta) => (deltaOk(kind, delta) ? "var(--green)" : "var(--amber)");
+const deltaColor = (kind, delta) => (deltaOk(kind, delta) ? "#7A8B5E" : "#B0863C");
 
 const KIND_LABEL = { echauffement: "Échauffement", effort: "Effort", recup: "Récup", calme: "Retour au calme", endurance: "Endurance", continu: "Séance" };
-const KIND_COLOR = { echauffement: "var(--green)", effort: "var(--accent)", recup: "var(--blue)", calme: "var(--green)", endurance: "var(--green)", continu: "var(--accent)" };
+const KIND_COLOR = { echauffement: "#7A8B5E", effort: "#C1622B", recup: "#5C7A99", calme: "#7A8B5E", endurance: "#7A8B5E", continu: "#C1622B" };
 
 function fmtPace(p) {
   if (!p || !isFinite(p)) return "—";
@@ -3512,10 +3512,10 @@ function HeartRateChart({ laps }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+        <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
           FC dans le temps
         </p>
-        <p className="text-xs" style={{ color: "var(--muted)" }}>
+        <p className="text-xs" style={{ color: "#5A6259" }}>
           {Math.min(...fcs)}–{Math.max(...fcs)} bpm
         </p>
       </div>
@@ -3523,25 +3523,25 @@ function HeartRateChart({ laps }) {
         {/* grille */}
         {ticks.map(f => (
           <g key={f}>
-            <line x1={PL} y1={y(f)} x2={W - PR} y2={y(f)} strokeWidth="0.5" style={{ stroke: "var(--border)" }}/>
-            <text x={PL - 4} y={y(f) + 3} textAnchor="end" fontSize="8" fontFamily="monospace" style={{ fill: "var(--muted)" }}>{f}</text>
+            <line x1={PL} y1={y(f)} x2={W - PR} y2={y(f)} stroke="#2C3A32" strokeWidth="0.5" />
+            <text x={PL - 4} y={y(f) + 3} textAnchor="end" fontSize="8" fill="#5A6259" fontFamily="monospace">{f}</text>
           </g>
         ))}
         {timeTicks.map((tt, i) => (
-          <text key={i} x={x(tt)} y={H - 5} textAnchor="middle" fontSize="8" fontFamily="monospace" style={{ fill: "var(--muted)" }}>
+          <text key={i} x={x(tt)} y={H - 5} textAnchor="middle" fontSize="8" fill="#5A6259" fontFamily="monospace">
             {Math.round(tt / 60)}′
           </text>
         ))}
 
         {/* fond des efforts, pour situer les fractions */}
         {segs.filter(s => s.kind === "effort").map((s, i) => (
-          <rect key={i} x={s.x1} y={PT} width={Math.max(0.8, s.x2 - s.x1)} height={H - PT - PB} opacity="0.13" style={{ fill: "var(--accent)" }}/>
+          <rect key={i} x={s.x1} y={PT} width={Math.max(0.8, s.x2 - s.x1)} height={H - PT - PB} fill="#C1622B" opacity="0.13" />
         ))}
 
-        <path d={path} fill="none" strokeWidth="1.4" strokeLinejoin="round" style={{ stroke: "var(--accent2)" }}/>
+        <path d={path} fill="none" stroke="#D9793C" strokeWidth="1.4" strokeLinejoin="round" />
       </svg>
-      <div className="flex gap-3 text-xs mt-1" style={{ color: "var(--muted)" }}>
-        <span><span style={{ color: "var(--accent)" }}>▮</span> efforts</span>
+      <div className="flex gap-3 text-xs mt-1" style={{ color: "#5A6259" }}>
+        <span><span style={{ color: "#C1622B" }}>▮</span> efforts</span>
         <span>paliers = FC moyenne par tour</span>
       </div>
     </div>
@@ -3561,19 +3561,19 @@ function LapAnalysis({ session, vma }) {
   const counters = {};
 
   return (
-    <div className="rounded-lg p-3 space-y-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-      <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "var(--accent)" }}>
+    <div className="rounded-lg p-3 space-y-3" style={{ background: "#1C2B24", border: "1px solid #2C3A32" }}>
+      <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#C1622B" }}>
         Déroulé de la séance
       </p>
 
       <HeartRateChart laps={laps} />
 
-      <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
-        Écart à l'allure cible : <span style={{ color: "var(--text)" }}>−</span> plus rapide,
-        <span style={{ color: "var(--text)" }}> +</span> plus lent.
-        <span style={{ color: "var(--green)" }}> Vert</span> = conforme à l'intention de la phase
+      <p className="text-xs leading-relaxed" style={{ color: "#5A6259" }}>
+        Écart à l'allure cible : <span style={{ color: "#EDE7D9" }}>−</span> plus rapide,
+        <span style={{ color: "#EDE7D9" }}> +</span> plus lent.
+        <span style={{ color: "#7A8B5E" }}> Vert</span> = conforme à l'intention de la phase
         (vite sur les efforts, lent sur les récups),
-        <span style={{ color: "var(--amber)" }}> ambre</span> = s'en écarte.
+        <span style={{ color: "#B0863C" }}> ambre</span> = s'en écarte.
       </p>
 
       {/* ordre chronologique : chaque tour tel qu'il s'est enchaîné */}
@@ -3587,21 +3587,21 @@ function LapAnalysis({ session, vma }) {
 
           return (
             <div key={l.i} className="flex items-baseline justify-between text-xs py-0.5"
-              style={{ borderBottom: "1px solid var(--surface3)" }}>
+              style={{ borderBottom: "1px solid #22302A" }}>
               <span className="shrink-0" style={{ color: KIND_COLOR[l.kind], minWidth: "5.5rem" }}>{label}</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--muted)" }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5A6259" }}>
                 {l.sec}s·{Math.round(l.m)}m
               </span>
               <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                <span style={{ color: "var(--accent)" }}>{fmtPace(l.pace)}</span>
-                <span style={{ color: "var(--muted)" }}>/{fmtPace(target)}</span>
+                <span style={{ color: "#C1622B" }}>{fmtPace(l.pace)}</span>
+                <span style={{ color: "#5A6259" }}>/{fmtPace(target)}</span>
               </span>
               {delta !== null && (
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", color: deltaColor(l.kind, delta), minWidth: "2.6rem", textAlign: "right" }}>
                   {delta > 0 ? "+" : ""}{delta}s
                 </span>
               )}
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--blue)", minWidth: "2.2rem", textAlign: "right" }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99", minWidth: "2.2rem", textAlign: "right" }}>
                 {l.fc ? Math.round(l.fc) : "—"}
               </span>
             </div>
@@ -3610,8 +3610,8 @@ function LapAnalysis({ session, vma }) {
       </div>
 
       {/* synthèse par phase */}
-      <div className="pt-2 space-y-1" style={{ borderTop: "1px solid var(--border)" }}>
-        <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+      <div className="pt-2 space-y-1" style={{ borderTop: "1px solid #2C3A32" }}>
+        <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
           Moyennes
         </p>
         {groups.map(g => {
@@ -3628,14 +3628,14 @@ function LapAnalysis({ session, vma }) {
                 {KIND_LABEL[g.kind]}{g.items.length > 1 ? ` ×${g.items.length}` : ""}
               </span>
               <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                <span style={{ color: "var(--accent)" }}>{fmtPace(avgPace)}</span>
-                <span style={{ color: "var(--muted)" }}>/{fmtPace(target)}</span>
+                <span style={{ color: "#C1622B" }}>{fmtPace(avgPace)}</span>
+                <span style={{ color: "#5A6259" }}>/{fmtPace(target)}</span>
                 {delta !== null && (
                   <span style={{ color: deltaColor(g.kind, delta), marginLeft: 5 }}>
                     {delta > 0 ? "+" : ""}{delta}s
                   </span>
                 )}
-                {avgFc && <span style={{ color: "var(--blue)", marginLeft: 6 }}>{avgFc}</span>}
+                {avgFc && <span style={{ color: "#5C7A99", marginLeft: 6 }}>{avgFc}</span>}
               </span>
             </div>
           );
@@ -3701,53 +3701,53 @@ function FuelingInputs({ value, onChange, dureeMin, products }) {
   const set = (k, v) => onChange({ ...f, [k]: v });
   const tot = fuelTotals(f, dureeMin, products);
   const inputCls = "w-full rounded-lg px-2 py-1.5 text-sm outline-none";
-  const inputStyle = { background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" };
+  const inputStyle = { background: "#14201C", color: "#EDE7D9", border: "1px solid #2C3A32" };
 
   return (
     <div className="space-y-2">
-      <p className="text-xs" style={{ color: "var(--muted)" }}>
+      <p className="text-xs" style={{ color: "#5A6259" }}>
         Ravitaillement pendant la séance (optionnel)
       </p>
 
       <div className="grid grid-cols-5 gap-2">
         {FUEL_ITEMS.map(it => (
           <div key={it.key}>
-            <label className="text-xs" style={{ color: "var(--muted)" }}>{it.label}</label>
+            <label className="text-xs" style={{ color: "#5A6259" }}>{it.label}</label>
             <input type="number" min="0" value={f[it.key] || ""} placeholder="0"
               onChange={e => set(it.key, Number(e.target.value) || 0)}
               className={inputCls} style={inputStyle} />
-            <p className="text-xs" style={{ color: "var(--border2)", fontFamily: "'JetBrains Mono', monospace" }}>{carbsOf(it.key, products)} g/u</p>
+            <p className="text-xs" style={{ color: "#3A4A40", fontFamily: "'JetBrains Mono', monospace" }}>{carbsOf(it.key, products)} g/u</p>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-4 gap-2">
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>Boisson (ml)</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Boisson (ml)</label>
           <input type="number" min="0" value={f.drinkMl || ""} placeholder="0"
             onChange={e => set("drinkMl", Number(e.target.value) || 0)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>g / 500 ml</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>g / 500 ml</label>
           <input type="number" min="0" value={f.drinkCarbsPer500 ?? ""} placeholder="30"
             onChange={e => set("drinkCarbsPer500", Number(e.target.value) || 0)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>mg Na / 500 ml</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>mg Na / 500 ml</label>
           <input type="number" min="0" value={f.drinkSodiumPer500 ?? ""} placeholder="300"
             onChange={e => set("drinkSodiumPer500", Number(e.target.value) || 0)} className={inputCls} style={inputStyle} />
         </div>
         <div>
-          <label className="text-xs" style={{ color: "var(--muted)" }}>Autres (g)</label>
+          <label className="text-xs" style={{ color: "#5A6259" }}>Autres (g)</label>
           <input type="number" min="0" value={f.autresG || ""} placeholder="0"
             onChange={e => set("autresG", Number(e.target.value) || 0)} className={inputCls} style={inputStyle} />
         </div>
       </div>
 
       {tot && !tot.isEmpty && (
-        <p className="text-xs" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--accent)" }}>
+        <p className="text-xs" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>
           {tot.carbs} g de glucides · {(tot.ml / 1000).toFixed(1)} L · {tot.sodium} mg Na
-          {tot.carbsPerH !== null && <span style={{ color: "var(--muted)" }}> — soit {tot.carbsPerH} g/h et {tot.mlPerH} ml/h</span>}
+          {tot.carbsPerH !== null && <span style={{ color: "#5A6259" }}> — soit {tot.carbsPerH} g/h et {tot.mlPerH} ml/h</span>}
         </p>
       )}
     </div>
@@ -3767,12 +3767,12 @@ function FuelingReport({ session, products }) {
 
   const row = (label, real, plan, unit, gap) => (
     <div className="flex justify-between text-xs">
-      <span style={{ color: "var(--muted2)" }}>{label}</span>
+      <span style={{ color: "#9CAA9E" }}>{label}</span>
       <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-        <span style={{ color: "var(--accent)" }}>{real}</span>
-        <span style={{ color: "var(--muted)" }}> / {plan} {unit}</span>
+        <span style={{ color: "#C1622B" }}>{real}</span>
+        <span style={{ color: "#5A6259" }}> / {plan} {unit}</span>
         {gap !== null && (
-          <span style={{ color: Math.abs(gap) <= (unit === "g/h" ? 10 : 150) ? "var(--green)" : "var(--amber)", marginLeft: 5 }}>
+          <span style={{ color: Math.abs(gap) <= (unit === "g/h" ? 10 : 150) ? "#7A8B5E" : "#B0863C", marginLeft: 5 }}>
             {gap > 0 ? "+" : ""}{gap}
           </span>
         )}
@@ -3781,19 +3781,19 @@ function FuelingReport({ session, products }) {
   );
 
   return (
-    <div className="rounded-lg p-3 space-y-2" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-      <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "var(--accent)" }}>
+    <div className="rounded-lg p-3 space-y-2" style={{ background: "#1C2B24", border: "1px solid #2C3A32" }}>
+      <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#C1622B" }}>
         Ravitaillement
       </p>
       {row("Glucides", tot.carbsPerH ?? "—", target.carbs, "g/h", carbGap)}
       {row("Boisson", tot.mlPerH ?? "—", target.fluid, "ml/h", fluidGap)}
       {row("Sodium", tot.sodiumPerH ?? "—", target.sodium, "mg/h",
         tot.sodiumPerH !== null ? tot.sodiumPerH - target.sodium : null)}
-      <p className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+      <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
         total : {tot.carbs} g · {(tot.ml / 1000).toFixed(1)} L · {tot.sodium} mg Na
       </p>
       {duree >= 150 && carbGap !== null && carbGap < -15 && (
-        <p className="text-xs leading-relaxed" style={{ color: "var(--amber)" }}>
+        <p className="text-xs leading-relaxed" style={{ color: "#B0863C" }}>
           Nettement sous la cible sur une sortie longue : c'est précisément le format où l'intestin doit
           s'entraîner à absorber davantage. Monte progressivement d'une sortie à l'autre.
         </p>
@@ -3821,21 +3821,21 @@ function CompareRow({ label, planned, actual, unit, lowerIsBetter = false }) {
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-xs">
-        <span style={{ color: "var(--muted2)" }}>{label}</span>
+        <span style={{ color: "#9CAA9E" }}>{label}</span>
         {/* les chiffres reprennent la couleur de leur barre : gris = prévu, orange = réalisé */}
         <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-          <span style={{ color: "var(--accent)" }}>{actual ?? "—"}</span>
-          <span style={{ color: "var(--muted)" }}> / {planned ?? "—"} {unit}</span>
+          <span style={{ color: "#C1622B" }}>{actual ?? "—"}</span>
+          <span style={{ color: "#5A6259" }}> / {planned ?? "—"} {unit}</span>
           {delta !== null && (
-            <span style={{ color: good ? "var(--green)" : "var(--amber)", marginLeft: 6 }}>
+            <span style={{ color: good ? "#7A8B5E" : "#B0863C", marginLeft: 6 }}>
               {delta > 0 ? "+" : ""}{Math.round(delta)}%
             </span>
           )}
         </span>
       </div>
       <div className="space-y-0.5">
-        <div className="h-1.5 rounded-full" style={{ width: `${pctP}%`, background: "var(--border)", minWidth: 2 }} />
-        <div className="h-1.5 rounded-full" style={{ width: `${pctA}%`, background: "var(--accent)", minWidth: 2 }} />
+        <div className="h-1.5 rounded-full" style={{ width: `${pctP}%`, background: "#2C3A32", minWidth: 2 }} />
+        <div className="h-1.5 rounded-full" style={{ width: `${pctA}%`, background: "#C1622B", minWidth: 2 }} />
       </div>
     </div>
   );
@@ -3870,17 +3870,17 @@ function SessionReport({ s, vma }) {
     : null;
 
   return (
-    <div className="rounded-lg p-3 space-y-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+    <div className="rounded-lg p-3 space-y-3" style={{ background: "#1C2B24", border: "1px solid #2C3A32" }}>
       <div className="flex items-center justify-between">
-        <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "var(--accent)" }}>Compte rendu</p>
-        <p className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+        <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#C1622B" }}>Compte rendu</p>
+        <p className="text-xs" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>
           {a.feeling ? `ressenti ${a.feeling}/5` : ""}
         </p>
       </div>
 
       <div className="flex gap-3 text-xs">
-        <span style={{ color: "var(--muted)" }}>▬ prévu</span>
-        <span style={{ color: "var(--accent)" }}>▬ réalisé</span>
+        <span style={{ color: "#5A6259" }}>▬ prévu</span>
+        <span style={{ color: "#C1622B" }}>▬ réalisé</span>
       </div>
 
       <div className="space-y-2.5">
@@ -3890,16 +3890,16 @@ function SessionReport({ s, vma }) {
       </div>
 
       {(planPace || realPace) && (
-        <div className="pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="pt-2" style={{ borderTop: "1px solid #2C3A32" }}>
           <div className="flex justify-between text-xs">
-            <span style={{ color: "var(--muted2)" }}>Allure moyenne</span>
+            <span style={{ color: "#9CAA9E" }}>Allure moyenne</span>
             <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-              <span style={{ color: "var(--accent)" }}>{realPace || "—"}</span>
-              <span style={{ color: "var(--muted)" }}> / {planPace || "—"} /km</span>
+              <span style={{ color: "#C1622B" }}>{realPace || "—"}</span>
+              <span style={{ color: "#5A6259" }}> / {planPace || "—"} /km</span>
             </span>
           </div>
           {paceDeltaSec !== null && (
-            <p className="text-xs mt-1" style={{ color: Math.abs(paceDeltaSec) <= 15 ? "var(--green)" : "var(--amber)" }}>
+            <p className="text-xs mt-1" style={{ color: Math.abs(paceDeltaSec) <= 15 ? "#7A8B5E" : "#B0863C" }}>
               {paceDeltaSec === 0 ? "pile sur l'allure prévue"
                 : paceDeltaSec > 0 ? `${paceDeltaSec}s/km plus lent que prévu`
                 : `${-paceDeltaSec}s/km plus rapide que prévu`}
@@ -3910,47 +3910,47 @@ function SessionReport({ s, vma }) {
 
       {(gradPlan || gradReal) && (
         <div className="flex justify-between text-xs">
-          <span style={{ color: "var(--muted2)" }}>Densité D+</span>
+          <span style={{ color: "#9CAA9E" }}>Densité D+</span>
           <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-            <span style={{ color: "var(--accent)" }}>{gradReal ?? "—"}</span>
-            <span style={{ color: "var(--muted)" }}> / {gradPlan ?? "—"} m/km</span>
+            <span style={{ color: "#C1622B" }}>{gradReal ?? "—"}</span>
+            <span style={{ color: "#5A6259" }}> / {gradPlan ?? "—"} m/km</span>
           </span>
         </div>
       )}
 
       {effortFc && (
-        <div className="rounded-lg p-2" style={{ background: "var(--surface3)" }}>
+        <div className="rounded-lg p-2" style={{ background: "#22302A" }}>
           <div className="flex justify-between text-xs">
-            <span style={{ color: "var(--accent)" }}>FC sur les efforts uniquement</span>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>
-              {effortFc.avg} bpm <span style={{ color: "var(--muted)" }}>(max {effortFc.max})</span>
+            <span style={{ color: "#C1622B" }}>FC sur les efforts uniquement</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
+              {effortFc.avg} bpm <span style={{ color: "#5A6259" }}>(max {effortFc.max})</span>
             </span>
           </div>
-          <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+          <p className="text-xs mt-1" style={{ color: "#5A6259" }}>
             La FC moyenne de séance mélange échauffement et récups : sur du fractionné, c'est cette valeur-ci qui compte.
           </p>
         </div>
       )}
 
       {(a.fc || a.fcMax || a.cadence) && (
-        <div className="pt-2 grid grid-cols-3 gap-2" style={{ borderTop: "1px solid var(--border)" }}>
+        <div className="pt-2 grid grid-cols-3 gap-2" style={{ borderTop: "1px solid #2C3A32" }}>
           <div className="text-center">
-            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: a.fc ? "var(--text)" : "var(--muted)" }}>{a.fc ?? "—"}</p>
-            <p className="text-xs" style={{ color: "var(--green)" }}>FC moy</p>
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: a.fc ? "#EDE7D9" : "#5A6259" }}>{a.fc ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>FC moy</p>
           </div>
           <div className="text-center">
-            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: a.fcMax ? "var(--text)" : "var(--muted)" }}>{a.fcMax ?? "—"}</p>
-            <p className="text-xs" style={{ color: "var(--green)" }}>FC max</p>
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: a.fcMax ? "#EDE7D9" : "#5A6259" }}>{a.fcMax ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>FC max</p>
           </div>
           <div className="text-center">
-            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: a.cadence ? "var(--text)" : "var(--muted)" }}>{a.cadence ?? "—"}</p>
-            <p className="text-xs" style={{ color: "var(--green)" }}>cadence</p>
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: a.cadence ? "#EDE7D9" : "#5A6259" }}>{a.cadence ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>cadence</p>
           </div>
         </div>
       )}
 
       {vmaPct && (
-        <p className="text-xs" style={{ color: "var(--blue)", fontFamily: "'JetBrains Mono', monospace" }}>
+        <p className="text-xs" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>
           allure moyenne ≈ {vmaPct}% VMA
         </p>
       )}
@@ -3969,83 +3969,83 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
   const paceStr = paceMinKm ? `${Math.floor(paceMinKm)}:${String(Math.round((paceMinKm % 1) * 60)).padStart(2, "0")} /km` : null;
 
   return (
-    <div className="mt-3 pt-3 space-y-4" style={{ borderTop: "1px solid var(--border)" }}>
-        <p className="text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+    <div className="mt-3 pt-3 space-y-4" style={{ borderTop: "1px solid #2C3A32" }}>
+        <p className="text-xs" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
           {s.date ? fmtDate(s.date) : "jour libre"} {s.phase && `· phase ${PHASE_LABEL[s.phase]}`}
         </p>
 
         <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-lg p-2 text-center" style={{ background: "var(--surface2)" }}>
-            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{s.distance ?? "—"}</p>
-            <p className="text-xs" style={{ color: "var(--green)" }}>km</p>
+          <div className="rounded-lg p-2 text-center" style={{ background: "#1C2B24" }}>
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{s.distance ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>km</p>
           </div>
-          <div className="rounded-lg p-2 text-center" style={{ background: "var(--surface2)" }}>
-            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{s.dplus ?? "—"}</p>
-            <p className="text-xs" style={{ color: "var(--green)" }}>m D+</p>
+          <div className="rounded-lg p-2 text-center" style={{ background: "#1C2B24" }}>
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{s.dplus ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>m D+</p>
           </div>
-          <div className="rounded-lg p-2 text-center" style={{ background: "var(--surface2)" }}>
-            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{s.duree ?? "—"}</p>
-            <p className="text-xs" style={{ color: "var(--green)" }}>min</p>
+          <div className="rounded-lg p-2 text-center" style={{ background: "#1C2B24" }}>
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{s.duree ?? "—"}</p>
+            <p className="text-xs" style={{ color: "#7A8B5E" }}>min</p>
           </div>
         </div>
 
         {paceStr && (
-          <p className="text-xs text-center" style={{ color: "var(--blue)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="text-xs text-center" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>
             allure indicative : {paceStr}
           </p>
         )}
 
         <div>
-          <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>Comment exécuter</p>
-          <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>{SESSION_ADVICE[s.type]}</p>
+          <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Comment exécuter</p>
+          <p className="text-sm leading-relaxed" style={{ color: "#EDE7D9" }}>{SESSION_ADVICE[s.type]}</p>
         </div>
 
         {workout && (
-          <div className="rounded-lg p-3 space-y-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-            <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "var(--accent)" }}>{workout.title}</p>
+          <div className="rounded-lg p-3 space-y-3" style={{ background: "#1C2B24", border: "1px solid #2C3A32" }}>
+            <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "#C1622B" }}>{workout.title}</p>
 
             <div>
-              <p className="text-xs uppercase" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>Échauffement</p>
-              <p className="text-sm" style={{ color: "var(--text)" }}>{workout.warmup.text}</p>
-              <p className="text-xs" style={{ color: "var(--blue)", fontFamily: "'JetBrains Mono', monospace" }}>~{workout.warmup.pace}/km</p>
+              <p className="text-xs uppercase" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>Échauffement</p>
+              <p className="text-sm" style={{ color: "#EDE7D9" }}>{workout.warmup.text}</p>
+              <p className="text-xs" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>~{workout.warmup.pace}/km</p>
             </div>
 
             {workout.blocks.map((b, i) => (
               <div key={i}>
-                <p className="text-xs uppercase" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>Corps de séance</p>
-                <p className="text-sm" style={{ color: "var(--text)" }}>{b.repeats}</p>
-                <div className="mt-1 pl-3 space-y-1" style={{ borderLeft: "2px solid var(--accent)" }}>
+                <p className="text-xs uppercase" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>Corps de séance</p>
+                <p className="text-sm" style={{ color: "#EDE7D9" }}>{b.repeats}</p>
+                <div className="mt-1 pl-3 space-y-1" style={{ borderLeft: "2px solid #C1622B" }}>
                   <div>
-                    <p className="text-sm" style={{ color: "var(--text)" }}>▸ {b.work}</p>
-                    <p className="text-xs" style={{ color: "var(--blue)", fontFamily: "'JetBrains Mono', monospace" }}>{b.workPace.includes(":") ? `~${b.workPace}/km` : b.workPace}</p>
+                    <p className="text-sm" style={{ color: "#EDE7D9" }}>▸ {b.work}</p>
+                    <p className="text-xs" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>{b.workPace.includes(":") ? `~${b.workPace}/km` : b.workPace}</p>
                   </div>
                   <div>
-                    <p className="text-sm" style={{ color: "var(--muted2)" }}>▸ récup : {b.rest}</p>
-                    <p className="text-xs" style={{ color: "var(--blue)", fontFamily: "'JetBrains Mono', monospace" }}>~{b.restPace}/km</p>
+                    <p className="text-sm" style={{ color: "#9CAA9E" }}>▸ récup : {b.rest}</p>
+                    <p className="text-xs" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>~{b.restPace}/km</p>
                   </div>
                 </div>
-                {b.between && <p className="text-xs mt-1" style={{ color: "var(--muted2)" }}>{b.between}</p>}
+                {b.between && <p className="text-xs mt-1" style={{ color: "#9CAA9E" }}>{b.between}</p>}
               </div>
             ))}
 
             <div>
-              <p className="text-xs uppercase" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>Retour au calme</p>
-              <p className="text-sm" style={{ color: "var(--text)" }}>{workout.cooldown.text}</p>
-              <p className="text-xs" style={{ color: "var(--blue)", fontFamily: "'JetBrains Mono', monospace" }}>~{workout.cooldown.pace}/km</p>
+              <p className="text-xs uppercase" style={{ color: "#5A6259", fontFamily: "'JetBrains Mono', monospace" }}>Retour au calme</p>
+              <p className="text-sm" style={{ color: "#EDE7D9" }}>{workout.cooldown.text}</p>
+              <p className="text-xs" style={{ color: "#5C7A99", fontFamily: "'JetBrains Mono', monospace" }}>~{workout.cooldown.pace}/km</p>
             </div>
           </div>
         )}
 
         {vma && (
           <div>
-            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
               Tes allures (VMA {vma} km/h)
             </p>
             <div className="space-y-0.5">
               {ZONES.map(z => (
-                <div key={z.key} className="flex justify-between text-xs" style={{ color: "var(--muted2)" }}>
+                <div key={z.key} className="flex justify-between text-xs" style={{ color: "#9CAA9E" }}>
                   <span>{z.label}</span>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--blue)" }}>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>
                     {paceAtPct(vma, z.pct[1])} – {paceAtPct(vma, z.pct[0])}/km
                   </span>
                 </div>
@@ -4057,16 +4057,16 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
         {s.duree >= 75 && !isCross(s.type) && (() => {
           const f = fuelingPlan({ durationMin: s.duree, tempC: 18, weightKg: null, intensity: s.type === "longue" ? "facile" : "moderee" });
           return (
-            <div className="rounded-lg p-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
-              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+            <div className="rounded-lg p-3" style={{ background: "#1C2B24", border: "1px solid #2C3A32" }}>
+              <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
                 Ravitaillement
               </p>
-              <p className="text-sm" style={{ color: "var(--text)" }}>
-                <span style={{ color: "var(--accent)" }}>{f.carbs} g</span> de glucides et
-                <span style={{ color: "var(--blue)" }}> {f.fluid} ml</span> de boisson par heure
-                <span style={{ color: "var(--muted)" }}> — soit ~{f.totalCarbs} g et {(f.totalFluid / 1000).toFixed(1)} L sur la séance</span>
+              <p className="text-sm" style={{ color: "#EDE7D9" }}>
+                <span style={{ color: "#C1622B" }}>{f.carbs} g</span> de glucides et
+                <span style={{ color: "#5C7A99" }}> {f.fluid} ml</span> de boisson par heure
+                <span style={{ color: "#5A6259" }}> — soit ~{f.totalCarbs} g et {(f.totalFluid / 1000).toFixed(1)} L sur la séance</span>
               </p>
-              <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>
+              <p className="text-xs mt-1" style={{ color: "#5A6259" }}>
                 Base 18 °C — ajuste dans l'onglet Nutrition selon la météo.
               </p>
             </div>
@@ -4074,7 +4074,7 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
         })()}
 
         <div>
-          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>Export</p>
+          <p className="text-xs uppercase tracking-wider mb-2" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Export</p>
           <div className="flex gap-2">
             <button
               onClick={() => {
@@ -4087,7 +4087,7 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
               }}
               disabled={!vma}
               className="flex-1 rounded-lg py-2 text-sm disabled:opacity-40"
-              style={{ background: "var(--border)", color: "var(--text)" }}>
+              style={{ background: "#2C3A32", color: "#EDE7D9" }}>
               Fichier .fit
             </button>
             <button
@@ -4098,22 +4098,22 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
                 setTimeout(() => setExportMsg(""), 4000);
               }}
               className="flex-1 rounded-lg py-2 text-sm"
-              style={{ background: "var(--border)", color: "var(--text)" }}>
+              style={{ background: "#2C3A32", color: "#EDE7D9" }}>
               Texte
             </button>
           </div>
-          {exportMsg && <p className="text-xs text-center mt-2" style={{ color: "var(--green)" }}>{exportMsg}</p>}
-          <p className="text-xs mt-2 leading-relaxed" style={{ color: "var(--muted)" }}>
+          {exportMsg && <p className="text-xs text-center mt-2" style={{ color: "#7A8B5E" }}>{exportMsg}</p>}
+          <p className="text-xs mt-2 leading-relaxed" style={{ color: "#5A6259" }}>
             Le .fit se copie sur la montre par USB dans le dossier <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>GARMIN/NEWFILES</span> — Garmin Connect ne sait pas importer ce type de fichier depuis le web.
           </p>
         </div>
 
         <div>
-          <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>Notes</p>
+          <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>Notes</p>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-            className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)" }}
+            className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32" }}
             placeholder="Sensations attendues, parcours, matériel..." />
-          <button onClick={() => { onSaveNotes(s.id, notes); setSaved(true); setTimeout(() => setSaved(false), 2000); }} className="mt-2 w-full rounded-lg py-2 text-sm" style={{ background: "var(--border)", color: "var(--text)" }}>
+          <button onClick={() => { onSaveNotes(s.id, notes); setSaved(true); setTimeout(() => setSaved(false), 2000); }} className="mt-2 w-full rounded-lg py-2 text-sm" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
             {saved ? "Enregistré ✓" : "Enregistrer"}
           </button>
         </div>
@@ -4122,7 +4122,7 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
         {s.done && s.actual?.fueling && <FuelingReport session={s} products={products} />}
         {s.done && s.actual?.laps?.length > 0 && <LapAnalysis session={s} vma={vma} />}
 
-        <button onClick={onClose} className="w-full rounded-lg py-2 text-sm" style={{ background: "var(--surface2)", color: "var(--green)" }}>
+        <button onClick={onClose} className="w-full rounded-lg py-2 text-sm" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
           Replier
         </button>
     </div>
@@ -4158,13 +4158,13 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma,
         return (
           <div key={weekStart}>
             <div className="flex items-center justify-between px-1 mb-2">
-              <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+              <p className="text-xs uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
                 Semaine du {fmtDate(weekStart)} {phase && `· ${PHASE_LABEL[phase]}`}
               </p>
-              <p className="text-xs" style={{ color: "var(--muted)" }}>ordre conseillé</p>
+              <p className="text-xs" style={{ color: "#5A6259" }}>ordre conseillé</p>
             </div>
             {adjustedFrom && (
-              <div className="rounded-lg px-3 py-2 mb-2 text-xs" style={{ background: "var(--warnbg)", color: "var(--accent2)", border: "1px solid var(--warnborder)" }}>
+              <div className="rounded-lg px-3 py-2 mb-2 text-xs" style={{ background: "#2A2018", color: "#D9793C", border: "1px solid #3A2C1C" }}>
                 {adjustedFrom[1].reason}
               </div>
             )}
@@ -4191,75 +4191,242 @@ function cssVar(name) {
   return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || undefined;
 }
 
-function Stats({ sessions }) {
-  const runSessions = sessions.filter(s => !isCross(s.type));
-  const crossSessions = sessions.filter(s => isCross(s.type) && s.done);
+const GRANULARITIES = [
+  { key: "week",  label: "Semaine", count: 12 },
+  { key: "month", label: "Mois",    count: 12 },
+  { key: "year",  label: "Année",   count: 5 },
+];
 
-  const weekly = useMemo(() => {
-    const map = new Map();
-    runSessions.forEach(s => {
-      const wk = sessionWeek(s);
-      if (!map.has(wk)) map.set(wk, { week: wk, planifie: 0, realise: 0 });
-      const e = map.get(wk);
-      // planifié = ce que le plan prévoyait ; réalisé = toute la course faite,
-      // y compris les séances ajoutées hors plan
-      if (s.generated) e.planifie += s.distance || 0;
-      if (s.done) e.realise += (s.actual?.distance ?? s.distance) || 0;
+const METRICS = [
+  { key: "km",   label: "Distance", unit: "km",   color: "--accent" },
+  { key: "dplus",label: "Dénivelé", unit: "m D+", color: "--amber"  },
+  { key: "min",  label: "Temps",    unit: "h",    color: "--green"  },
+];
+
+// Clé de regroupement d'une séance selon la granularité choisie
+function periodKey(dateStr, gran) {
+  if (gran === "year") return dateStr.slice(0, 4);
+  if (gran === "month") return dateStr.slice(0, 7);
+  return toISO(isoWeekStart(dateStr));
+}
+function periodLabel(key, gran) {
+  if (gran === "year") return key;
+  if (gran === "month") {
+    const [y, m] = key.split("-");
+    return new Date(Number(y), Number(m) - 1, 1)
+      .toLocaleDateString("fr-FR", { month: "short" }) + " " + y.slice(2);
+  }
+  return fmtDate(key);
+}
+
+/**
+ * Agrège toutes les séances réalisées par période, en séparant la course
+ * à pied des activités complémentaires — les kilomètres de vélo n'ont pas
+ * le même sens que ceux de course.
+ */
+function aggregate(sessions, gran) {
+  const map = new Map();
+  const val = (s, f) => s.actual?.[f] ?? s[f] ?? 0;
+
+  sessions.forEach(s => {
+    const d = s.date || s.weekStart;
+    if (!d) return;
+    const k = periodKey(d, gran);
+    if (!map.has(k)) map.set(k, {
+      key: k, runKm: 0, runD: 0, runMin: 0, runN: 0,
+      crossKm: 0, crossMin: 0, crossN: 0, planKm: 0, byType: {},
     });
-    return [...map.values()].sort((a, b) => a.week.localeCompare(b.week)).slice(-10)
-      .map(e => ({ ...e, label: fmtDate(e.week), planifie: Math.round(e.planifie), realise: Math.round(e.realise) }));
-  }, [sessions]);
+    const e = map.get(k);
 
-  const planned = sessions.filter(s => s.generated);
-  const totalPlanned = planned.length;
-  const totalDone = planned.filter(s => s.done).length;
-  const compliance = totalPlanned ? Math.round((totalDone / totalPlanned) * 100) : 0;
-  const dplusDone = runSessions.filter(s => s.done).reduce((a, s) => a + (s.actual?.dplus ?? s.dplus ?? 0), 0);
-  const cardStyle = { background: "var(--surface)", border: "1px solid var(--border)" };
+    if (s.generated && !isCross(s.type)) e.planKm += s.distance || 0;
+    if (!s.done) return;
+
+    const km = val(s, "distance"), dp = val(s, "dplus"), mn = val(s, "duree");
+    if (isCross(s.type)) { e.crossKm += km; e.crossMin += mn; e.crossN += 1; }
+    else { e.runKm += km; e.runD += dp; e.runMin += mn; e.runN += 1; }
+
+    if (!e.byType[s.type]) e.byType[s.type] = { km: 0, min: 0, n: 0 };
+    e.byType[s.type].km += km;
+    e.byType[s.type].min += mn;
+    e.byType[s.type].n += 1;
+  });
+
+  return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
+}
+
+const fmtH = v => (v >= 60 ? `${Math.floor(v / 60)}h${String(Math.round(v % 60)).padStart(2, "0")}` : `${Math.round(v)}′`);
+
+function Stats({ sessions }) {
+  const [gran, setGran] = useState("month");
+  const [metric, setMetric] = useState("km");
+
+  const g = GRANULARITIES.find(x => x.key === gran);
+  const m = METRICS.find(x => x.key === metric);
+
+  const all = useMemo(() => aggregate(sessions, gran), [sessions, gran]);
+  const rows = all.slice(-g.count);
+
+  const pick = e => metric === "km" ? e.runKm : metric === "dplus" ? e.runD : e.runMin / 60;
+  const pickCross = e => metric === "km" ? e.crossKm : metric === "dplus" ? 0 : e.crossMin / 60;
+
+  const chartData = rows.map(e => ({
+    label: periodLabel(e.key, gran),
+    course: Math.round(pick(e) * 10) / 10,
+    complementaire: Math.round(pickCross(e) * 10) / 10,
+    prevu: metric === "km" ? Math.round(e.planKm) : 0,
+  }));
+
+  // Cumuls sur tout l'historique
+  const done = sessions.filter(s => s.done);
+  const run = done.filter(s => !isCross(s.type));
+  const cross = done.filter(s => isCross(s.type));
+  const sum = (arr, f) => arr.reduce((a, s) => a + (s.actual?.[f] ?? s[f] ?? 0), 0);
+  const totKm = sum(run, "distance"), totD = sum(run, "dplus"), totMin = sum(run, "duree");
+
+  // Période en cours et précédente, pour situer la tendance
+  const cur = all[all.length - 1], prev = all[all.length - 2];
+  const trend = (a, b) => (b && b > 0) ? Math.round(((a - b) / b) * 100) : null;
+
+  // Records
+  const longest = run.reduce((a, s) => (s.actual?.distance ?? s.distance ?? 0) > (a.d || 0)
+    ? { d: s.actual?.distance ?? s.distance, date: s.date } : a, {});
+  const hilliest = run.reduce((a, s) => (s.actual?.dplus ?? s.dplus ?? 0) > (a.d || 0)
+    ? { d: s.actual?.dplus ?? s.dplus, date: s.date } : a, {});
+  const bestWeek = aggregate(sessions, "week").reduce((a, e) => e.runKm > (a.runKm || 0) ? e : a, {});
+
+  // Répartition par type sur la période affichée
+  const typeTotals = {};
+  rows.forEach(e => Object.entries(e.byType).forEach(([t, v]) => {
+    if (!typeTotals[t]) typeTotals[t] = { km: 0, min: 0, n: 0 };
+    typeTotals[t].km += v.km; typeTotals[t].min += v.min; typeTotals[t].n += v.n;
+  }));
+  const typeMax = Math.max(1, ...Object.values(typeTotals).map(v => v.min));
+
+  const cardStyle = { background: "#182420", border: "1px solid #2C3A32" };
+  const maxVal = Math.max(1, ...chartData.map(d => Math.max(d.course, d.complementaire, d.prevu)));
 
   return (
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+
+      {/* ---------- cumuls ---------- */}
       <div className="grid grid-cols-3 gap-3 lg:col-span-2">
-        <div className="rounded-xl p-3 text-center" style={cardStyle}>
-          <p className="text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{compliance}%</p>
-          <p className="text-xs mt-1" style={{ color: "var(--green)" }}>séances faites</p>
-        </div>
-        <div className="rounded-xl p-3 text-center" style={cardStyle}>
-          <p className="text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{dplusDone}</p>
-          <p className="text-xs mt-1" style={{ color: "var(--green)" }}>m D+ cumulés</p>
-        </div>
-        <div className="rounded-xl p-3 text-center" style={cardStyle}>
-          <p className="text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{totalDone}/{totalPlanned}</p>
-          <p className="text-xs mt-1" style={{ color: "var(--green)" }}>séances</p>
-        </div>
+        {[["Distance", Math.round(totKm), "km"],
+          ["Dénivelé", Math.round(totD), "m D+"],
+          ["Temps", fmtH(totMin), ""]].map(([l, v, u]) => (
+          <div key={l} className="rounded-xl p-3 text-center" style={cardStyle}>
+            <p className="text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>{v}</p>
+            <p className="text-xs" style={{ color: "#5A6259" }}>{u}</p>
+            <p className="text-xs mt-1" style={{ color: "#7A8B5E" }}>{l} · course</p>
+          </div>
+        ))}
       </div>
-      <div className="rounded-xl p-4" style={cardStyle}>
-        <p className="text-xs uppercase tracking-wider mb-3" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>Volume hebdo course (km)</p>
-        {!CHARTS_OK ? (
+
+      {/* ---------- graphique ---------- */}
+      <div className="rounded-xl p-4 lg:col-span-2" style={cardStyle}>
+        <div className="flex gap-1 rounded-lg p-1 mb-2" style={{ background: "#1C2B24" }}>
+          {GRANULARITIES.map(x => (
+            <button key={x.key} onClick={() => setGran(x.key)} className="flex-1 py-1.5 rounded-md text-xs"
+              style={{ background: gran === x.key ? "#C1622B" : "transparent", color: gran === x.key ? "#14201C" : "#9CAA9E" }}>
+              {x.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1 rounded-lg p-1 mb-3" style={{ background: "#1C2B24" }}>
+          {METRICS.map(x => (
+            <button key={x.key} onClick={() => setMetric(x.key)} className="flex-1 py-1.5 rounded-md text-xs"
+              style={{ background: metric === x.key ? "#7A8B5E" : "transparent", color: metric === x.key ? "#14201C" : "#9CAA9E" }}>
+              {x.label}
+            </button>
+          ))}
+        </div>
+
+        {chartData.length === 0 ? (
+          <p className="text-sm text-center py-6" style={{ color: "#5A6259" }}>
+            Aucune séance enregistrée pour l'instant.
+          </p>
+        ) : !CHARTS_OK ? (
           <div className="space-y-1">
-            {weekly.map(w => (
-              <div key={w.week} className="flex items-center justify-between text-xs" style={{ color: "var(--muted2)" }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{w.label}</span>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                  <span style={{ color: "var(--muted)" }}>{w.planifie}</span> / <span style={{ color: "var(--accent)" }}>{w.realise}</span> km
+            {chartData.map(d => (
+              <div key={d.label} className="flex items-center justify-between text-xs" style={{ color: "#9CAA9E" }}>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>{d.label}</span>
+                <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#C1622B" }}>
+                  {d.course} {m.unit}
                 </span>
               </div>
             ))}
           </div>
         ) : (
-        <div style={{ width: "100%", height: 180 }}>
-          <ResponsiveContainer>
-            <BarChart data={weekly}>
-              <CartesianGrid strokeDasharray="3 3" stroke={cssVar("--border")} vertical={false} />
-              <XAxis dataKey="label" stroke={cssVar("--muted")} fontSize={11} />
-              <YAxis stroke={cssVar("--muted")} fontSize={11} />
-              <Tooltip contentStyle={{ background: cssVar("--surface"), border: "1px solid " + cssVar("--border"), color: cssVar("--text") }} />
-              <Bar dataKey="planifie" fill={cssVar("--border2")} radius={[4, 4, 0, 0]} name="Planifié" />
-              <Bar dataKey="realise" fill={cssVar("--accent")} radius={[4, 4, 0, 0]} name="Réalisé" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+          <div style={{ width: "100%", height: 200 }}>
+            <ResponsiveContainer>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke={cssVar("--border")} vertical={false} />
+                <XAxis dataKey="label" stroke={cssVar("--muted")} fontSize={10} interval={0} angle={gran === "week" ? -35 : 0} textAnchor={gran === "week" ? "end" : "middle"} height={gran === "week" ? 45 : 25} />
+                <YAxis stroke={cssVar("--muted")} fontSize={10} />
+                <Tooltip contentStyle={{ background: cssVar("--surface"), border: "1px solid " + cssVar("--border"), color: cssVar("--text") }} />
+                <Bar dataKey="course" fill={cssVar("--accent")} radius={[3, 3, 0, 0]} name={`Course (${m.unit})`} />
+                {metric !== "dplus" && (
+                  <Bar dataKey="complementaire" fill={cssVar("--blue")} radius={[3, 3, 0, 0]} name={`Complémentaire (${m.unit})`} />
+                )}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         )}
+
+        {cur && prev && (
+          <p className="text-xs mt-2 text-center" style={{ color: "#5A6259" }}>
+            {g.label.toLowerCase()} en cours : <span style={{ color: "#EDE7D9" }}>{Math.round(pick(cur) * 10) / 10} {m.unit}</span>
+            {trend(pick(cur), pick(prev)) !== null && (
+              <span style={{ color: trend(pick(cur), pick(prev)) >= 0 ? "#7A8B5E" : "#B0863C" }}>
+                {" "}({trend(pick(cur), pick(prev)) > 0 ? "+" : ""}{trend(pick(cur), pick(prev))}% vs précédent{g.key === "week" ? "e" : ""})
+              </span>
+            )}
+          </p>
+        )}
+      </div>
+
+      {/* ---------- répartition par activité ---------- */}
+      <div className="rounded-xl p-4" style={cardStyle}>
+        <p className="text-xs uppercase tracking-wider mb-3" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          Répartition · {g.count} dernières périodes
+        </p>
+        {Object.keys(typeTotals).length === 0 ? (
+          <p className="text-xs" style={{ color: "#5A6259" }}>Rien à afficher.</p>
+        ) : (
+          <div className="space-y-2">
+            {Object.entries(typeTotals).sort((a, b) => b[1].min - a[1].min).map(([t, v]) => (
+              <div key={t}>
+                <div className="flex justify-between text-xs mb-0.5">
+                  <span style={{ color: TYPES[t]?.color || "#9CAA9E" }}>{TYPES[t]?.label || t} ×{v.n}</span>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
+                    {v.km ? `${Math.round(v.km)} km · ` : ""}{fmtH(v.min)}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full" style={{ width: `${(v.min / typeMax) * 100}%`, background: TYPES[t]?.color || "#5A6259", minWidth: 3 }} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ---------- records ---------- */}
+      <div className="rounded-xl p-4" style={cardStyle}>
+        <p className="text-xs uppercase tracking-wider mb-3" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+          Records
+        </p>
+        <div className="space-y-2">
+          {[["Plus longue sortie", longest.d ? `${longest.d} km` : "—", longest.date],
+            ["Plus gros dénivelé", hilliest.d ? `${Math.round(hilliest.d)} m D+` : "—", hilliest.date],
+            ["Meilleure semaine", bestWeek.runKm ? `${Math.round(bestWeek.runKm)} km` : "—", bestWeek.key],
+            ["Séances de course", `${run.length}`, null],
+            ["Activités complémentaires", `${cross.length}`, null]].map(([l, v, d]) => (
+            <div key={l} className="flex justify-between text-sm">
+              <span style={{ color: "#9CAA9E" }}>{l}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#EDE7D9" }}>
+                {v}{d ? <span style={{ color: "#5A6259" }}> · {fmtDate(d)}</span> : null}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -4295,7 +4462,7 @@ function App() {
     else document.documentElement.setAttribute("data-theme", theme);
     try { localStorage.setItem("trailcoach:theme", theme); } catch (e) {}
     const m = document.querySelector('meta[name="theme-color"]');
-    if (m) m.setAttribute("content", theme === "eink" ? "#FFFFFF" : theme === "light" ? "#F4F1E8" : "var(--bg)");
+    if (m) m.setAttribute("content", theme === "eink" ? "#FFFFFF" : theme === "light" ? "#F4F1E8" : "#14201C");
   }, [theme]);
   const lastSavedRef = React.useRef(0);
   const [weightKg, setWeightKg] = useState("");
@@ -4560,7 +4727,7 @@ function App() {
   const past = sessions.filter(s => s.done).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   return (
-    <div className="min-h-screen w-full" style={{ background: "var(--bg)" }}>
+    <div className="min-h-screen w-full" style={{ background: "#14201C" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap');
         * { font-family: 'IBM Plex Sans', sans-serif; }
@@ -4574,14 +4741,14 @@ function App() {
         </div>
 
         <div className="flex items-center justify-between px-1 gap-2">
-          <span className="text-xs" style={{ color: storageOk ? "var(--muted)" : "var(--accent2)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <span className="text-xs" style={{ color: storageOk ? "#5A6259" : "#D9793C", fontFamily: "'JetBrains Mono', monospace" }}>
             {storageOk ? "● " : "▲ "}{storageMsg || "sauvegarde auto"}
           </span>
-          <div className="flex gap-1 rounded-lg p-0.5 shrink-0" style={{ background: "var(--surface2)" }}>
+          <div className="flex gap-1 rounded-lg p-0.5 shrink-0" style={{ background: "#1C2B24" }}>
             {[["dark", "Sombre"], ["light", "Clair"], ["eink", "Liseuse"]].map(([k, label]) => (
               <button key={k} onClick={() => setTheme(k)} className="px-2 py-1 rounded-md text-xs"
-                style={{ background: theme === k ? "var(--accent)" : "transparent",
-                         color: theme === k ? "var(--bg)" : "var(--muted2)" }}>
+                style={{ background: theme === k ? "#C1622B" : "transparent",
+                         color: theme === k ? "#14201C" : "#9CAA9E" }}>
                 {label}
               </button>
             ))}
@@ -4589,33 +4756,33 @@ function App() {
         </div>
 
         {goal && !editingGoal && (
-          <button onClick={() => setEditingGoal(true)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--surface2)", color: "var(--green)" }}>
+          <button onClick={() => setEditingGoal(true)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "#1C2B24", color: "#7A8B5E" }}>
             Modifier l'objectif
           </button>
         )}
 
         {(editingGoal || !goal) && (
           <div className="lg:max-w-xl space-y-5">
-            <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+            <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
               <button onClick={() => setShowRestore(v => !v)} className="w-full flex items-center justify-between">
-                <span className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+                <span className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
                   Restaurer une sauvegarde
                 </span>
-                <span style={{ color: "var(--muted)" }}>{showRestore ? "▾" : "▸"}</span>
+                <span style={{ color: "#5A6259" }}>{showRestore ? "▾" : "▸"}</span>
               </button>
               {showRestore && (
                 <>
-                  <p className="text-xs" style={{ color: "var(--muted2)" }}>
+                  <p className="text-xs" style={{ color: "#9CAA9E" }}>
                     Colle ici le texte de sauvegarde généré précédemment pour retrouver ton plan et ton historique.
                   </p>
                   <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
                     className="w-full rounded-lg px-3 py-2 text-xs outline-none"
-                    style={{ background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)", fontFamily: "'JetBrains Mono', monospace" }}
+                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
                     placeholder='{"goal":...}' />
-                  <button onClick={restoreBackup} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "var(--blue)", color: "var(--bg)" }}>
+                  <button onClick={restoreBackup} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "#5C7A99", color: "#14201C" }}>
                     Restaurer
                   </button>
-                  {backupStatus && <p className="text-xs text-center" style={{ color: "var(--green)" }}>{backupStatus}</p>}
+                  {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
                 </>
               )}
             </div>
@@ -4625,10 +4792,10 @@ function App() {
 
         {goal && !editingGoal && (
           <>
-            <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--surface2)" }}>
+            <div className="flex gap-1 rounded-xl p-1" style={{ background: "#1C2B24" }}>
               {[["plan", "Plan"], ["importer", "Importer"], ["ajouter", "Ajouter"], ["nutrition", "Nutrition"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
                 <button key={k} onClick={() => setTab(k)} className="flex-1 py-2 rounded-lg text-xs"
-                  style={{ background: tab === k ? "var(--accent)" : "transparent", color: tab === k ? "var(--bg)" : "var(--muted2)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  style={{ background: tab === k ? "#C1622B" : "transparent", color: tab === k ? "#14201C" : "#9CAA9E", fontFamily: "'Space Grotesk', sans-serif" }}>
                   {label}
                 </button>
               ))}
@@ -4638,10 +4805,10 @@ function App() {
               <>
                 <div className="flex items-center gap-2 flex-wrap">
                   <button onClick={refreshFuture} className="text-xs px-3 py-1.5 rounded-lg"
-                    style={{ background: "var(--border)", color: "var(--text)" }}>
+                    style={{ background: "#2C3A32", color: "#EDE7D9" }}>
                     ↻ Actualiser les semaines à venir
                   </button>
-                  {refreshMsg && <span className="text-xs" style={{ color: "var(--green)" }}>{refreshMsg}</span>}
+                  {refreshMsg && <span className="text-xs" style={{ color: "#7A8B5E" }}>{refreshMsg}</span>}
                 </div>
                 <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
                 onSaveNotes={saveNotes} vma={goal?.vma} products={products} />
@@ -4651,43 +4818,43 @@ function App() {
             {tab === "importer" && (
               <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
                 {!storageOk && (
-                  <div className="rounded-lg px-3 py-2 text-xs lg:col-span-2" style={{ background: "var(--warnbg)", color: "var(--accent2)", border: "1px solid var(--warnborder)" }}>
+                  <div className="rounded-lg px-3 py-2 text-xs lg:col-span-2" style={{ background: "#2A2018", color: "#D9793C", border: "1px solid #3A2C1C" }}>
                     La sauvegarde automatique ne fonctionne pas dans ce contexte. Utilise la sauvegarde manuelle ci-dessous avant de fermer l'app.
                   </div>
                 )}
-                <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+                <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+                  <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
                     Importer des séances réalisées
                   </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
                     Chaque ligne crée une séance distincte dans l'historique — aucun rattachement
                     automatique au plan. Pour rattacher une activité à une séance prévue, utilise
-                    le bouton <span style={{ color: "var(--accent)" }}>Importer</span> en face de cette séance.
+                    le bouton <span style={{ color: "#C1622B" }}>Importer</span> en face de cette séance.
                   </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+                  <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
                     Une séance par ligne :<br />
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--blue)" }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>
                       date ; km ; D+ ; minutes ; ressenti ; FC moy ; FC max ; cadence
                     </span><br />
-                    Exemple : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--blue)" }}>2026-08-12 ; 12.4 ; 380 ; 78 ; 3 ; 148 ; 172 ; 80</span><br />
+                    Exemple : <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "#5C7A99" }}>2026-08-12 ; 12.4 ; 380 ; 78 ; 3 ; 148 ; 172 ; 80</span><br />
                     Les champs vides sont acceptés. Une séance planifiée à ±2 jours est automatiquement rapprochée.
                   </p>
                   <textarea value={importText} onChange={e => setImportText(e.target.value)} rows={6}
                     className="w-full rounded-lg px-3 py-2 text-sm outline-none"
-                    style={{ background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)", fontFamily: "'JetBrains Mono', monospace" }}
+                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
                     placeholder={"2026-08-12 ; 12.4 ; 380 ; 78 ; 3\n2026-08-14 ; 8 ; 90 ; 45 ; 2"} />
-                  <button onClick={runImport} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>
+                  <button onClick={runImport} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "#C1622B", color: "#14201C" }}>
                     Importer
                   </button>
-                  {importStatus && <p className="text-xs text-center" style={{ color: "var(--green)" }}>{importStatus}</p>}
+                  {importStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{importStatus}</p>}
                 </div>
 
-                <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+                <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+                  <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
                     Synchronisation entre appareils
                   </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
-                    Saisis le <span style={{ color: "var(--text)" }}>même code</span> sur ton téléphone et
+                  <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
+                    Saisis le <span style={{ color: "#EDE7D9" }}>même code</span> sur ton téléphone et
                     ton ordinateur : ils partageront alors les mêmes données. Sans code, tout reste
                     sur cet appareil.
                   </p>
@@ -4695,38 +4862,38 @@ function App() {
                     <input type="text" value={syncCode} onChange={e => setSyncCode(e.target.value)}
                       placeholder="ex. mickael-trail-2026"
                       className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
-                      style={{ background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)", fontFamily: "'JetBrains Mono', monospace" }} />
-                    <button onClick={applySyncCode} className="rounded-lg px-3 text-sm" style={{ background: "var(--blue)", color: "var(--bg)" }}>
+                      style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }} />
+                    <button onClick={applySyncCode} className="rounded-lg px-3 text-sm" style={{ background: "#5C7A99", color: "#14201C" }}>
                       Activer
                     </button>
                   </div>
-                  {syncMsg && <p className="text-xs" style={{ color: "var(--green)" }}>{syncMsg}</p>}
-                  <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+                  {syncMsg && <p className="text-xs" style={{ color: "#7A8B5E" }}>{syncMsg}</p>}
+                  <p className="text-xs leading-relaxed" style={{ color: "#5A6259" }}>
                     Choisis un code long et peu devinable : toute personne connaissant l'adresse du
                     site et ce code pourrait accéder à tes données.
                   </p>
                 </div>
 
-                <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+                <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+                  <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
                     Sauvegarde manuelle
                   </p>
-                  <p className="text-xs" style={{ color: "var(--muted2)" }}>
+                  <p className="text-xs" style={{ color: "#9CAA9E" }}>
                     Génère un texte contenant tout ton plan. Garde-le (note, mail, message) : si tu perds tes données, recolle-le ici et clique Restaurer.
                   </p>
                   <div className="flex gap-2">
-                    <button onClick={exportBackup} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "var(--border)", color: "var(--text)" }}>
+                    <button onClick={exportBackup} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#2C3A32", color: "#EDE7D9" }}>
                       Générer
                     </button>
-                    <button onClick={restoreBackup} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "var(--blue)", color: "var(--bg)" }}>
+                    <button onClick={restoreBackup} className="flex-1 rounded-lg py-2 text-sm" style={{ background: "#5C7A99", color: "#14201C" }}>
                       Restaurer
                     </button>
                   </div>
                   <textarea value={backupText} onChange={e => setBackupText(e.target.value)} rows={4}
                     className="w-full rounded-lg px-3 py-2 text-xs outline-none"
-                    style={{ background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)", fontFamily: "'JetBrains Mono', monospace" }}
+                    style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }}
                     placeholder="Le texte de sauvegarde apparaîtra ici" />
-                  {backupStatus && <p className="text-xs text-center" style={{ color: "var(--green)" }}>{backupStatus}</p>}
+                  {backupStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{backupStatus}</p>}
                 </div>
               </div>
             )}
@@ -4741,7 +4908,7 @@ function App() {
             {tab === "stats" && <Stats sessions={sessions} />}
             {tab === "historique" && (
               <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
-                {past.length === 0 && <p className="text-sm text-center py-6 lg:col-span-2" style={{ color: "var(--muted)" }}>Pas encore de séance réalisée.</p>}
+                {past.length === 0 && <p className="text-sm text-center py-6 lg:col-span-2" style={{ color: "#5A6259" }}>Pas encore de séance réalisée.</p>}
                 {past.map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} products={products} />)}
               </div>
             )}
