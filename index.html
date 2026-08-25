@@ -4284,6 +4284,15 @@ function App() {
 
   useEffect(() => {
     if (!loaded) return;
+
+    // Garde-fou : ne jamais écrire un état vide par-dessus des données
+    // existantes. Si une lecture a échoué (réseau, appareil neuf), l'état
+    // local est vide — l'écrire écraserait tout ce qui est en ligne.
+    if (!goal && sessions.length === 0) {
+      setStorageMsg("rien à sauvegarder pour l'instant");
+      return;
+    }
+
     (async () => {
       try {
         if (!window.storage || typeof window.storage.set !== "function") {
