@@ -32,6 +32,9 @@
 <body>
 <div id="root"><div id="boot">Chargement…</div></div>
 
+<!-- Tes cles Firebase, dans un fichier a part : ne pas remplacer lors des mises a jour -->
+<script src="firebase-config.js" onerror="console.warn('firebase-config.js absent : mode local')"></script>
+
 <script>
 // Affiche les erreurs à l'écran : sans ça, un plantage laisse "Chargement…" indéfiniment
 function showFatal(msg) {
@@ -44,17 +47,15 @@ window.addEventListener("error", function (e) { showFatal(e.message + (e.filenam
 window.addEventListener("unhandledrejection", function (e) { showFatal("Promesse rejetee : " + (e.reason && e.reason.message || e.reason)); });
 
 /* ================================================================
-   CONFIGURATION FIREBASE — a remplir (voir README, etape 2)
-   Laisse vide pour utiliser le stockage local du navigateur.
+   CONFIGURATION FIREBASE
+   Elle vit dans le fichier separe firebase-config.js, charge juste
+   au-dessus. Ainsi remplacer index.html lors d'une mise a jour
+   n'efface jamais tes cles.
+   Si le fichier est absent, l'app fonctionne en stockage local.
    ================================================================ */
-const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  databaseURL: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+const FIREBASE_CONFIG = window.FIREBASE_CONFIG || {
+  apiKey: "", authDomain: "", databaseURL: "",
+  projectId: "", storageBucket: "", messagingSenderId: "", appId: ""
 };
 
 let _fbRef = null;
@@ -73,20 +74,48 @@ function setSyncCode(code) {
 window.getSyncCode = getSyncCode;
 window.setSyncCode = setSyncCode;
 
+let STORAGE_REASON = "";
+
 async function initStorage() {
-  if (!FIREBASE_CONFIG.databaseURL) return;
+  STORAGE_REASON = "";
+  if (typeof firebase === "undefined") {
+    STORAGE_REASON = "Le SDK Firebase n'a pas charge (connexion bloquee ?)";
+    return;
+  }
+  if (!FIREBASE_CONFIG.databaseURL) {
+    STORAGE_REASON = "databaseURL est vide dans FIREBASE_CONFIG, en haut de index.html";
+    return;
+  }
   const code = getSyncCode();
-  if (!code) return;                 // pas de code : stockage local
+  if (!code) { STORAGE_REASON = "Aucun code de synchro saisi"; return; }
   try {
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  } catch (e) {
+    STORAGE_REASON = "Config invalide : " + (e.message || e);
+    return;
+  }
+  try {
     await firebase.auth().signInAnonymously();
+  } catch (e) {
+    STORAGE_REASON = e.code === "auth/operation-not-allowed"
+      ? "Connexion anonyme non activee : Firebase > Authentication > Sign-in method > Anonyme"
+      : e.code === "auth/configuration-not-found"
+        ? "Authentication non initialise dans la console Firebase"
+        : "Auth : " + (e.code || e.message || e);
+    return;
+  }
+  try {
     _fbRef = firebase.database().ref("trailcoach/" + code);
+    await _fbRef.child("__ping").set(Date.now());   // verifie les regles d'ecriture
     STORAGE_MODE = "firebase";
   } catch (e) {
-    console.error("Firebase indisponible, bascule en local :", e);
     _fbRef = null;
+    STORAGE_REASON = (e.code === "PERMISSION_DENIED" || /permission/i.test(e.message || ""))
+      ? "Ecriture refusee : verifie les regles de la Realtime Database"
+      : "Base : " + (e.message || e);
   }
 }
+window.STORAGE_REASON = () => STORAGE_REASON;
 window.reinitStorage = async function () {
   _fbRef = null;
   STORAGE_MODE = "local";
@@ -4310,7 +4339,8 @@ function App() {
     setSyncMsg("Connexion...");
     const mode = await window.reinitStorage();
     if (mode !== "firebase") {
-      setSyncMsg("Toujours en local — vérifie la configuration Firebase.");
+      const why = window.STORAGE_REASON ? window.STORAGE_REASON() : "";
+      setSyncMsg("Toujours en local — " + (why || "cause inconnue"));
       return;
     }
     try {
