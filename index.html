@@ -703,11 +703,44 @@ function sessionTemplateForDays(daysPerWeek, raceType) {
   return templates[Math.min(6, Math.max(2, daysPerWeek))];
 }
 
+/**
+ * Progression de la sortie longue, indépendante du volume hebdomadaire.
+ * Sur un ultra c'est la séance structurante : elle construit l'endurance
+ * musculaire, l'habitude de s'alimenter en courant et la confiance. La
+ * faire dépendre d'un pourcentage du volume la maintient trop courte.
+ * Repère usuel : la plus longue sortie atteint ~1/3 de la distance de
+ * course, plafonnée autour de 36 km — au-delà, le coût en récupération
+ * dépasse le bénéfice.
+ */
+function longRunTargets(goal, phases) {
+  const raceKm = goal.distanceKm || 42;
+  const peak = Math.min(Math.round(raceKm * 0.34), 36);
+  const start = Math.max(16, Math.round(goal.startVolumeKm * 0.4));
+  const taperCount = phases.filter(p => p === "taper").length;
+  const buildWeeks = phases.length - taperCount;
+
+  let phaseWeek = 0, prev = null;
+  return phases.map((phase, i) => {
+    phaseWeek = phase === prev ? phaseWeek + 1 : 0;
+    prev = phase;
+
+    if (phase === "taper") {
+      const toRace = phases.length - i;
+      return Math.round(peak * (toRace <= 1 ? 0.3 : toRace === 2 ? 0.45 : 0.6));
+    }
+    const t = buildWeeks > 1 ? i / (buildWeeks - 1) : 1;
+    let km = start + (peak - start) * t;
+    if ((phaseWeek + 1) % 4 === 0) km *= 0.7;      // semaine de décharge
+    return Math.round(km);
+  });
+}
+
 function generatePlan(goal) {
   const today = new Date();
   const race = new Date(goal.raceDate);
   const totalWeeks = Math.max(1, Math.ceil((race - isoWeekStart(today)) / (7 * 24 * 60 * 60 * 1000)));
   const phases = buildPhases(totalWeeks);
+  const longKmByWeek = longRunTargets(goal, phases);
   const penalty = crossTrainingPenaltyKm(goal.otherSports);
   const minVolume = goal.daysPerWeek * 5;
 
@@ -731,6 +764,12 @@ function generatePlan(goal) {
       targetVolume = weekVolumeTarget(weekIdx, phase, goal.startVolumeKm, phaseWeekIdx);
     }
     targetVolume = Math.max(minVolume, targetVolume - penalty);
+
+    // La sortie longue ne doit pas dépasser ~45 % du volume de la semaine :
+    // si elle est plus ambitieuse que le volume prévu, c'est le volume qui
+    // s'ajuste vers le haut.
+    const longKm = longKmByWeek[weekIdx];
+    targetVolume = Math.max(targetVolume, Math.round(longKm / 0.45));
 
     // Gradient de la course (m de D+ par km) — sert de référence pour calibrer
     // le dénivelé de chaque séance, chacune avec sa propre "densité" de D+ :
@@ -773,7 +812,14 @@ function generatePlan(goal) {
 
     const distanceFor = type => {
       const t = totalsByType[type];
-      return t ? t.distance : Math.round(remaining * (shareByType[type] / contShare) * 10) / 10;
+      if (t) return t.distance;
+      if (type === "longue") return longKm;
+      // le reste du volume, une fois la longue et les séances de qualité
+      // servies, se répartit sur les séances continues
+      const others = contTypes.filter(x => x !== "longue");
+      const otherShare = others.reduce((a, x) => a + shareByType[x], 0) || 1;
+      const rest = Math.max(otherShare * 3, remaining - longKm);
+      return Math.round(rest * (shareByType[type] / otherShare) * 10) / 10;
     };
 
     let structuralDPlus = 0;
