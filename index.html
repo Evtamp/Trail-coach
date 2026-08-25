@@ -4455,9 +4455,27 @@ function App() {
     const kept = sessions.filter(s =>
       !s.generated || s.done || (sessionWeek(s) || "") <= currentWeek
     );
-    const fresh = generatePlan(goal).filter(s => s.weekStart > currentWeek);
-    setSessions([...kept, ...fresh]);
-    setRefreshMsg(`${fresh.length} séances à venir mises à jour · historique conservé`);
+    const all = generatePlan(goal);
+    const future = all.filter(s => s.weekStart > currentWeek);
+
+    // Comble les manques de la semaine en cours : une séance supprimée par
+    // erreur réapparaît, sans dupliquer celles déjà présentes. On compare
+    // par type et par nombre, deux séances du même type pouvant coexister.
+    const present = {};
+    sessions.filter(s => s.generated && sessionWeek(s) === currentWeek)
+      .forEach(s => { present[s.type] = (present[s.type] || 0) + 1; });
+    const missing = [];
+    all.filter(s => s.weekStart === currentWeek).forEach(s => {
+      if ((present[s.type] || 0) > 0) present[s.type] -= 1;
+      else missing.push(s);
+    });
+
+    setSessions([...kept, ...missing, ...future]);
+    setRefreshMsg(
+      `${future.length} séances à venir mises à jour`
+      + (missing.length ? ` · ${missing.length} rétablie(s) cette semaine` : "")
+      + " · historique conservé"
+    );
     setTimeout(() => setRefreshMsg(""), 5000);
   };
 
