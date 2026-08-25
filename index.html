@@ -229,6 +229,15 @@ function fmtDate(d) { return new Date(d).toLocaleDateString("fr-FR", { day: "2-d
 // Attention : ne PAS utiliser toISOString() ici — il convertit en UTC, et
 // minuit lundi en heure locale (UTC+2) devient dimanche 22h UTC, ce qui
 // décalait toutes les étiquettes de semaine d'un jour en arrière.
+// Une durée s'affiche en h/min dès qu'elle dépasse l'heure : « 1h45 »
+// se lit bien plus vite que « 105 min ».
+function fmtDuree(min) {
+  if (min == null || isNaN(min)) return "—";
+  const m = Math.round(min);
+  if (m < 60) return `${m} min`;
+  return `${Math.floor(m / 60)}h${String(m % 60).padStart(2, "0")}`;
+}
+
 function toISO(d) {
   if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
   const x = new Date(d);
@@ -1220,7 +1229,7 @@ function WeekRings({ sessions }) {
   const realMin = sum(doneRun, s => s.actual?.duree ?? s.duree);
   const crossMin = sum(doneCross, s => s.actual?.duree ?? s.duree);
 
-  const hrs = v => (v >= 60 ? `${Math.floor(v / 60)}h${String(Math.round(v % 60)).padStart(2, "0")}` : `${Math.round(v)}′`);
+  const hrs = fmtDuree;
 
   return (
     <div className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
@@ -3454,12 +3463,12 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
           </p>
           <p className="text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
             {s.date ? fmtDate(s.date) : "à placer"} · {s.timeLed && s.duree
-              ? `${Math.floor(s.duree / 60)}h${String(s.duree % 60).padStart(2, "0")}${s.dplus ? ` · ${s.dplus} m D+` : ""} · ~${s.distance} km`
-              : `${s.distance ? `${s.distance} km` : "—"}${s.dplus ? ` · ${s.dplus} m D+` : ""}${s.duree ? ` · ${s.duree} min` : ""}`}
+              ? `${fmtDuree(s.duree)}${s.dplus ? ` · ${s.dplus} m D+` : ""} · ~${s.distance} km`
+              : `${s.distance ? `${s.distance} km` : "—"}${s.dplus ? ` · ${s.dplus} m D+` : ""}${s.duree ? ` · ${fmtDuree(s.duree)}` : ""}`}
           </p>
           {s.done && s.actual && (
             <p className="text-xs mt-1" style={{ color: "var(--blue)", fontFamily: "'JetBrains Mono', monospace" }}>
-              réel: {s.actual.distance || "—"} km{s.actual.dplus ? ` · ${s.actual.dplus} m D+` : ""}{s.actual.duree ? ` · ${s.actual.duree} min` : ""}{s.actual.fc ? ` · ${s.actual.fc} bpm` : ""}{s.actual.feeling ? ` · ressenti ${s.actual.feeling}/5` : ""}
+              réel: {s.actual.distance || "—"} km{s.actual.dplus ? ` · ${s.actual.dplus} m D+` : ""}{s.actual.duree ? ` · ${fmtDuree(s.actual.duree)}` : ""}{s.actual.fc ? ` · ${s.actual.fc} bpm` : ""}{s.actual.feeling ? ` · ressenti ${s.actual.feeling}/5` : ""}
             </p>
           )}
         </div>
@@ -3907,7 +3916,7 @@ function paceStr(distanceKm, dureeMin) {
 }
 
 // Une ligne = deux barres proportionnelles (prévu en gris, réalisé en orange)
-function CompareRow({ label, planned, actual, unit, lowerIsBetter = false }) {
+function CompareRow({ label, planned, actual, unit, lowerIsBetter = false, format }) {
   const max = Math.max(planned || 0, actual || 0) || 1;
   const pctP = ((planned || 0) / max) * 100;
   const pctA = ((actual || 0) / max) * 100;
@@ -3920,8 +3929,8 @@ function CompareRow({ label, planned, actual, unit, lowerIsBetter = false }) {
         <span style={{ color: "var(--muted2)" }}>{label}</span>
         {/* les chiffres reprennent la couleur de leur barre : gris = prévu, orange = réalisé */}
         <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-          <span style={{ color: "var(--accent)" }}>{actual ?? "—"}</span>
-          <span style={{ color: "var(--muted)" }}> / {planned ?? "—"} {unit}</span>
+          <span style={{ color: "var(--accent)" }}>{format ? format(actual) : (actual ?? "—")}</span>
+          <span style={{ color: "var(--muted)" }}> / {format ? format(planned) : (planned ?? "—")} {format ? "" : unit}</span>
           {delta !== null && (
             <span style={{ color: good ? "var(--green)" : "var(--amber)", marginLeft: 6 }}>
               {delta > 0 ? "+" : ""}{Math.round(delta)}%
@@ -3982,7 +3991,7 @@ function SessionReport({ s, vma }) {
       <div className="space-y-2.5">
         <CompareRow label="Distance" planned={s.distance} actual={a.distance} unit="km" />
         {(s.dplus || a.dplus) && <CompareRow label="Dénivelé" planned={s.dplus} actual={a.dplus} unit="m" />}
-        <CompareRow label="Durée" planned={s.duree} actual={a.duree} unit="min" />
+        <CompareRow label="Durée" planned={s.duree} actual={a.duree} unit="min" format={fmtDuree} />
       </div>
 
       {(planPace || realPace) && (
@@ -4081,9 +4090,9 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
           </div>
           <div className="rounded-lg p-2 text-center" style={{ background: s.timeLed ? "var(--surface3)" : "var(--surface2)" }}>
             <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: s.timeLed ? "var(--accent)" : "var(--text)" }}>
-              {s.timeLed && s.duree ? `${Math.floor(s.duree / 60)}h${String(s.duree % 60).padStart(2, "0")}` : (s.duree ?? "—")}
+              {fmtDuree(s.duree)}
             </p>
-            <p className="text-xs" style={{ color: "var(--green)" }}>{s.timeLed ? "durée (objectif)" : "min"}</p>
+            <p className="text-xs" style={{ color: "var(--green)" }}>{s.timeLed ? "durée (objectif)" : "durée"}</p>
           </div>
         </div>
 
@@ -4352,7 +4361,7 @@ function aggregate(sessions, gran) {
   return [...map.values()].sort((a, b) => a.key.localeCompare(b.key));
 }
 
-const fmtH = v => (v >= 60 ? `${Math.floor(v / 60)}h${String(Math.round(v % 60)).padStart(2, "0")}` : `${Math.round(v)}′`);
+const fmtH = fmtDuree;
 
 function Stats({ sessions }) {
   const [gran, setGran] = useState("month");
