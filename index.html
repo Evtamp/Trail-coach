@@ -4236,6 +4236,7 @@ function App() {
   const [showRestore, setShowRestore] = useState(false);
   const [syncCode, setSyncCode] = useState(() => (window.getSyncCode ? window.getSyncCode() : ""));
   const [syncMsg, setSyncMsg] = useState("");
+  const [refreshMsg, setRefreshMsg] = useState("");
   const lastSavedRef = React.useRef(0);
   const [weightKg, setWeightKg] = useState("");
   const [targetWeight, setTargetWeight] = useState("");
@@ -4408,7 +4409,7 @@ function App() {
     const lines = importText.split("\n").map(l => l.trim()).filter(Boolean);
     if (lines.length === 0) { setImportStatus("Rien à importer."); return; }
 
-    let matched = 0, created = 0, skipped = 0;
+    let created = 0, skipped = 0;
     const updated = [...sessions];
 
     for (const line of lines) {
@@ -4426,38 +4427,38 @@ function App() {
         cadence: cadStr ? Number(cadStr) : null,
       };
 
-      // Cherche dans la MÊME semaine une séance planifiée non encore validée.
-      // Parmi celles-ci, prend celle dont la distance prévue est la plus proche
-      // de la distance réalisée (une sortie de 22 km se rapproche de la longue,
-      // pas du fractionné).
-      const targetWeek = toISO(isoWeekStart(dateStr));
-      let bestIdx = -1, bestScore = Infinity;
-      updated.forEach((s, i) => {
-        if (s.done) return;
-        if (sessionWeek(s) !== targetWeek) return;
-        const score = actual.distance != null && s.distance != null
-          ? Math.abs(s.distance - actual.distance)
-          : 0;
-        if (score < bestScore) { bestScore = score; bestIdx = i; }
+      // Aucun rapprochement automatique : chaque ligne devient une séance
+      // distincte. Pour rattacher une activité à une séance du plan, on
+      // utilise le bouton « Importer » en face de la séance voulue.
+      updated.push({
+        id: uid(), type: "fonda", date: dateStr,
+        distance: actual.distance, dplus: actual.dplus, duree: actual.duree,
+        notes: "", done: true, actual, generated: false,
       });
-
-      if (bestIdx >= 0) {
-        updated[bestIdx] = { ...updated[bestIdx], done: true, actual, date: dateStr };
-        matched++;
-      } else {
-        updated.push({
-          id: uid(), type: "fonda", date: dateStr,
-          distance: actual.distance, dplus: actual.dplus, duree: actual.duree,
-          notes: "", done: true, actual, generated: false,
-        });
-        created++;
-      }
+      created++;
     }
 
     setSessions(updated);
     setImportText("");
-    setImportStatus(`${matched} séance(s) rapprochée(s), ${created} ajoutée(s)${skipped ? `, ${skipped} ignorée(s)` : ""}.`);
+    setImportStatus(`${created} séance(s) ajoutée(s)${skipped ? `, ${skipped} ignorée(s)` : ""}. Change leur type dans l'historique si besoin.`);
     setTimeout(() => setImportStatus(""), 6000);
+  };
+
+  /**
+   * Recalcule les séances des semaines FUTURES avec les formats actuels,
+   * en conservant intégralement l'historique : séances réalisées, séances
+   * ajoutées à la main, et semaine en cours (déjà entamée).
+   */
+  const refreshFuture = () => {
+    if (!goal) return;
+    const currentWeek = toISO(isoWeekStart(new Date()));
+    const kept = sessions.filter(s =>
+      !s.generated || s.done || (sessionWeek(s) || "") <= currentWeek
+    );
+    const fresh = generatePlan(goal).filter(s => s.weekStart > currentWeek);
+    setSessions([...kept, ...fresh]);
+    setRefreshMsg(`${fresh.length} séances à venir mises à jour · historique conservé`);
+    setTimeout(() => setRefreshMsg(""), 5000);
   };
 
   const saveGoal = (g) => {
@@ -4550,8 +4551,17 @@ function App() {
             </div>
 
             {tab === "plan" && (
-              <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button onClick={refreshFuture} className="text-xs px-3 py-1.5 rounded-lg"
+                    style={{ background: "#2C3A32", color: "#EDE7D9" }}>
+                    ↻ Actualiser les semaines à venir
+                  </button>
+                  {refreshMsg && <span className="text-xs" style={{ color: "#7A8B5E" }}>{refreshMsg}</span>}
+                </div>
+                <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
                 onSaveNotes={saveNotes} vma={goal?.vma} products={products} />
+              </>
             )}
 
             {tab === "importer" && (
@@ -4565,8 +4575,10 @@ function App() {
                   <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
                     Importer des séances réalisées
                   </p>
-                  <p className="text-xs leading-relaxed" style={{ color: "#D9793C" }}>
-                    Import en lot : le rapprochement se fait par semaine et par distance approchante, il peut se tromper de séance. Pour être sûr, utilise le bouton <span style={{ color: "#C1622B" }}>Importer</span> en face de la séance voulue.
+                  <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
+                    Chaque ligne crée une séance distincte dans l'historique — aucun rattachement
+                    automatique au plan. Pour rattacher une activité à une séance prévue, utilise
+                    le bouton <span style={{ color: "#C1622B" }}>Importer</span> en face de cette séance.
                   </p>
                   <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
                     Une séance par ligne :<br />
