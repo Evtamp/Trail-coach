@@ -1108,7 +1108,10 @@ function Ring({ value, target, unit, label, color, format }) {
 }
 
 function WeekRings({ sessions }) {
-  const wk = toISO(isoWeekStart(new Date()));
+  // offset en semaines par rapport à aujourd'hui : 0 = semaine en cours
+  const [offset, setOffset] = useState(0);
+  const wk = toISO(isoWeekStart(addDays(new Date(), offset * 7)));
+  const isCurrent = offset === 0;
 
   // Objectif = ce que le plan prévoit cette semaine
   const planned = sessions.filter(s => s.generated && s.weekStart === wk);
@@ -1125,26 +1128,52 @@ function WeekRings({ sessions }) {
   const realMin = sum(doneRun, s => s.actual?.duree ?? s.duree);
   const crossMin = sum(doneCross, s => s.actual?.duree ?? s.duree);
 
-  if (!targetKm && !realKm) return null;
-
   const hrs = v => (v >= 60 ? `${Math.floor(v / 60)}h${String(Math.round(v % 60)).padStart(2, "0")}` : `${Math.round(v)}′`);
 
   return (
     <div className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-      <div className="flex items-baseline justify-between mb-3">
-        <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
-          Semaine en cours
-        </p>
-        <p className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>
-          {doneRun.length}/{planned.length} séances
-        </p>
+      <div className="flex items-center justify-between mb-1 gap-2">
+        <button onClick={() => setOffset(o => o - 1)} aria-label="Semaine précédente"
+          className="px-2 py-1 rounded-lg text-sm shrink-0"
+          style={{ background: "var(--surface2)", color: "var(--muted2)" }}>‹</button>
+
+        <button onClick={() => setOffset(0)} className="text-center flex-1 min-w-0" disabled={isCurrent}>
+          <p className="text-xs uppercase tracking-wider truncate" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+            {isCurrent ? "Semaine en cours"
+              : offset === -1 ? "Semaine dernière"
+              : offset === 1 ? "Semaine prochaine"
+              : `Semaine du ${fmtDate(wk)}`}
+          </p>
+          <p className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+            {isCurrent ? `${doneRun.length}/${planned.length} séances`
+                       : `${fmtDate(wk)} — ${fmtDate(addDays(wk, 6))}`}
+          </p>
+        </button>
+
+        <button onClick={() => setOffset(o => o + 1)} aria-label="Semaine suivante"
+          className="px-2 py-1 rounded-lg text-sm shrink-0"
+          style={{ background: "var(--surface2)", color: "var(--muted2)" }}>›</button>
       </div>
 
+      {!isCurrent && (
+        <p className="text-xs text-center mb-2" style={{ color: "var(--muted)" }}>
+          {doneRun.length}/{planned.length} séances · touche le titre pour revenir à aujourd'hui
+        </p>
+      )}
+
+      {!targetKm && !realKm && (
+        <p className="text-xs text-center py-4" style={{ color: "var(--muted)" }}>
+          Aucune séance sur cette semaine.
+        </p>
+      )}
+
+      {(targetKm > 0 || realKm > 0) && (
       <div className="grid grid-cols-3 gap-2">
         <Ring value={realKm} target={targetKm} label="Distance" unit="km" color="var(--accent)" format={v => Math.round(v)} />
         <Ring value={realD} target={targetD} label="Dénivelé" unit="m D+" color="var(--amber)" format={v => Math.round(v)} />
         <Ring value={realMin} target={targetMin} label="Temps" unit="" color="var(--green)" format={hrs} />
       </div>
+      )}
 
       {crossMin > 0 && (
         <p className="text-xs mt-3 text-center" style={{ color: "var(--blue)" }}>
