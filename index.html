@@ -60,18 +60,39 @@ const FIREBASE_CONFIG = {
 let _fbRef = null;
 let STORAGE_MODE = "local";
 
+/* Code de synchro : c'est lui qui identifie TES donnees, pas l'appareil.
+   L'authentification anonyme de Firebase attribue un identifiant different
+   a chaque navigateur ; sans ce code, telephone et ordinateur ecriraient
+   dans deux espaces separes. Saisis le meme code sur chaque appareil. */
+function getSyncCode() {
+  return localStorage.getItem("trailcoach:synccode") || "";
+}
+function setSyncCode(code) {
+  localStorage.setItem("trailcoach:synccode", (code || "").trim());
+}
+window.getSyncCode = getSyncCode;
+window.setSyncCode = setSyncCode;
+
 async function initStorage() {
   if (!FIREBASE_CONFIG.databaseURL) return;
+  const code = getSyncCode();
+  if (!code) return;                 // pas de code : stockage local
   try {
-    firebase.initializeApp(FIREBASE_CONFIG);
-    const cred = await firebase.auth().signInAnonymously();
-    _fbRef = firebase.database().ref("trailcoach/" + cred.user.uid);
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    await firebase.auth().signInAnonymously();
+    _fbRef = firebase.database().ref("trailcoach/" + code);
     STORAGE_MODE = "firebase";
   } catch (e) {
     console.error("Firebase indisponible, bascule en local :", e);
     _fbRef = null;
   }
 }
+window.reinitStorage = async function () {
+  _fbRef = null;
+  STORAGE_MODE = "local";
+  await initStorage();
+  return STORAGE_MODE;
+};
 
 window.storage = {
   async get(key) {
@@ -1322,25 +1343,26 @@ const MEAL_DAYS = {
           },
           {
             t: "Petit-déjeuner",
-            n: "Tartines avocat et œufs pochés",
-            temps: "12 min",
-            d: "",
-            kcal: 529,
-            p: 24,
-            g: 37,
-            l: 30,
+            n: "Œufs pochés, tomates rôties et ricotta",
+            temps: "15 min",
+            d: "Fin d'été, pleine saison de la tomate.",
+            kcal: 585,
+            p: 31,
+            g: 45,
+            l: 31,
             ing: [
               "80 g de pain complet",
               "120 g de œuf",
-              "70 g de avocat",
+              "200 g de tomate",
+              "60 g de ricotta",
               "20 g de roquette",
-              "5 g de huile d'olive"
+              "10 g de huile d'olive"
             ],
             steps: [
-              "Porte une casserole d'eau à frémissement avec un trait de vinaigre — surtout pas à ébullition.",
-              "Casse chaque œuf dans un ramequin, fais tourner l'eau puis verse l'œuf au centre.",
-              "3 min exactement, puis égoutte sur papier absorbant.",
-              "Écrase l'avocat sur le pain grillé, sel et poivre, pose les œufs et la roquette."
+              "Coupe les tomates en deux, huile-sel-thym, 12 min à 200 °C : elles concentrent leur sucre.",
+              "Eau à frémissement avec un trait de vinaigre — surtout pas à ébullition.",
+              "Casse l'œuf dans un ramequin, fais tourner l'eau, verse au centre. 3 min exactement.",
+              "Tartine la ricotta sur le pain grillé, pose tomates rôties, œufs et roquette."
             ],
             saison: "ete"
           }
@@ -1452,7 +1474,7 @@ const MEAL_DAYS = {
               "Fais suer l'oignon, ajoute ail-gingembre puis les épices 30 s dans le gras chaud.",
               "Verse le lait de coco, ajoute le brocoli, 8 min à couvert. Remets le tofu, coupe le feu."
             ],
-            saison: "ete"
+            saison: "automne"
           }
         ]
       },
@@ -1580,7 +1602,7 @@ const MEAL_DAYS = {
               "Mijote 20 min à découvert : le chili doit épaissir, pas rester liquide.",
               "Riz en parallèle. Sers avec le fromage râpé par-dessus."
             ],
-            saison: "toute"
+            saison: "ete"
           },
           {
             t: "Dîner",
@@ -1923,7 +1945,7 @@ const MEAL_DAYS = {
               "Brocoli et poivron 4 min à feu vif : ils doivent rester croquants.",
               "Verse la marinade, réduis 1 min, ajoute les nouilles."
             ],
-            saison: "toute"
+            saison: "ete"
           },
           {
             t: "Dîner",
@@ -1973,7 +1995,7 @@ const MEAL_DAYS = {
               "Bouillon chaud louche par louche, 15 min.",
               "Épinards en fin de cuisson, parmesan hors du feu."
             ],
-            saison: "toute"
+            saison: "automne"
           }
         ]
       }
@@ -2061,7 +2083,7 @@ const MEAL_DAYS = {
               "Pochage : 2 min dans l'eau frémissante, ils remontent quand ils sont prêts.",
               "Poêle avec beurre et sauge, nappe de crème de courge."
             ],
-            saison: "toute"
+            saison: "automne"
           }
         ]
       },
@@ -4183,6 +4205,9 @@ function App() {
   const [backupText, setBackupText] = useState("");
   const [backupStatus, setBackupStatus] = useState("");
   const [showRestore, setShowRestore] = useState(false);
+  const [syncCode, setSyncCode] = useState(() => (window.getSyncCode ? window.getSyncCode() : ""));
+  const [syncMsg, setSyncMsg] = useState("");
+  const lastSavedRef = React.useRef(0);
   const [weightKg, setWeightKg] = useState("");
   const [targetWeight, setTargetWeight] = useState("");
   const [products, setProducts] = useState({ ...DEFAULT_PRODUCTS });
@@ -4237,8 +4262,9 @@ function App() {
           setStorageMsg("stockage indisponible");
           return;
         }
-        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight, products }), false);
+        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight, products, updatedAt: Date.now() }), false);
         const ok = r !== null && r !== undefined;
+        if (ok) lastSavedRef.current = Date.now();
         setStorageOk(ok);
         setStorageMsg(ok ? `${window.STORAGE_MODE ? window.STORAGE_MODE() : "local"} · sauvegardé ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}` : "échec de sauvegarde");
       } catch (e) {
@@ -4248,7 +4274,66 @@ function App() {
     })();
   }, [goal, sessions, evaluations, weightKg, targetWeight, products, loaded]);
 
+  // Quand l'app revient au premier plan, récupère ce qui a pu être modifié
+  // sur un autre appareil. On ne remplace que si la version distante est
+  // plus récente, pour ne jamais écraser une saisie en cours.
+  useEffect(() => {
+    if (!loaded) return;
+    const onVisible = async () => {
+      if (document.visibilityState !== "visible") return;
+      if (!window.STORAGE_MODE || window.STORAGE_MODE() !== "firebase") return;
+      try {
+        const res = await window.storage.get("appstate", false);
+        if (!res?.value) return;
+        const data = JSON.parse(res.value);
+        if (!data.updatedAt || data.updatedAt <= lastSavedRef.current) return;
+        setGoal(data.goal || null);
+        setSessions(data.sessions || []);
+        setEvaluations(data.evaluations || {});
+        if (data.weightKg) setWeightKg(data.weightKg);
+        if (data.targetWeight) setTargetWeight(data.targetWeight);
+        if (data.products) setProducts({ ...DEFAULT_PRODUCTS, ...data.products });
+        lastSavedRef.current = data.updatedAt;
+        setStorageMsg("mis à jour depuis un autre appareil");
+      } catch (e) { /* hors ligne : on garde la version locale */ }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [loaded]);
+
   const saveNotes = (id, notes) => setSessions(prev => prev.map(s => s.id === id ? { ...s, notes } : s));
+
+  // Active le code de synchro puis recharge les données distantes
+  const applySyncCode = async () => {
+    if (!window.setSyncCode || !window.reinitStorage) return;
+    window.setSyncCode(syncCode);
+    setSyncMsg("Connexion...");
+    const mode = await window.reinitStorage();
+    if (mode !== "firebase") {
+      setSyncMsg("Toujours en local — vérifie la configuration Firebase.");
+      return;
+    }
+    try {
+      const res = await window.storage.get("appstate", false);
+      if (res?.value) {
+        const data = JSON.parse(res.value);
+        setGoal(data.goal || null);
+        setSessions(data.sessions || []);
+        setEvaluations(data.evaluations || {});
+        if (data.weightKg) setWeightKg(data.weightKg);
+        if (data.targetWeight) setTargetWeight(data.targetWeight);
+        if (data.products) setProducts({ ...DEFAULT_PRODUCTS, ...data.products });
+        setEditingGoal(!data.goal);
+        setSyncMsg("Synchronisé — données récupérées depuis le cloud.");
+      } else {
+        setSyncMsg("Synchronisé — cet espace était vide, tes données locales y seront envoyées.");
+      }
+      setStorageOk(true);
+    } catch (e) {
+      setSyncMsg("Connecté, mais lecture impossible : " + String(e).slice(0, 50));
+    }
+    setTimeout(() => setSyncMsg(""), 8000);
+  };
 
   const exportBackup = () => {
     setBackupText(JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight, products }));
@@ -4460,6 +4545,31 @@ function App() {
                     Importer
                   </button>
                   {importStatus && <p className="text-xs text-center" style={{ color: "#7A8B5E" }}>{importStatus}</p>}
+                </div>
+
+                <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
+                  <p className="text-sm uppercase tracking-wider" style={{ color: "#7A8B5E", fontFamily: "'JetBrains Mono', monospace" }}>
+                    Synchronisation entre appareils
+                  </p>
+                  <p className="text-xs leading-relaxed" style={{ color: "#9CAA9E" }}>
+                    Saisis le <span style={{ color: "#EDE7D9" }}>même code</span> sur ton téléphone et
+                    ton ordinateur : ils partageront alors les mêmes données. Sans code, tout reste
+                    sur cet appareil.
+                  </p>
+                  <div className="flex gap-2">
+                    <input type="text" value={syncCode} onChange={e => setSyncCode(e.target.value)}
+                      placeholder="ex. mickael-trail-2026"
+                      className="flex-1 rounded-lg px-3 py-2 text-sm outline-none"
+                      style={{ background: "#1C2B24", color: "#EDE7D9", border: "1px solid #2C3A32", fontFamily: "'JetBrains Mono', monospace" }} />
+                    <button onClick={applySyncCode} className="rounded-lg px-3 text-sm" style={{ background: "#5C7A99", color: "#14201C" }}>
+                      Activer
+                    </button>
+                  </div>
+                  {syncMsg && <p className="text-xs" style={{ color: "#7A8B5E" }}>{syncMsg}</p>}
+                  <p className="text-xs leading-relaxed" style={{ color: "#5A6259" }}>
+                    Choisis un code long et peu devinable : toute personne connaissant l'adresse du
+                    site et ce code pourrait accéder à tes données.
+                  </p>
                 </div>
 
                 <div className="rounded-xl p-4 space-y-3" style={{ background: "#182420", border: "1px solid #2C3A32" }}>
