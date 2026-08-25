@@ -194,7 +194,7 @@ const TYPES = {
 const isCross = t => !!(TYPES[t] && TYPES[t].cross);
 
 const SESSION_ADVICE = {
-  longue: "Allure conversationnelle, régulière du début à la fin. C'est la séance qui construit l'endurance de fond et l'habitude de tenir sur la durée — ne cherche pas la performance, cherche la régularité.",
+  longue: "Séance pilotée par la durée, pas par la distance : sur un terrain vallonné, tiens le temps prévu même si les kilomètres défilent moins vite. Allure conversationnelle, régulière du début à la fin. C'est la séance qui construit l'endurance de fond et l'habitude de tenir sur la durée — ne cherche pas la performance, cherche la régularité.",
   fractionne: "Échauffement 15-20 min facile, puis les intervalles à allure vive avec récupération active entre chaque. Termine par un retour au calme de 10 min. Vise une intensité soutenue mais tenable jusqu'au dernier répétition.",
   cotes: "Échauffement puis répétitions en côte à effort soutenu (marche ou trot en descente pour récupérer). Travaille la propulsion et le renforcement spécifique dénivelé — pas besoin d'aller vite, l'important est l'intensité de la montée.",
   seuil: "Échauffement 15 min, puis bloc(s) à l'allure visée pour la course, sans à-coups. Sensation : soutenu mais contrôlé, tu pourrais tenir la conversation en phrases courtes.",
@@ -287,12 +287,15 @@ const WORKOUTS = {
   fractionne: {
     base: [
       { name: "30/30", sets: 2, reps: 8, workSec: 30, workPct: 100, restSec: 30, restPct: 50, betweenSec: 300 },
+      { name: "10\"/10\"", sets: 2, reps: 12, workSec: 10, workPct: 110, restSec: 10, restPct: 50, betweenSec: 240 },
       { name: "200 m", sets: 2, reps: 5, workM: 200, workPct: 105, restSec: 45, restPct: 50, betweenSec: 240 },
       { name: "45/30", sets: 2, reps: 6, workSec: 45, workPct: 100, restSec: 30, restPct: 50, betweenSec: 300 },
+      { name: "40\" récup progressive", sets: 1, reps: 12, workSec: 40, workPct: 102, restSec: 50, restPct: 50, betweenSec: 0 },
       { name: "1'/1'", sets: 1, reps: 8, workSec: 60, workPct: 98, restSec: 60, restPct: 55, betweenSec: 0 },
     ],
     build: [
       { name: "30/30", sets: 2, reps: 10, workSec: 30, workPct: 102, restSec: 30, restPct: 50, betweenSec: 300 },
+      { name: "1'/30\"", sets: 1, reps: 8, workSec: 60, workPct: 103, restSec: 30, restPct: 50, betweenSec: 0 },
       { name: "400 m", sets: 3, reps: 4, workM: 400, workPct: 100, restSec: 75, restPct: 50, betweenSec: 240 },
       { name: "1'30/1'", sets: 1, reps: 8, workSec: 90, workPct: 98, restSec: 60, restPct: 55, betweenSec: 0 },
       { name: "300 m", sets: 2, reps: 6, workM: 300, workPct: 103, restSec: 60, restPct: 50, betweenSec: 300 },
@@ -320,14 +323,17 @@ const WORKOUTS = {
     taper: [{ name: "2 × 6 min", sets: 1, reps: 2, workSec: 360, workPct: 87, restSec: 180, restPct: 60, betweenSec: 0 }],
   },
   cotes: {
-    base:  [{ name: "2 × 6 × 45s", sets: 2, reps: 6, workSec: 45, workPct: 97, restSec: 75, restPct: 45, betweenSec: 270, hill: true },
-            { name: "10 × 1 min", sets: 1, reps: 10, workSec: 60, workPct: 95, restSec: 90, restPct: 45, betweenSec: 0, hill: true }],
-    build: [{ name: "3 × 6 × 1 min", sets: 3, reps: 6, workSec: 60, workPct: 97, restSec: 90, restPct: 45, betweenSec: 270, hill: true },
-            { name: "8 × 1 min 30", sets: 1, reps: 8, workSec: 90, workPct: 94, restSec: 120, restPct: 45, betweenSec: 0, hill: true },
-            { name: "2 × 5 × 90s", sets: 2, reps: 5, workSec: 90, workPct: 95, restSec: 120, restPct: 45, betweenSec: 300, hill: true }],
-    peak:  [{ name: "3 × 5 × 2 min", sets: 3, reps: 5, workSec: 120, workPct: 92, restSec: 150, restPct: 45, betweenSec: 300, hill: true },
-            { name: "6 × 4 min", sets: 1, reps: 6, workSec: 240, workPct: 90, restSec: 240, restPct: 45, betweenSec: 0, hill: true },
-            { name: "4 × 6 min", sets: 1, reps: 4, workSec: 360, workPct: 88, restSec: 300, restPct: 45, betweenSec: 0, hill: true }],
+    base:  [{ name: "45s en côte", sets: 2, reps: 6, workSec: 45, workPct: 97, restSec: 75, restPct: 45, betweenSec: 270, hill: true },
+            { name: "1 min en côte", sets: 1, reps: 10, workSec: 60, workPct: 95, restSec: 90, restPct: 45, betweenSec: 0, hill: true },
+            { name: "1'/45\" en côte", sets: 1, reps: 15, workSec: 60, workPct: 96, restSec: 45, restPct: 45, betweenSec: 0, hill: true }],
+    build: [{ name: "1 min en côte", sets: 3, reps: 6, workSec: 60, workPct: 97, restSec: 90, restPct: 45, betweenSec: 270, hill: true },
+            { name: "2' en côte (r1'30)", sets: 1, reps: 8, workSec: 120, workPct: 93, restSec: 90, restPct: 45, betweenSec: 0, hill: true },
+            { name: "1 min 30 en côte", sets: 1, reps: 8, workSec: 90, workPct: 94, restSec: 120, restPct: 45, betweenSec: 0, hill: true },
+            { name: "2' en côte", sets: 1, reps: 7, workSec: 120, workPct: 92, restSec: 120, restPct: 45, betweenSec: 0, hill: true }],
+    peak:  [{ name: "2 min en côte", sets: 3, reps: 5, workSec: 120, workPct: 92, restSec: 150, restPct: 45, betweenSec: 300, hill: true },
+            { name: "10' en côte", sets: 1, reps: 3, workSec: 600, workPct: 86, restSec: 300, restPct: 45, betweenSec: 0, hill: true },
+            { name: "4 min en côte", sets: 1, reps: 6, workSec: 240, workPct: 90, restSec: 240, restPct: 45, betweenSec: 0, hill: true },
+            { name: "6 min en côte", sets: 1, reps: 4, workSec: 360, workPct: 88, restSec: 300, restPct: 45, betweenSec: 0, hill: true }],
     taper: [{ name: "6 × 45s", sets: 1, reps: 6, workSec: 45, workPct: 95, restSec: 90, restPct: 45, betweenSec: 0, hill: true }],
   },
 };
@@ -866,6 +872,11 @@ function generatePlan(goal) {
         duree = Math.round((distance / (goal.vma * paceFactor)) * 60);
       }
 
+      // Sur un trail, la sortie longue se pilote au TEMPS, pas au kilomètre :
+      // 30 km roulants et 30 km en montagne n'ont rien à voir en fatigue.
+      // La distance devient indicative, la durée fait foi.
+      const timeLed = type === "longue" && goal.type === "trail";
+
       weekOut.push({
         id: uid(),
         type,
@@ -880,6 +891,7 @@ function generatePlan(goal) {
         generated: true,
         phase,
         variant: weekIdx,      // fait tourner le format d'une semaine à l'autre
+        timeLed,
         weekStart: toISO(weekStart),
       });
     });
@@ -3441,7 +3453,9 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
             {s.backToBack && <span style={{ color: "var(--amber)" }}> · J+1</span>}
           </p>
           <p className="text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
-            {s.date ? fmtDate(s.date) : "à placer"} · {s.distance ? `${s.distance} km` : "—"} {s.dplus ? `· ${s.dplus} m D+` : ""} {s.duree ? `· ${s.duree} min` : ""}
+            {s.date ? fmtDate(s.date) : "à placer"} · {s.timeLed && s.duree
+              ? `${Math.floor(s.duree / 60)}h${String(s.duree % 60).padStart(2, "0")}${s.dplus ? ` · ${s.dplus} m D+` : ""} · ~${s.distance} km`
+              : `${s.distance ? `${s.distance} km` : "—"}${s.dplus ? ` · ${s.dplus} m D+` : ""}${s.duree ? ` · ${s.duree} min` : ""}`}
           </p>
           {s.done && s.actual && (
             <p className="text-xs mt-1" style={{ color: "var(--blue)", fontFamily: "'JetBrains Mono', monospace" }}>
@@ -4065,9 +4079,11 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
             <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{s.dplus ?? "—"}</p>
             <p className="text-xs" style={{ color: "var(--green)" }}>m D+</p>
           </div>
-          <div className="rounded-lg p-2 text-center" style={{ background: "var(--surface2)" }}>
-            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{s.duree ?? "—"}</p>
-            <p className="text-xs" style={{ color: "var(--green)" }}>min</p>
+          <div className="rounded-lg p-2 text-center" style={{ background: s.timeLed ? "var(--surface3)" : "var(--surface2)" }}>
+            <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: s.timeLed ? "var(--accent)" : "var(--text)" }}>
+              {s.timeLed && s.duree ? `${Math.floor(s.duree / 60)}h${String(s.duree % 60).padStart(2, "0")}` : (s.duree ?? "—")}
+            </p>
+            <p className="text-xs" style={{ color: "var(--green)" }}>{s.timeLed ? "durée (objectif)" : "min"}</p>
           </div>
         </div>
 
