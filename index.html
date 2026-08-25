@@ -810,16 +810,20 @@ function generatePlan(goal) {
     const weeklyDPlus = goal.type === "trail"
       ? Math.round(targetVolume * raceGradient * phaseDPlusFactor) : 0;
 
+    // En dessous de ces distances, une séance n'a plus d'intérêt : une
+    // endurance fondamentale de 2 km ne produit aucune adaptation.
+    const MIN_KM = { longue: 12, fonda: 7, recup: 5 };
+
     const distanceFor = type => {
       const t = totalsByType[type];
       if (t) return t.distance;
       if (type === "longue") return longKm;
-      // le reste du volume, une fois la longue et les séances de qualité
-      // servies, se répartit sur les séances continues
       const others = contTypes.filter(x => x !== "longue");
       const otherShare = others.reduce((a, x) => a + shareByType[x], 0) || 1;
-      const rest = Math.max(otherShare * 3, remaining - longKm);
-      return Math.round(rest * (shareByType[type] / otherShare) * 10) / 10;
+      const minTotal = others.reduce((a, x) => a + (MIN_KM[x] || 5), 0);
+      const rest = Math.max(minTotal, remaining - longKm);
+      const km = rest * (shareByType[type] / otherShare);
+      return Math.round(Math.max(MIN_KM[type] || 5, km) * 10) / 10;
     };
 
     let structuralDPlus = 0;
@@ -829,14 +833,16 @@ function generatePlan(goal) {
       structuralDPlus += t.dplus != null ? t.dplus : Math.round(distanceFor(type) * raceGradient * 0.15);
     });
 
-    // ce qu'il reste à répartir sur les séances continues, plafonné à une
-    // densité crédible (2× le gradient de la course) pour ne pas prescrire
-    // des sorties impossibles à trouver sur le terrain
-    const contDistance = contTypes.reduce((a, t) => a + distanceFor(t), 0) || 1;
+    // Le dénivelé restant se répartit sur les sorties de terrain, avec un
+    // plafond de densité PROPRE À CHAQUE TYPE : une endurance fondamentale
+    // à 27 m/km n'a plus rien de fondamental, et une récupération encore
+    // moins. Seule la sortie longue peut dépasser le gradient de la course.
     const restDPlus = Math.max(0, weeklyDPlus - structuralDPlus);
     const contWeights = { longue: 1.5, fonda: 0.8, recup: 0.3 };
+    const GRAD_CAP = { longue: 1.6, fonda: 0.9, recup: 0.5 };
     const weightSum = contTypes.reduce((a, t) => a + distanceFor(t) * (contWeights[t] ?? 0.8), 0) || 1;
 
+    const weekOut = [];
     template.forEach((type, i) => {
       const tot = totalsByType[type];
       const distance = distanceFor(type);
@@ -847,7 +853,8 @@ function generatePlan(goal) {
           dplus = tot.dplus != null ? tot.dplus : Math.round(distance * raceGradient * 0.15);
         } else {
           const share = (distance * (contWeights[type] ?? 0.8)) / weightSum;
-          dplus = Math.round(Math.min(restDPlus * share, distance * raceGradient * 2));
+          const cap = distance * raceGradient * (GRAD_CAP[type] ?? 0.9);
+          dplus = Math.round(Math.min(restDPlus * share, cap));
         }
       }
 
@@ -859,7 +866,7 @@ function generatePlan(goal) {
         duree = Math.round((distance / (goal.vma * paceFactor)) * 60);
       }
 
-      sessions.push({
+      weekOut.push({
         id: uid(),
         type,
         date: null,          // libre : tu places la séance le jour qui t'arrange
@@ -876,6 +883,33 @@ function generatePlan(goal) {
         weekStart: toISO(weekStart),
       });
     });
+
+    // ---- Week-ends enchaînés -------------------------------------------
+    // Une deuxième sortie longue le lendemain, sur jambes déjà fatiguées :
+    // c'est ce qui reproduit le mieux les derniers kilomètres d'un ultra,
+    // sans le coût de récupération d'une sortie unique très longue.
+    // Appliqué une semaine sur deux en développement et en spécifique,
+    // jamais sur une semaine de décharge.
+    const isCutback = (phaseWeekIdx + 1) % 4 === 0;
+    const b2bPhase = phase === "build" || phase === "peak";
+    if (b2bPhase && !isCutback && phaseWeekIdx % 2 === 1) {
+      const longSession = weekOut.find(x => x.type === "longue");
+      const target = weekOut.find(x => x.type === "fonda")
+                  || weekOut.find(x => x.type === "recup");
+      if (longSession && target) {
+        const km = Math.round(longSession.distance * 0.55 * 10) / 10;
+        target.type = "longue";
+        target.distance = km;
+        target.dplus = goal.type === "trail"
+          ? Math.round(km * raceGradient * 1.1) : null;
+        target.duree = Math.round((km / (goal.vma * (goal.type === "trail" ? 0.58 : 0.72))) * 60);
+        target.order = longSession.order + 1;
+        target.backToBack = true;
+        target.notes = "À enchaîner le lendemain de la sortie longue, sur jambes fatiguées.";
+      }
+    }
+
+    weekOut.forEach(x => sessions.push(x));
   });
 
   return sessions;
@@ -3402,7 +3436,9 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(v => !v)}>
           <p className="text-sm" style={{ color: "var(--text)", fontFamily: "'Space Grotesk', sans-serif" }}>
-            {t.label} {s.generated && <span style={{ color: "var(--muted)" }}>· plan</span>}
+            {s.backToBack ? "Sortie longue enchaînée" : t.label}
+            {s.generated && <span style={{ color: "var(--muted)" }}>· plan</span>}
+            {s.backToBack && <span style={{ color: "var(--amber)" }}> · J+1</span>}
           </p>
           <p className="text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
             {s.date ? fmtDate(s.date) : "à placer"} · {s.distance ? `${s.distance} km` : "—"} {s.dplus ? `· ${s.dplus} m D+` : ""} {s.duree ? `· ${s.duree} min` : ""}
