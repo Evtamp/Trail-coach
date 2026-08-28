@@ -648,12 +648,21 @@ function structuredTotals(session, vma) {
   const sec = segs.reduce((a, s) => a + s.sec, 0);
   const km = segs.reduce((a, s) => a + (vma * s.pct / 100) * (s.sec / 3600), 0);
 
-  // Dénivelé réellement produit par les montées : en côte, ce qui compte est
-  // la vitesse ascensionnelle (~900 m/h sur des montées courtes à haute
-  // intensité, ~800 m/h au-delà de 90s), pas la distance parcourue.
-  const dplus = segs
+  // Dénivelé produit par les montées : ce qui compte est la vitesse
+  // ascensionnelle, pas la distance. Valeurs recalées sur des séances
+  // réelles — environ 1200 m/h sur des montées courtes à haute intensité
+  // (45s à 1 min sur pente raide), et 950 m/h au-delà de 90s, où l'effort
+  // devient plus soutenable et donc moins vertical par unité de temps.
+  const climbM = segs
     .filter(s => s.hill)
-    .reduce((a, s) => a + (s.sec <= 90 ? 900 : 800) * (s.sec / 3600), 0);
+    .reduce((a, s) => a + (s.sec <= 90 ? 1200 : 950) * (s.sec / 3600), 0);
+
+  // L'échauffement et le retour au calme se courent rarement sur du plat :
+  // ils ajoutent une part non négligeable au dénivelé de la séance.
+  const easyKm = segs
+    .filter(s => !s.hill && (s.kind === "echauffement" || s.kind === "calme"))
+    .reduce((a, s) => a + (vma * s.pct / 100) * (s.sec / 3600), 0);
+  const dplus = climbM > 0 ? climbM + easyKm * 8 : 0;
 
   return {
     distance: Math.round(km * 10) / 10,
