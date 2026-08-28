@@ -1201,17 +1201,17 @@ function Ring({ value, target, unit, label, color, format }) {
           <circle cx={SIZE / 2} cy={SIZE / 2} r={R - STROKE} fill="none" stroke={color} strokeWidth="1" opacity="0.5" />
         )}
         <text x={SIZE / 2} y={SIZE / 2 + 1} textAnchor="middle"
-          fontSize="15" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--text)" }}>
+          fontSize="16" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--text)" }}>
           {fmt(value)}
         </text>
-        <text x={SIZE / 2} y={SIZE / 2 + 12} textAnchor="middle"
-          fontSize="7.5" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--muted)" }}>
-          / {fmt(target)}
+        <text x={SIZE / 2} y={SIZE / 2 + 13} textAnchor="middle"
+          fontSize="9" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--muted2)" }}>
+          / {fmt(target)}{unit ? " " + unit : ""}
         </text>
       </svg>
-      <p className="text-xs mt-1" style={{ color: "var(--muted2)" }}>{label}</p>
-      <p className="text-xs" style={{ color: done ? color : "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>
-        {target > 0 ? `${Math.round(ratio * 100)}%` : "—"} {unit}
+      <p className="text-sm mt-1.5" style={{ color: "var(--text)" }}>{label}</p>
+      <p className="text-sm" style={{ color: done ? color : "var(--muted2)", fontFamily: "'JetBrains Mono', monospace" }}>
+        {target > 0 ? `${Math.round(ratio * 100)} %` : "—"}
       </p>
     </div>
   );
@@ -1248,13 +1248,13 @@ function WeekRings({ sessions }) {
           style={{ background: "var(--surface2)", color: "var(--muted2)" }}>‹</button>
 
         <button onClick={() => setOffset(0)} className="text-center flex-1 min-w-0" disabled={isCurrent}>
-          <p className="text-xs uppercase tracking-wider truncate" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="text-sm uppercase tracking-wider truncate" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
             {isCurrent ? "Semaine en cours"
               : offset === -1 ? "Semaine dernière"
               : offset === 1 ? "Semaine prochaine"
               : `Semaine du ${fmtDate(wk)}`}
           </p>
-          <p className="text-xs" style={{ color: "var(--muted)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="text-xs" style={{ color: "var(--muted2)", fontFamily: "'JetBrains Mono', monospace" }}>
             {isCurrent ? `${doneRun.length}/${planned.length} séances`
                        : `${fmtDate(wk)} — ${fmtDate(addDays(wk, 6))}`}
           </p>
