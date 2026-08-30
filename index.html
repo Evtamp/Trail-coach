@@ -1179,7 +1179,10 @@ function ElevationHero({ goal, progress, daysLeft }) {
 function Ring({ value, target, unit, label, color, format }) {
   // Le SVG occupe toute la largeur disponible : les anneaux grandissent
   // avec l'écran au lieu d'être figés à une taille de vignette.
-  const SIZE = 120, R = 46, STROKE = 11;
+  // Proportions calées sur ce qui se lit le mieux : anneau fin (~6 % du
+  // diamètre), valeur et objectif de tailles proches — l'objectif reste
+  // une information à lire, pas une mention en petits caractères.
+  const SIZE = 120, R = 51, STROKE = 7;
   const C = 2 * Math.PI * R;
   const ratio = target > 0 ? value / target : 0;
   const filled = Math.min(1, ratio);
@@ -1200,15 +1203,15 @@ function Ring({ value, target, unit, label, color, format }) {
         />
         {/* liseré si l'objectif est dépassé */}
         {done && (
-          <circle cx={SIZE / 2} cy={SIZE / 2} r={R - STROKE - 2} fill="none" stroke={color} strokeWidth="1.5" opacity="0.55" />
+          <circle cx={SIZE / 2} cy={SIZE / 2} r={R - STROKE} fill="none" stroke={color} strokeWidth="1" opacity="0.45" />
         )}
-        <text x={SIZE / 2} y={SIZE / 2 + 2} textAnchor="middle"
-          fontSize="30" fontWeight="500" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--text)" }}>
+        <text x={SIZE / 2} y={SIZE / 2 - 1} textAnchor="middle"
+          fontSize="28" fontWeight="600" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--text)" }}>
           {fmt(value)}
         </text>
-        <text x={SIZE / 2} y={SIZE / 2 + 21} textAnchor="middle"
-          fontSize="13" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--muted2)" }}>
-          / {fmt(target)}{unit ? " " + unit : ""}
+        <text x={SIZE / 2} y={SIZE / 2 + 20} textAnchor="middle"
+          fontSize="17" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--muted2)" }}>
+          /{fmt(target)}{unit ? " " + unit : ""}
         </text>
       </svg>
       <p className="text-base mt-2" style={{ color: "var(--text)" }}>{label}</p>
