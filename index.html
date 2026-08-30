@@ -1177,7 +1177,9 @@ function ElevationHero({ goal, progress, daysLeft }) {
 // ======================================================================
 
 function Ring({ value, target, unit, label, color, format }) {
-  const R = 26, STROKE = 6, SIZE = 68;
+  // Le SVG occupe toute la largeur disponible : les anneaux grandissent
+  // avec l'écran au lieu d'être figés à une taille de vignette.
+  const SIZE = 120, R = 46, STROKE = 11;
   const C = 2 * Math.PI * R;
   const ratio = target > 0 ? value / target : 0;
   const filled = Math.min(1, ratio);
@@ -1186,7 +1188,7 @@ function Ring({ value, target, unit, label, color, format }) {
 
   return (
     <div className="flex flex-col items-center">
-      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full" style={{ maxWidth: 190, height: "auto" }}>
         {/* piste = objectif de la semaine */}
         <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" strokeWidth={STROKE} style={{ stroke: "var(--border)" }}/>
         {/* arc = réalisé */}
@@ -1198,19 +1200,19 @@ function Ring({ value, target, unit, label, color, format }) {
         />
         {/* liseré si l'objectif est dépassé */}
         {done && (
-          <circle cx={SIZE / 2} cy={SIZE / 2} r={R - STROKE} fill="none" stroke={color} strokeWidth="1" opacity="0.5" />
+          <circle cx={SIZE / 2} cy={SIZE / 2} r={R - STROKE - 2} fill="none" stroke={color} strokeWidth="1.5" opacity="0.55" />
         )}
-        <text x={SIZE / 2} y={SIZE / 2 + 1} textAnchor="middle"
-          fontSize="16" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--text)" }}>
+        <text x={SIZE / 2} y={SIZE / 2 + 2} textAnchor="middle"
+          fontSize="30" fontWeight="500" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--text)" }}>
           {fmt(value)}
         </text>
-        <text x={SIZE / 2} y={SIZE / 2 + 13} textAnchor="middle"
-          fontSize="9" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--muted2)" }}>
+        <text x={SIZE / 2} y={SIZE / 2 + 21} textAnchor="middle"
+          fontSize="13" fontFamily="'JetBrains Mono', monospace" style={{ fill: "var(--muted2)" }}>
           / {fmt(target)}{unit ? " " + unit : ""}
         </text>
       </svg>
-      <p className="text-sm mt-1.5" style={{ color: "var(--text)" }}>{label}</p>
-      <p className="text-sm" style={{ color: done ? color : "var(--muted2)", fontFamily: "'JetBrains Mono', monospace" }}>
+      <p className="text-base mt-2" style={{ color: "var(--text)" }}>{label}</p>
+      <p className="text-base" style={{ color: done ? color : "var(--muted2)", fontFamily: "'JetBrains Mono', monospace" }}>
         {target > 0 ? `${Math.round(ratio * 100)} %` : "—"}
       </p>
     </div>
@@ -1244,24 +1246,24 @@ function WeekRings({ sessions }) {
     <div className="rounded-xl p-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
       <div className="flex items-center justify-between mb-1 gap-2">
         <button onClick={() => setOffset(o => o - 1)} aria-label="Semaine précédente"
-          className="px-2 py-1 rounded-lg text-sm shrink-0"
+          className="px-3 py-2 rounded-lg text-xl shrink-0"
           style={{ background: "var(--surface2)", color: "var(--muted2)" }}>‹</button>
 
         <button onClick={() => setOffset(0)} className="text-center flex-1 min-w-0" disabled={isCurrent}>
-          <p className="text-sm uppercase tracking-wider truncate" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="text-base uppercase tracking-wider truncate" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
             {isCurrent ? "Semaine en cours"
               : offset === -1 ? "Semaine dernière"
               : offset === 1 ? "Semaine prochaine"
               : `Semaine du ${fmtDate(wk)}`}
           </p>
-          <p className="text-xs" style={{ color: "var(--muted2)", fontFamily: "'JetBrains Mono', monospace" }}>
+          <p className="text-sm" style={{ color: "var(--muted2)", fontFamily: "'JetBrains Mono', monospace" }}>
             {isCurrent ? `${doneRun.length}/${planned.length} séances`
                        : `${fmtDate(wk)} — ${fmtDate(addDays(wk, 6))}`}
           </p>
         </button>
 
         <button onClick={() => setOffset(o => o + 1)} aria-label="Semaine suivante"
-          className="px-2 py-1 rounded-lg text-sm shrink-0"
+          className="px-3 py-2 rounded-lg text-xl shrink-0"
           style={{ background: "var(--surface2)", color: "var(--muted2)" }}>›</button>
       </div>
 
@@ -1278,7 +1280,7 @@ function WeekRings({ sessions }) {
       )}
 
       {(targetKm > 0 || realKm > 0) && (
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-3 sm:gap-5">
         <Ring value={realKm} target={targetKm} label="Distance" unit="km" color="var(--accent)" format={v => Math.round(v)} />
         <Ring value={realD} target={targetD} label="Dénivelé" unit="m D+" color="var(--amber)" format={v => Math.round(v)} />
         <Ring value={realMin} target={targetMin} label="Temps" unit="" color="var(--green)" format={hrs} />
