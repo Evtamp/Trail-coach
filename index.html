@@ -36,6 +36,8 @@
 <script>
   // Applique le theme memorise avant le premier rendu, pour eviter tout flash
   (function () {
+    var z = localStorage.getItem("trailcoach:zoom");
+    if (z) document.documentElement.style.fontSize = z + "%";
     var t = localStorage.getItem("trailcoach:theme") || "dark";
     if (t !== "dark") document.documentElement.setAttribute("data-theme", t);
     var m = document.querySelector('meta[name="theme-color"]');
@@ -4583,6 +4585,16 @@ function App() {
   const [refreshMsg, setRefreshMsg] = useState("");
   const [theme, setTheme] = useState(() =>
     (typeof localStorage !== "undefined" && localStorage.getItem("trailcoach:theme")) || "dark");
+  const [zoom, setZoom] = useState(() =>
+    Number(typeof localStorage !== "undefined" && localStorage.getItem("trailcoach:zoom")) || 100);
+
+  // Toutes les tailles de l'app sont en rem : agir sur la taille de police
+  // racine agrandit texte ET espacements de façon homogène. Indispensable
+  // sur grand écran (liseuse, PC) où la page s'étale en pleine largeur.
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${zoom}%`;
+    try { localStorage.setItem("trailcoach:zoom", String(zoom)); } catch (e) {}
+  }, [zoom]);
 
   // Applique et mémorise le thème
   useEffect(() => {
@@ -4872,14 +4884,28 @@ function App() {
           <span className="text-xs" style={{ color: storageOk ? "var(--muted)" : "var(--accent2)", fontFamily: "'JetBrains Mono', monospace" }}>
             {storageOk ? "● " : "▲ "}{storageMsg || "sauvegarde auto"}
           </span>
-          <div className="flex gap-1 rounded-lg p-0.5 shrink-0" style={{ background: "var(--surface2)" }}>
-            {[["dark", "Sombre"], ["light", "Clair"], ["eink", "Liseuse"]].map(([k, label]) => (
-              <button key={k} onClick={() => setTheme(k)} className="px-2 py-1 rounded-md text-xs"
-                style={{ background: theme === k ? "var(--accent)" : "transparent",
-                         color: theme === k ? "var(--bg)" : "var(--muted2)" }}>
-                {label}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="flex gap-1 rounded-lg p-0.5" style={{ background: "var(--surface2)" }}>
+              {[[90, "A"], [100, "A"], [120, "A"], [145, "A"]].map(([z, a], i) => (
+                <button key={z} onClick={() => setZoom(z)}
+                  title={`Taille du texte ${z} %`}
+                  className="px-2 py-1 rounded-md leading-none"
+                  style={{ background: zoom === z ? "var(--accent)" : "transparent",
+                           color: zoom === z ? "var(--bg)" : "var(--muted2)",
+                           fontSize: `${0.65 + i * 0.16}rem` }}>
+                  {a}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-1 rounded-lg p-0.5" style={{ background: "var(--surface2)" }}>
+              {[["dark", "Sombre"], ["light", "Clair"], ["eink", "Liseuse"]].map(([k, label]) => (
+                <button key={k} onClick={() => setTheme(k)} className="px-2 py-1 rounded-md text-xs"
+                  style={{ background: theme === k ? "var(--accent)" : "transparent",
+                           color: theme === k ? "var(--bg)" : "var(--muted2)" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
