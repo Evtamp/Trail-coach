@@ -705,16 +705,66 @@ function crossTrainingPenaltyKm(otherSports) {
   }, 0);
 }
 
-function weekVolumeTarget(weekIdx, phase, startVolumeKm, phaseWeekIdx) {
-  const isCutback = phase !== "taper" && (phaseWeekIdx + 1) % 4 === 0;
-  let growthRate = phase === "base" ? 0.045 : phase === "build" ? 0.06 : phase === "peak" ? 0.02 : -0.25;
-  if (phase === "taper") {
-    // décroissance forte les 2-3 dernières semaines
-    return startVolumeKm; // handled by caller via explicit taper curve
-  }
-  let vol = startVolumeKm * Math.pow(1 + growthRate, weekIdx);
-  if (isCutback) vol *= 0.75;
-  return vol;
+/**
+ * Volume hebdomadaire : on ne compose plus un taux de croissance, on vise
+ * explicitement un PIC et on interpole depuis le niveau actuel.
+ *
+ * Le pic de référence est la distance de la course — pour un 100 km, une
+ * semaine la plus lourde autour de 100 km. Mais un volume ne se découpe pas
+ * à l'infini : au-delà d'environ 22 km par séance, les sorties deviennent
+ * irréalistes. Le pic est donc plafonné par le nombre de jours disponibles,
+ * et generatePlan signale l'écart le cas échéant.
+ */
+function peakVolumeFor(goal) {
+  const souhaite = goal.distanceKm || 42;
+  const plafond = (goal.daysPerWeek || 4) * 22;
+  return { souhaite, retenu: Math.min(souhaite, plafond), plafonne: souhaite > plafond };
+}
+
+function volumeTargets(goal, phases) {
+  const { retenu: peak } = peakVolumeFor(goal);
+  const start = goal.startVolumeKm || 40;
+  const taperCount = phases.filter(p => p === "taper").length;
+  const buildWeeks = phases.length - taperCount;
+
+  let phaseWeek = 0, prev = null;
+  return phases.map((phase, i) => {
+    phaseWeek = phase === prev ? phaseWeek + 1 : 0;
+    prev = phase;
+
+    if (phase === "taper") {
+      const toRace = phases.length - i;
+      return Math.round(peak * (toRace <= 1 ? 0.35 : toRace === 2 ? 0.55 : 0.7));
+    }
+    // progression régulière du niveau actuel vers le pic
+    const t = buildWeeks > 1 ? i / (buildWeeks - 1) : 1;
+    let vol = start + (peak - start) * t;
+    if ((phaseWeek + 1) % 4 === 0) vol *= 0.75;   // semaine de décharge
+    return Math.round(vol);
+  });
+}
+
+/** Dénivelé hebdomadaire, calé de la même façon sur celui de la course. */
+function dplusTargets(goal, phases, volumes) {
+  if (goal.type !== "trail") return phases.map(() => 0);
+  const peakD = goal.dPlus || 0;
+  const startD = Math.round((goal.startVolumeKm || 40) * 20);  // densité de départ ~20 m/km
+  const taperCount = phases.filter(p => p === "taper").length;
+  const buildWeeks = phases.length - taperCount;
+  const peakVol = Math.max(...volumes);
+
+  return phases.map((phase, i) => {
+    if (phase === "taper") {
+      const toRace = phases.length - i;
+      return Math.round(peakD * (toRace <= 1 ? 0.3 : toRace === 2 ? 0.5 : 0.65));
+    }
+    const t = buildWeeks > 1 ? i / (buildWeeks - 1) : 1;
+    let d = startD + (peakD - startD) * t;
+    // une semaine de décharge allège aussi le dénivelé
+    d *= volumes[i] / Math.max(1, (volumes[i] > 0 ? volumes[i] : 1));
+    if (volumes[i] < peakVol * 0.85 && i > 0 && volumes[i] < volumes[i - 1]) d *= 0.75;
+    return Math.round(d);
+  });
 }
 
 function sessionTemplateForDays(daysPerWeek, raceType) {
@@ -770,8 +820,8 @@ function generatePlan(goal) {
   const penalty = crossTrainingPenaltyKm(goal.otherSports);
   const minVolume = goal.daysPerWeek * 5;
 
-  const peakVolume = goal.startVolumeKm * Math.pow(1.045, phases.filter(p => p === "base").length)
-    * Math.pow(1.06, phases.filter(p => p === "build").length);
+  const volByWeek = volumeTargets(goal, phases);
+  const dplusByWeek = dplusTargets(goal, phases, volByWeek);
 
   const sessions = [];
   let phaseWeekIdx = 0, prevPhase = null;
@@ -781,15 +831,7 @@ function generatePlan(goal) {
     prevPhase = phase;
 
     const weekStart = addDays(isoWeekStart(today), weekIdx * 7);
-    let targetVolume;
-    if (phase === "taper") {
-      const weeksToRace = phases.length - weekIdx;
-      const frac = weeksToRace <= 1 ? 0.35 : weeksToRace === 2 ? 0.6 : 0.75;
-      targetVolume = peakVolume * frac;
-    } else {
-      targetVolume = weekVolumeTarget(weekIdx, phase, goal.startVolumeKm, phaseWeekIdx);
-    }
-    targetVolume = Math.max(minVolume, targetVolume - penalty);
+    let targetVolume = Math.max(minVolume, volByWeek[weekIdx] - penalty);
 
     // La sortie longue ne doit pas dépasser ~45 % du volume de la semaine :
     // si elle est plus ambitieuse que le volume prévu, c'est le volume qui
@@ -833,8 +875,7 @@ function generatePlan(goal) {
     // ci-dessus), et le fractionné/seuil se court quasiment à plat. Le reste
     // du D+ hebdomadaire doit donc être porté par les sorties sur le terrain,
     // sortie longue en tête — c'est là qu'on accumule vraiment du dénivelé.
-    const weeklyDPlus = goal.type === "trail"
-      ? Math.round(targetVolume * raceGradient * phaseDPlusFactor) : 0;
+    const weeklyDPlus = goal.type === "trail" ? dplusByWeek[weekIdx] : 0;
 
     // En dessous de ces distances, une séance n'a plus d'intérêt : une
     // endurance fondamentale de 2 km ne produit aucune adaptation.
@@ -1104,6 +1145,17 @@ function GoalWizard({ initial, onSave }) {
           </div>
         ))}
       </div>
+
+      {distanceKm && daysPerWeek && Number(distanceKm) > daysPerWeek * 22 && (
+        <div className="rounded-lg p-3 text-xs leading-relaxed"
+          style={{ background: "var(--warnbg)", color: "var(--accent2)", border: "1px solid var(--warnborder)" }}>
+          Avec {daysPerWeek} séances par semaine, le pic de volume sera plafonné à
+          {" "}{daysPerWeek * 22} km — au-delà, les sorties deviennent irréalistes
+          ({Math.round(Number(distanceKm) / daysPerWeek)} km par séance en moyenne).
+          Pour viser une semaine à {distanceKm} km, il faudrait
+          {" "}{Math.ceil(Number(distanceKm) / 22)} jours de course.
+        </div>
+      )}
 
       <button
         disabled={!canSave}
@@ -1579,7 +1631,7 @@ const MEAL_DAYS = {
             steps: [
               "Préchauffe à 200 °C. Coupe les légumes en gros morceaux, mélange avec la moitié de l'huile et du cumin.",
               "Étale sans les superposer, 25 min en remuant à mi-cuisson : tu cherches des bords colorés.",
-              "Cuis les lentilles 20 min dans 3 fois leur volume d'eau NON salée — le sel durcit la peau. Sale à la fin.",
+              "Cuis les lentilles vertes 20 à 25 min dans 3 fois leur volume d'eau NON salée — le sel durcit la peau. Pas de trempage nécessaire. Sale à la fin.",
               "Quinoa : 12 min dans 2 fois son volume, puis 5 min à couvert hors du feu.",
               "Assemble, assaisonne au jus de citron et au reste d'huile, feta émiettée au dernier moment."
             ],
@@ -1589,7 +1641,7 @@ const MEAL_DAYS = {
           {
             t: "Déjeuner",
             n: "Salade de boulgour, pois chiches et feta",
-            temps: "20 min",
+            temps: "20 min + trempage la veille",
             d: "Meilleure après 1 h au frais, parfaite en lunch box.",
             kcal: 819,
             p: 32,
@@ -1605,9 +1657,10 @@ const MEAL_DAYS = {
               "15 g de graines de courge"
             ],
             steps: [
+              "La veille : fais tremper les pois chiches 12 h dans un grand volume d'eau froide. Le lendemain, jette l'eau, couvre d'eau fraîche et cuis 1 h à 1 h 30 à frémissement, sans sel (il durcit la peau). Ils doivent s'écraser entre deux doigts.",
               "Verse le boulgour dans un saladier, couvre d'eau bouillante à hauteur + 1 cm, couvre 12 min.",
               "Égrène à la fourchette et laisse refroidir.",
-              "Coupe concombre et tomates en dés, ajoute les pois chiches rincés.",
+              "Coupe concombre et tomates en dés, ajoute les pois chiches cuits et refroidis.",
               "Assaisonne huile-citron-menthe, ajoute feta et graines de courge."
             ],
             saison: "ete"
@@ -1615,7 +1668,7 @@ const MEAL_DAYS = {
           {
             t: "Déjeuner",
             n: "Bowl potimarron rôti, quinoa et feta",
-            temps: "35 min",
+            temps: "35 min + trempage la veille",
             d: "Automne. Le potimarron rôti gagne beaucoup à être bien coloré.",
             kcal: 892,
             p: 33,
@@ -1630,10 +1683,11 @@ const MEAL_DAYS = {
               "15 g de huile d'olive"
             ],
             steps: [
+              "La veille : fais tremper les pois chiches 12 h dans un grand volume d'eau froide. Le lendemain, jette l'eau, couvre d'eau fraîche et cuis 1 h à 1 h 30 à frémissement, sans sel (il durcit la peau). Ils doivent s'écraser entre deux doigts.",
               "Le potimarron ne se pèle pas : la peau devient fondante à la cuisson. Coupe en quartiers de 2 cm.",
               "Rôtis 25 min à 200 °C avec huile, cumin et paprika fumé.",
               "Quinoa 12 min puis 5 min à couvert hors du feu.",
-              "Ajoute les pois chiches sur la plaque les 10 dernières minutes, ils croustillent.",
+              "Ajoute les pois chiches cuits sur la plaque les 10 dernières minutes, ils croustillent.",
               "Assemble, feta émiettée et graines de courge par-dessus."
             ],
             saison: "automne"
@@ -1741,7 +1795,7 @@ const MEAL_DAYS = {
           {
             t: "Dîner",
             n: "Curry de pois chiches, épinards et tofu",
-            temps: "30 min",
+            temps: "30 min + trempage la veille",
             d: "Meilleur réchauffé le lendemain.",
             kcal: 955,
             p: 45,
@@ -1757,10 +1811,11 @@ const MEAL_DAYS = {
               "10 g de huile neutre"
             ],
             steps: [
+              "La veille : fais tremper les pois chiches 12 h dans un grand volume d'eau froide. Le lendemain, jette l'eau, couvre d'eau fraîche et cuis 1 h à 1 h 30 à frémissement, sans sel (il durcit la peau). Ils doivent s'écraser entre deux doigts.",
               "Presse le tofu 10 min, coupe en cubes de 2 cm, dore-les à feu vif. Réserve.",
               "Fais suer l'oignon 5 min, ajoute ail et gingembre râpés 1 min.",
               "Épices 30 s dans le gras chaud, puis lait de coco.",
-              "Pois chiches, 10 min à feu doux. Épinards, ils fondent en 2 min.",
+              "Ajoute les pois chiches cuits, 10 min à feu doux. Épinards, ils fondent en 2 min.",
               "Remets le tofu, citron au moment de servir."
             ],
             saison: "toute",
@@ -1769,7 +1824,7 @@ const MEAL_DAYS = {
           {
             t: "Dîner",
             n: "Chili sin carne aux haricots rouges",
-            temps: "35 min",
+            temps: "35 min + trempage la veille",
             d: "Encore meilleur le lendemain.",
             kcal: 902,
             p: 41,
@@ -1785,8 +1840,9 @@ const MEAL_DAYS = {
               "25 g de comté"
             ],
             steps: [
+              "La veille : trempage 12 h dans un grand volume d'eau froide. Le lendemain, jette impérativement l'eau de trempage, couvre d'eau fraîche et porte à FORTE ébullition 10 minutes — cette étape détruit la phytohémagglutinine, une lectine toxique des haricots rouges crus. Poursuis 50 à 70 min à frémissement, sale à la fin.",
               "Fais revenir oignon et poivron 8 min.",
-              "Cumin, paprika fumé et piment 30 s, puis tomates et haricots rincés.",
+              "Cumin, paprika fumé et piment 30 s, puis les tomates et les haricots déjà cuits.",
               "Mijote 20 min à découvert : le chili doit épaissir, pas rester liquide.",
               "Riz en parallèle. Sers avec le fromage râpé par-dessus."
             ],
@@ -1795,7 +1851,7 @@ const MEAL_DAYS = {
           {
             t: "Dîner",
             n: "Curry de potimarron, pois chiches et épinards",
-            temps: "35 min",
+            temps: "35 min + trempage la veille",
             d: "Automne. Écrase quelques cubes pour épaissir la sauce naturellement.",
             kcal: 970,
             p: 31,
@@ -1811,10 +1867,11 @@ const MEAL_DAYS = {
               "10 g de huile neutre"
             ],
             steps: [
+              "La veille : fais tremper les pois chiches 12 h dans un grand volume d'eau froide. Le lendemain, jette l'eau, couvre d'eau fraîche et cuis 1 h à 1 h 30 à frémissement, sans sel (il durcit la peau). Ils doivent s'écraser entre deux doigts.",
               "Potimarron en cubes de 2 cm, peau comprise.",
               "Oignon 5 min, ail-gingembre, puis épices 30 s dans le gras chaud.",
               "Lait de coco et potimarron, 20 min à couvert : il doit s'écraser à la fourchette.",
-              "Pois chiches 5 min, épinards 2 min, citron pour finir."
+              "Pois chiches cuits 5 min, épinards 2 min, citron pour finir."
             ],
             saison: "automne"
           },
@@ -2082,7 +2139,7 @@ const MEAL_DAYS = {
           {
             t: "Déjeuner",
             n: "Wrap houmous, falafels et crudités",
-            temps: "15 min",
+            temps: "15 min + trempage la veille",
             d: "",
             kcal: 729,
             p: 23,
@@ -2097,7 +2154,8 @@ const MEAL_DAYS = {
               "10 g de huile d'olive"
             ],
             steps: [
-              "Écrase les pois chiches avec ail, cumin et persil, forme des galettes.",
+              "La veille : fais tremper les pois chiches 12 h dans un grand volume d'eau froide. Le lendemain, jette l'eau, couvre d'eau fraîche et cuis 1 h à 1 h 30 à frémissement, sans sel (il durcit la peau). Ils doivent s'écraser entre deux doigts.",
+              "Écrase les pois chiches cuits avec ail, cumin et persil, forme des galettes. Astuce : des pois chiches simplement trempés 12 h, non cuits puis mixés crus, donnent des falafels bien plus tenants — à condition de les frire ou de bien les cuire.",
               "Poêle 4 min par face à feu moyen jusqu'à croûte dorée.",
               "Tartine la tortilla de houmous, garnis et roule serré."
             ],
@@ -2457,7 +2515,7 @@ const MEAL_DAYS = {
           {
             t: "Repas suivant",
             n: "Couscous de légumes aux pois chiches",
-            temps: "30 min",
+            temps: "30 min + trempage la veille",
             d: "",
             kcal: 766,
             p: 26,
@@ -2472,7 +2530,8 @@ const MEAL_DAYS = {
               "15 g de huile d'olive"
             ],
             steps: [
-              "Fais mijoter les légumes 20 min avec ras el-hanout et bouillon.",
+              "La veille : fais tremper les pois chiches 12 h dans un grand volume d'eau froide. Le lendemain, jette l'eau, couvre d'eau fraîche et cuis 1 h à 1 h 30 à frémissement, sans sel (il durcit la peau). Ils doivent s'écraser entre deux doigts.",
+              "Fais mijoter les légumes 20 min avec ras el-hanout et bouillon, puis ajoute les pois chiches cuits en fin de cuisson.",
               "Semoule : volume égal d'eau bouillante, couvre 5 min, égrène à la fourchette avec un filet d'huile.",
               "Sers le bouillon généreusement sur la semoule."
             ],
@@ -2552,6 +2611,7 @@ const MEAL_DAYS = {
               "25 g de comté"
             ],
             steps: [
+              "Pas de trempage nécessaire : rince simplement les pois cassés à l'eau claire.",
               "Fais suer oignon et carotte 5 min.",
               "Ajoute les pois cassés rincés et 800 ml de bouillon.",
               "35 min à couvert, jusqu'à ce que les pois se défassent.",
@@ -2947,6 +3007,64 @@ function RaceWeightPlan({ goal, weightKg, targetWeight, onTargetChange }) {
   );
 }
 
+// Repères de cuisson des légumineuses sèches. Les quantités des recettes
+// sont données en poids sec : ce tableau donne le temps à prévoir et le
+// poids obtenu une fois cuit.
+const LEGUMINEUSES = [
+  { n: "Lentilles vertes / blondes", trempage: "aucun", cuisson: "20-25 min", ratio: "×2,4" },
+  { n: "Lentilles corail", trempage: "aucun", cuisson: "12-15 min", ratio: "×2,5" },
+  { n: "Pois cassés", trempage: "aucun", cuisson: "35-45 min", ratio: "×2,4" },
+  { n: "Pois chiches", trempage: "12 h", cuisson: "1 h à 1 h 30", ratio: "×2,5" },
+  { n: "Haricots blancs", trempage: "12 h", cuisson: "1 h à 1 h 15", ratio: "×2,4" },
+  { n: "Haricots rouges", trempage: "12 h", cuisson: "10 min à gros bouillons puis 50-70 min", ratio: "×2,5" },
+];
+
+function LegumineusesGuide() {
+  const card = { background: "var(--surface)", border: "1px solid var(--border)" };
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={card}>
+      <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+        Cuisson des légumineuses sèches
+      </p>
+      <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+        Les recettes donnent les quantités en poids sec. Prévoir le trempage la veille
+        quand il est indiqué.
+      </p>
+
+      <div className="space-y-1.5">
+        {LEGUMINEUSES.map(l => (
+          <div key={l.n} className="pb-1.5" style={{ borderBottom: "1px solid var(--surface3)" }}>
+            <div className="flex justify-between items-baseline">
+              <span className="text-sm" style={{ color: "var(--text)" }}>{l.n}</span>
+              <span className="text-xs" style={{ color: "var(--blue)", fontFamily: "'JetBrains Mono', monospace" }}>
+                {l.ratio} une fois cuit
+              </span>
+            </div>
+            <p className="text-xs" style={{ color: "var(--muted2)", fontFamily: "'JetBrains Mono', monospace" }}>
+              trempage {l.trempage} · cuisson {l.cuisson}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-lg p-3" style={{ background: "var(--warnbg)", border: "1px solid var(--warnborder)" }}>
+        <p className="text-xs leading-relaxed" style={{ color: "var(--accent2)" }}>
+          <b>Haricots rouges</b> — jeter l'eau de trempage, puis 10 minutes à <b>forte
+          ébullition</b> avant de poursuivre la cuisson. Cette étape détruit la
+          phytohémagglutinine, une lectine toxique présente dans le haricot rouge cru.
+          Une cuisson tiède prolongée ne suffit pas.
+        </p>
+      </div>
+
+      <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+        Ne saler qu'en fin de cuisson : le sel durcit la peau. Cuire en grande quantité
+        et congeler par portions fait gagner beaucoup de temps sur la semaine.
+        Équivalence pratique : 60 g secs ≈ 150 g égouttés, soit une demi-boîte de 400 g.
+      </p>
+    </div>
+  );
+}
+
 function VegetarianGuide({ targetWeight }) {
   const card = { background: "var(--surface)", border: "1px solid var(--border)" };
   const sources = [
@@ -3117,6 +3235,8 @@ function NutritionTab({ goal, sessions, weightKg, onWeightChange, targetWeight, 
       <RaceWeightPlan goal={goal} weightKg={weightKg} targetWeight={targetWeight} onTargetChange={onTargetChange} />
 
       <VegetarianGuide targetWeight={targetWeight} />
+
+      <LegumineusesGuide />
 
       <ProductSettings products={products} onChange={onProductsChange} />
 
@@ -4874,7 +4994,7 @@ function App() {
         input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
       `}</style>
 
-      <div className="max-w-md lg:max-w-5xl mx-auto px-4 py-5 space-y-5">
+      <div className="max-w-md lg:max-w-5xl mx-auto px-4 py-5 space-y-5" style={{ paddingBottom: "5.5rem" }}>
         <div className="space-y-5 lg:space-y-0 lg:grid lg:grid-cols-[1.5fr_1fr] lg:gap-5 lg:items-stretch">
           <ElevationHero goal={goal} progress={progress} daysLeft={daysLeft} />
           {goal && !editingGoal && <WeekRings sessions={sessions} />}
@@ -4946,13 +5066,19 @@ function App() {
 
         {goal && !editingGoal && (
           <>
-            <div className="flex gap-1 rounded-xl p-1" style={{ background: "var(--surface2)" }}>
+            {/* Barre d'onglets ancrée en bas : accessible au pouce et toujours
+                visible, y compris au milieu d'une longue liste de recettes. */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 px-2 pt-2"
+              style={{ background: "var(--bg)", borderTop: "1px solid var(--border)",
+                       paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
+            <div className="flex gap-1 rounded-xl p-1 max-w-md lg:max-w-3xl mx-auto" style={{ background: "var(--surface2)" }}>
               {[["plan", "Plan"], ["importer", "Importer"], ["ajouter", "Ajouter"], ["nutrition", "Nutrition"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
                 <button key={k} onClick={() => setTab(k)} className="flex-1 py-2 rounded-lg text-xs"
                   style={{ background: tab === k ? "var(--accent)" : "transparent", color: tab === k ? "var(--bg)" : "var(--muted2)", fontFamily: "'Space Grotesk', sans-serif" }}>
                   {label}
                 </button>
               ))}
+            </div>
             </div>
 
             {tab === "plan" && (
