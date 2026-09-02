@@ -4967,10 +4967,16 @@ function App() {
   };
 
   const saveGoal = (g) => {
-    const generated = generatePlan(g);
-    const manual = sessions.filter(s => !s.generated);
+    // Regénérer le plan ne doit JAMAIS effacer l'historique : on conserve les
+    // séances ajoutées à la main, celles déjà réalisées, et les semaines
+    // écoulées. Seules les semaines à venir sont recalculées.
+    const currentWeek = toISO(isoWeekStart(new Date()));
+    const kept = sessions.filter(s =>
+      !s.generated || s.done || (sessionWeek(s) || "") < currentWeek
+    );
+    const fresh = generatePlan(g).filter(s => s.weekStart >= currentWeek);
     setGoal(g);
-    setSessions([...manual, ...generated]);
+    setSessions([...kept, ...fresh]);
     setEvaluations({});
     setEditingGoal(false);
   };
