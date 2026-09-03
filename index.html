@@ -3372,7 +3372,7 @@ function SessionForm({ onAdd, products }) {
   return (
     <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
       <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
-        Ajouter une séance hors plan
+        Saisir une séance
       </p>
       <p className="text-xs" style={{ color: "var(--muted2)" }}>
         Footing improvisé, renfo, vélo, natation… Les activités hors course sont
@@ -5072,21 +5072,6 @@ function App() {
 
         {goal && !editingGoal && (
           <>
-            {/* Barre d'onglets ancrée en bas : accessible au pouce et toujours
-                visible, y compris au milieu d'une longue liste de recettes. */}
-            <div className="fixed bottom-0 left-0 right-0 z-40 px-2 pt-2"
-              style={{ background: "var(--bg)", borderTop: "1px solid var(--border)",
-                       paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
-            <div className="flex gap-1 rounded-xl p-1 max-w-md lg:max-w-3xl mx-auto" style={{ background: "var(--surface2)" }}>
-              {[["plan", "Plan"], ["importer", "Importer"], ["ajouter", "Ajouter"], ["nutrition", "Nutrition"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
-                <button key={k} onClick={() => setTab(k)} className="flex-1 py-2 rounded-lg text-xs"
-                  style={{ background: tab === k ? "var(--accent)" : "transparent", color: tab === k ? "var(--bg)" : "var(--muted2)", fontFamily: "'Space Grotesk', sans-serif" }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-            </div>
-
             {tab === "plan" && (
               <>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -5101,8 +5086,10 @@ function App() {
               </>
             )}
 
-            {tab === "importer" && (
+            {tab === "ajouter" && (
               <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+                <SessionForm onAdd={addSession} products={products} />
+
                 {!storageOk && (
                   <div className="rounded-lg px-3 py-2 text-xs lg:col-span-2" style={{ background: "var(--warnbg)", color: "var(--accent2)", border: "1px solid var(--warnborder)" }}>
                     La sauvegarde automatique ne fonctionne pas dans ce contexte. Utilise la sauvegarde manuelle ci-dessous avant de fermer l'app.
@@ -5183,11 +5170,6 @@ function App() {
                 </div>
               </div>
             )}
-            {tab === "ajouter" && (
-              <div className="lg:max-w-xl">
-                <SessionForm onAdd={addSession} products={products} />
-              </div>
-            )}
             {tab === "nutrition" && (
               <NutritionTab goal={goal} sessions={sessions} weightKg={weightKg} onWeightChange={setWeightKg} targetWeight={targetWeight} onTargetChange={setTargetWeight} products={products} onProductsChange={setProducts} />
             )}
@@ -5198,6 +5180,24 @@ function App() {
                 {past.map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} products={products} />)}
               </div>
             )}
+
+            {/* Barre d'onglets ancrée en bas : accessible au pouce et toujours
+                visible, y compris au milieu d'une longue liste de recettes. */}
+            {/* Barre collante en fin de contenu : reste visible en bas de
+                l'écran sans souffrir de la barre d'adresse des navigateurs
+                mobiles, contrairement à un positionnement fixe. */}
+            <div className="sticky bottom-0 z-40 px-2 pt-2 -mx-4"
+              style={{ background: "var(--bg)", borderTop: "1px solid var(--border)",
+                       paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
+            <div className="flex gap-1 rounded-xl p-1 max-w-md lg:max-w-3xl mx-auto" style={{ background: "var(--surface2)" }}>
+              {[["plan", "Plan"], ["ajouter", "Ajouter"], ["nutrition", "Nutrition"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
+                <button key={k} onClick={() => setTab(k)} className="flex-1 py-2 rounded-lg text-xs"
+                  style={{ background: tab === k ? "var(--accent)" : "transparent", color: tab === k ? "var(--bg)" : "var(--muted2)", fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            </div>
           </>
         )}
       </div>
