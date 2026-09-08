@@ -410,9 +410,15 @@ function buildStructuredWorkout(session, vma) {
       ? `${sp.workM} m à ${sp.workPct}% VMA (~${sp.workSec}s)`
       : `${sp.workSec >= 120 ? `${Math.round(sp.workSec / 60)} min` : `${sp.workSec}s`} à ${sp.workPct}% VMA (~${metersIn(vma, sp.workPct, sp.workSec)} m)`;
 
+  // Sur les séances en côte, la récupération se fait en descendant : on
+  // indique la durée visée, mais le temps de descente prime — inutile de
+  // repartir avant d'être en bas.
+  const dureeTxt = sp.restSec >= 120
+    ? `${Math.round(sp.restSec / 60)} min`
+    : `${sp.restSec}s`;
   const restDesc = sp.hill
-    ? "descente en trot souple (récupération complète)"
-    : `${sp.restSec >= 120 ? `${Math.round(sp.restSec / 60)} min` : `${sp.restSec}s`} en trot`;
+    ? `${dureeTxt} de descente en trot souple — si la descente est plus longue, elle fait foi`
+    : `${dureeTxt} en trot`;
 
   const warmupText = sp.hill
     ? "20 min en endurance fondamentale jusqu'au pied de la côte"
