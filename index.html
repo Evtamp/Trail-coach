@@ -863,6 +863,24 @@ function generatePlan(goal) {
   const minVolume = goal.daysPerWeek * 5;
 
   const volByWeek = volumeTargets(goal, phases);
+
+  // Week-ends chocs : sortie longue suivie d'une seconde sortie le lendemain,
+  // sur jambes fatiguées. C'est ce qui reproduit le mieux les derniers
+  // kilomètres d'un ultra. On les place sur les semaines de développement et
+  // de spécifique hors décharge, et on garde les trois plus proches de la
+  // course — ce sont les plus spécifiques, et les mieux absorbées une fois
+  // la base construite.
+  const b2bWeeks = (() => {
+    let pw = 0, prev = null;
+    const candidates = [];
+    phases.forEach((ph, i) => {
+      pw = ph === prev ? pw + 1 : 0;
+      prev = ph;
+      const decharge = (pw + 1) % 4 === 0;
+      if ((ph === "build" || ph === "peak") && !decharge) candidates.push(i);
+    });
+    return new Set(candidates.slice(-3));
+  })();
   const dplusByWeek = dplusTargets(goal, phases, volByWeek);
 
   const sessions = [];
@@ -1005,9 +1023,7 @@ function generatePlan(goal) {
     // sans le coût de récupération d'une sortie unique très longue.
     // Appliqué une semaine sur deux en développement et en spécifique,
     // jamais sur une semaine de décharge.
-    const isCutback = (phaseWeekIdx + 1) % 4 === 0;
-    const b2bPhase = phase === "build" || phase === "peak";
-    if (b2bPhase && !isCutback && phaseWeekIdx % 2 === 1) {
+    if (b2bWeeks.has(weekIdx)) {
       const longSession = weekOut.find(x => x.type === "longue");
       const target = weekOut.find(x => x.type === "fonda")
                   || weekOut.find(x => x.type === "recup");
