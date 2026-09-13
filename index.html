@@ -320,8 +320,8 @@ function metersIn(vma, pct, seconds) {
 }
 
 const ZONES = [
-  { key: "ef",     label: "Endurance fondamentale", pct: [65, 70] },
-  { key: "ea",     label: "Endurance active",       pct: [75, 80] },
+  { key: "ef",     label: "Endurance fondamentale", pct: [58, 66] },
+  { key: "ea",     label: "Endurance active",       pct: [72, 78] },
   { key: "seuil",  label: "Seuil",                  pct: [85, 90] },
   { key: "vo2",    label: "VO2max / VMA",           pct: [95, 105] },
 ];
@@ -510,7 +510,7 @@ function workoutToFitSteps(session, vma) {
   const steps = [];
 
   if (!w) {
-    const pct = { longue: 70, fonda: 68, recup: 62 }[session.type] || 68;
+    const pct = { longue: 64, fonda: 62, recup: 56 }[session.type] || 62;
     steps.push({
       name: (TYPES[session.type]?.label || "Seance").slice(0, NAME_LEN - 1),
       durType: DUR_DISTANCE, durValue: Math.round((session.distance || 10) * 100000),
@@ -1012,7 +1012,7 @@ function generatePlan(goal) {
       if (tot) {
         duree = tot.duree;
       } else {
-        const paceFactor = { longue: goal.type === "trail" ? 0.6 : 0.75, fonda: 0.7, recup: 0.65 }[type] || 0.7;
+        const paceFactor = { longue: goal.type === "trail" ? 0.58 : 0.72, fonda: 0.62, recup: 0.56 }[type] || 0.62;
         duree = Math.round((distance / (goal.vma * paceFactor)) * 60);
       }
 
@@ -1079,7 +1079,7 @@ function generatePlan(goal) {
           const vise = avant + ecart * (avant / socle);
           x.distance = Math.round(Math.max(MIN_KM[x.type] || 5, vise) * 10) / 10;
 
-          const pf = { fonda: 0.7, recup: 0.65 }[x.type] || 0.7;
+          const pf = { fonda: 0.62, recup: 0.56 }[x.type] || 0.62;
           x.duree = Math.round((x.distance / (goal.vma * pf)) * 60);
 
           if (goal.type === "trail" && x.dplus != null) {
@@ -3942,9 +3942,9 @@ function sessionTargets(session) {
   if (fam) {
     const list = fam[session.phase || "build"] || fam.build;
     const v = list[(session.variant ?? 0) % list.length];
-    return { warmup: 68, work: v.workPct, rest: v.restPct, cooldown: 65 };
+    return { warmup: 62, work: v.workPct, rest: v.restPct, cooldown: 58 };
   }
-  const cont = { longue: 70, fonda: 68, recup: 62 }[session.type] || 68;
+  const cont = { longue: 64, fonda: 62, recup: 56 }[session.type] || 62;
   return { warmup: cont, work: cont, rest: cont, cooldown: cont };
 }
 
