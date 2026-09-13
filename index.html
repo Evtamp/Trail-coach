@@ -284,6 +284,18 @@ function toISO(d) {
 
 // Semaine d'appartenance d'une séance : soit sa semaine de plan (séance
 // non encore placée), soit la semaine de la date à laquelle elle a été faite.
+/**
+ * Numéro de rotation d'une semaine, calculé depuis sa DATE et non depuis sa
+ * position dans le plan. Régénérer le plan ne remet donc plus la rotation
+ * des formats à zéro — sinon on retombe toujours sur les mêmes séances.
+ * Origine arbitraire : le lundi 5 janvier 2026.
+ */
+function weekRotation(weekStartISO) {
+  const origine = Date.UTC(2026, 0, 5);
+  const d = new Date(weekStartISO + "T00:00:00Z").getTime();
+  return Math.max(0, Math.round((d - origine) / (7 * 24 * 3600 * 1000)));
+}
+
 function sessionWeek(s) {
   if (s.date) return toISO(isoWeekStart(s.date));
   return s.weekStart;
@@ -898,6 +910,7 @@ function generatePlan(goal) {
     prevPhase = phase;
 
     const weekStart = addDays(isoWeekStart(today), weekIdx * 7);
+    const rotation = weekRotation(toISO(weekStart));
     let targetVolume = Math.max(minVolume, volByWeek[weekIdx] - penalty);
 
     // La sortie longue ne doit pas dépasser ~45 % du volume de la semaine :
@@ -928,7 +941,7 @@ function generatePlan(goal) {
     let qualityKm = 0;
     template.forEach(type => {
       if (QUALITY.includes(type) && !totalsByType[type]) {
-        const tot = structuredTotals({ type, phase, variant: weekIdx }, goal.vma);
+        const tot = structuredTotals({ type, phase, variant: rotation }, goal.vma);
         if (tot) { totalsByType[type] = tot; qualityKm += tot.distance; }
       }
     });
@@ -1018,7 +1031,7 @@ function generatePlan(goal) {
         actual: null,
         generated: true,
         phase,
-        variant: weekIdx,      // fait tourner le format d'une semaine à l'autre
+        variant: rotation,     // fait tourner le format d'une semaine à l'autre
         timeLed,
         weekStart: toISO(weekStart),
       });
