@@ -5241,11 +5241,14 @@ function App() {
     // Regénérer le plan ne doit JAMAIS effacer l'historique : on conserve les
     // séances ajoutées à la main, celles déjà réalisées, et les semaines
     // écoulées. Seules les semaines à venir sont recalculées.
+    // La semaine EN COURS n'est jamais régénérée : elle est déjà entamée, et
+    // recalculer ses objectifs en cours de route rend la comparaison
+    // prévu/réalisé absurde. Seules les semaines suivantes sont recalculées.
     const currentWeek = toISO(isoWeekStart(new Date()));
     const kept = sessions.filter(s =>
-      !s.generated || s.done || (sessionWeek(s) || "") < currentWeek
+      !s.generated || s.done || (sessionWeek(s) || "") <= currentWeek
     );
-    const fresh = generatePlan(g).filter(s => s.weekStart >= currentWeek);
+    const fresh = generatePlan(g).filter(s => s.weekStart > currentWeek);
     setGoal(g);
     setSessions([...kept, ...fresh]);
     setEvaluations({});
