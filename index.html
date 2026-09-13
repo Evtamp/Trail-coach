@@ -1066,8 +1066,18 @@ function evaluateAndAdjust(sessions, evaluations) {
   let newEvaluations = { ...evaluations };
 
   for (const weekStart of weeks) {
-    const weekEnd = addDays(weekStart, 6);
-    if (weekEnd >= today) continue; // semaine pas encore terminée
+    // Une semaine n'est évaluée qu'une fois RÉVOLUE, c'est-à-dire à partir du
+    // lundi suivant. Comparer au dimanche la déclarait terminée dès son
+    // dernier jour : les séances non encore faites comptaient comme manquées,
+    // et la semaine suivante était réduite à tort.
+    const semaineSuivante = addDays(weekStart, 7);
+    if (semaineSuivante > today) continue;
+
+    // Une semaine sans aucune séance validée n'est pas forcément une semaine
+    // ratée : le plan a pu être régénéré après coup. On ne pénalise pas.
+    const auMoinsUne = sessions.some(s =>
+      s.done && !isCross(s.type) && sessionWeek(s) === weekStart);
+    if (!auMoinsUne) { newEvaluations[weekStart] = { skipped: true, multiplier: 1, reason: "" }; continue; }
     if (newEvaluations[weekStart]) continue; // déjà évaluée
 
     const weekSessions = generated.filter(s => s.weekStart === weekStart);
