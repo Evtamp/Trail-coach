@@ -875,7 +875,7 @@ function longRunTargets(goal, phases) {
   });
 }
 
-function generatePlan(goal) {
+function generatePlan(goal, cal) {
   const today = new Date();
   const race = new Date(goal.raceDate);
   const totalWeeks = Math.max(1, Math.ceil((race - isoWeekStart(today)) / (7 * 24 * 60 * 60 * 1000)));
@@ -944,7 +944,7 @@ function generatePlan(goal) {
     let qualityKm = 0;
     template.forEach(type => {
       if (QUALITY.includes(type) && !totalsByType[type]) {
-        const tot = structuredTotals({ type, phase, variant: rotation }, goal.vma);
+        const tot = structuredTotals({ type, phase, variant: rotation, cal }, goal.vma);
         if (tot) { totalsByType[type] = tot; qualityKm += tot.distance; }
       }
     });
@@ -1012,8 +1012,9 @@ function generatePlan(goal) {
       if (tot) {
         duree = tot.duree;
       } else {
-        const paceFactor = { longue: goal.type === "trail" ? 0.58 : 0.72, fonda: 0.62, recup: 0.56 }[type] || 0.62;
-        duree = Math.round((distance / (goal.vma * paceFactor)) * 60);
+        const c = { ...CAL_DEFAUT, ...(cal || {}) };
+        const pct = (c[type] ?? 62) * (goal.type === "trail" && type === "longue" ? 0.94 : 1);
+        duree = Math.round((distance / (goal.vma * pct / 100)) * 60);
       }
 
       // Sur un trail, la sortie longue se pilote au TEMPS, pas au kilomètre :
@@ -1035,6 +1036,7 @@ function generatePlan(goal) {
         generated: true,
         phase,
         variant: rotation,     // fait tourner le format d'une semaine à l'autre
+        cal,                   // intensités calibrées sur l'historique
         timeLed,
         weekStart: toISO(weekStart),
       });
@@ -1079,8 +1081,8 @@ function generatePlan(goal) {
           const vise = avant + ecart * (avant / socle);
           x.distance = Math.round(Math.max(MIN_KM[x.type] || 5, vise) * 10) / 10;
 
-          const pf = { fonda: 0.62, recup: 0.56 }[x.type] || 0.62;
-          x.duree = Math.round((x.distance / (goal.vma * pf)) * 60);
+          const c = { ...CAL_DEFAUT, ...(cal || {}) };
+          x.duree = Math.round((x.distance / (goal.vma * (c[x.type] ?? 62) / 100)) * 60);
 
           if (goal.type === "trail" && x.dplus != null) {
             // le dénivelé suit la distance, sans dépasser le plafond du type
@@ -3937,14 +3939,72 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
 // ======================================================================
 
 // Pourcentages de VMA visés pour chaque phase de la séance
+/**
+ * Calibration personnelle : déduit des séances réalisées les intensités
+ * réellement pratiquées, exprimées en % de VMA. Remplace les valeurs
+ * génériques du modèle, qui ne collent jamais tout à fait à un coureur
+ * donné — l'échauffement à 68 % en est l'exemple typique.
+ */
+const CAL_DEFAUT = { warmup: 62, work: 100, rest: 56, cooldown: 58,
+                     longue: 64, fonda: 62, recup: 56 };
+
+const CAL_BORNES = { warmup: [50, 75], work: [85, 118], rest: [40, 70],
+                     cooldown: [48, 72], longue: [45, 75], fonda: [50, 75], recup: [45, 68] };
+
+function mediane(xs) {
+  if (!xs.length) return null;
+  const t = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(t.length / 2);
+  return t.length % 2 ? t[m] : (t[m - 1] + t[m]) / 2;
+}
+
+function calibrationFromHistory(sessions, vma) {
+  if (!vma) return { valeurs: CAL_DEFAUT, mesures: {} };
+  const seaux = { warmup: [], work: [], rest: [], cooldown: [], longue: [], fonda: [], recup: [] };
+
+  sessions.filter(s => s.done && !isCross(s.type)).forEach(s => {
+    const laps = classifyLaps(s.actual?.laps, vma, s);
+    if (laps.length) {
+      const map = { echauffement: "warmup", effort: "work", recup: "rest", calme: "cooldown" };
+      laps.forEach(l => {
+        const k = map[l.kind];
+        if (k && l.pct > 20 && l.pct < 140) seaux[k].push(l.pct);
+      });
+    }
+    // séances continues : allure moyenne de la séance
+    if (["longue", "fonda", "recup"].includes(s.type)) {
+      const km = s.actual?.distance ?? s.distance;
+      const min = s.actual?.duree ?? s.duree;
+      if (km && min) {
+        const pct = (km / (min / 60)) / vma * 100;
+        if (pct > 20 && pct < 100) seaux[s.type].push(pct);
+      }
+    }
+  });
+
+  const valeurs = { ...CAL_DEFAUT };
+  const mesures = {};
+  Object.keys(seaux).forEach(k => {
+    const m = mediane(seaux[k]);
+    if (m === null || seaux[k].length < 3) return;   // trop peu de données
+    const [lo, hi] = CAL_BORNES[k];
+    valeurs[k] = Math.round(Math.min(hi, Math.max(lo, m)));
+    mesures[k] = { pct: valeurs[k], n: seaux[k].length };
+  });
+  return { valeurs, mesures };
+}
+
 function sessionTargets(session) {
+  const c = { ...CAL_DEFAUT, ...(session.cal || {}) };
   const fam = WORKOUTS[session.type];
   if (fam) {
     const list = fam[session.phase || "build"] || fam.build;
     const v = list[(session.variant ?? 0) % list.length];
-    return { warmup: 62, work: v.workPct, rest: v.restPct, cooldown: 58 };
+    // l'intensité des efforts reste dictée par le format ; seules les
+    // phases faciles suivent la calibration personnelle
+    return { warmup: c.warmup, work: v.workPct, rest: Math.min(c.rest, v.restPct + 8), cooldown: c.cooldown };
   }
-  const cont = { longue: 64, fonda: 62, recup: 56 }[session.type] || 62;
+  const cont = c[session.type] ?? 62;
   return { warmup: cont, work: cont, rest: cont, cooldown: cont };
 }
 
@@ -4671,6 +4731,52 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
  * surprenant est indébuggable : on ne sait pas si c'est le niveau de départ,
  * le nombre de jours, le plafond ou la pénalité des sports annexes.
  */
+function CalibrationCard({ goal, sessions }) {
+  if (!goal?.vma) return null;
+  const { valeurs, mesures } = calibrationFromHistory(sessions, goal.vma);
+  const LIB = { warmup: "Échauffement", work: "Efforts", rest: "Récup entre efforts",
+                cooldown: "Retour au calme", longue: "Sortie longue",
+                fonda: "Endurance fondamentale", recup: "Récupération" };
+  const cles = Object.keys(LIB).filter(k => mesures[k]);
+
+  return (
+    <div className="rounded-xl p-4 space-y-2" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+      <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+        Calibration sur tes séances
+      </p>
+      {cles.length === 0 ? (
+        <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+          Pas encore assez de séances avec le détail des tours. Importe-les avec leurs
+          tours pour que le plan se cale sur tes allures réelles plutôt que sur des
+          valeurs théoriques.
+        </p>
+      ) : (
+        <>
+          <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+            Intensités mesurées sur ton historique, en % de VMA, et allures qui en découlent.
+          </p>
+          {cles.map(k => (
+            <div key={k} className="flex justify-between text-xs">
+              <span style={{ color: "var(--muted2)" }}>
+                {LIB[k]} <span style={{ color: "var(--muted)" }}>({mesures[k].n} mes.)</span>
+              </span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>
+                {valeurs[k]} % · {paceAtPct(goal.vma, valeurs[k])}/km
+                {CAL_DEFAUT[k] !== valeurs[k] && (
+                  <span style={{ color: "var(--muted)" }}> (défaut {CAL_DEFAUT[k]} %)</span>
+                )}
+              </span>
+            </div>
+          ))}
+          <p className="text-xs" style={{ color: "var(--muted)" }}>
+            Appliqué au prochain « Actualiser les semaines à venir ».
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 function VolumeExplain({ goal, sessions }) {
   if (!goal) return null;
   const pv = peakVolumeFor(goal);
@@ -5292,7 +5398,8 @@ function App() {
     const kept = sessions.filter(s =>
       !s.generated || s.done || (sessionWeek(s) || "") <= currentWeek
     );
-    const all = generatePlan(goal);
+    const { valeurs: cal } = calibrationFromHistory(sessions, goal.vma);
+    const all = generatePlan(goal, cal);
     const future = all.filter(s => s.weekStart > currentWeek);
 
     // Comble les manques de la semaine en cours : une séance supprimée par
@@ -5327,7 +5434,8 @@ function App() {
     const kept = sessions.filter(s =>
       !s.generated || s.done || (sessionWeek(s) || "") <= currentWeek
     );
-    const fresh = generatePlan(g).filter(s => s.weekStart > currentWeek);
+    const { valeurs: cal } = calibrationFromHistory(sessions, g.vma);
+    const fresh = generatePlan(g, cal).filter(s => s.weekStart > currentWeek);
     setGoal(g);
     setSessions([...kept, ...fresh]);
     setEvaluations({});
