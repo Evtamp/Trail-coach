@@ -1047,6 +1047,35 @@ function generatePlan(goal) {
       }
     }
 
+    // ---- Réconciliation du volume hebdomadaire ------------------------
+    // Les minimums par séance et les arrondis font perdre plusieurs km par
+    // rapport à la cible : sur un bloc court, ce manque annule la
+    // progression d'une semaine à l'autre. On rattrape l'écart sur les
+    // séances continues (hors sortie longue, dont la durée est le pilier).
+    const totalSemaine = weekOut.reduce((a, x) => a + (x.distance || 0), 0);
+    const ecart = targetVolume - totalSemaine;
+    if (Math.abs(ecart) > 0.5) {
+      const ajustables = weekOut.filter(x => !totalsByType[x.type] && x.type !== "longue");
+      const socle = ajustables.reduce((a, x) => a + x.distance, 0);
+      if (socle > 0) {
+        ajustables.forEach(x => {
+          const avant = x.distance;
+          const vise = avant + ecart * (avant / socle);
+          x.distance = Math.round(Math.max(MIN_KM[x.type] || 5, vise) * 10) / 10;
+
+          const pf = { fonda: 0.7, recup: 0.65 }[x.type] || 0.7;
+          x.duree = Math.round((x.distance / (goal.vma * pf)) * 60);
+
+          if (goal.type === "trail" && x.dplus != null) {
+            // le dénivelé suit la distance, sans dépasser le plafond du type
+            const suivi = x.dplus * (x.distance / avant);
+            const plafond = x.distance * raceGradient * (GRAD_CAP[x.type] ?? 0.9);
+            x.dplus = Math.round(Math.min(suivi, plafond));
+          }
+        });
+      }
+    }
+
     weekOut.forEach(x => sessions.push(x));
   });
 
@@ -4674,11 +4703,21 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma,
 
         return (
           <div key={weekStart}>
-            <div className="flex items-center justify-between px-1 mb-2">
-              <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
-                Semaine du {fmtDate(weekStart)} {phase && `· ${PHASE_LABEL[phase]}`}
-              </p>
-              <p className="text-xs" style={{ color: "var(--muted)" }}>ordre conseillé</p>
+            <div className="flex items-center justify-between px-1 mb-2 gap-2">
+              <div className="min-w-0">
+                <p className="text-xs uppercase tracking-wider truncate" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+                  Semaine du {fmtDate(weekStart)} {phase && `· ${PHASE_LABEL[phase]}`}
+                </p>
+                {/* cumul de la semaine : rend la progression lisible sans
+                    avoir à additionner les séances une à une */}
+                <p className="text-xs" style={{ color: "var(--accent)", fontFamily: "'JetBrains Mono', monospace" }}>
+                  {Math.round(weekSessions.reduce((a, x) => a + (x.distance || 0), 0))} km
+                  {weekSessions.some(x => x.dplus) &&
+                    ` · ${Math.round(weekSessions.reduce((a, x) => a + (x.dplus || 0), 0))} m D+`}
+                  {` · ${fmtDuree(weekSessions.reduce((a, x) => a + (x.duree || 0), 0))}`}
+                </p>
+              </div>
+              <p className="text-xs shrink-0" style={{ color: "var(--muted)" }}>ordre conseillé</p>
             </div>
             {adjustedFrom && (
               <div className="rounded-lg px-3 py-2 mb-2 text-xs" style={{ background: "var(--warnbg)", color: "var(--accent2)", border: "1px solid var(--warnborder)" }}>
