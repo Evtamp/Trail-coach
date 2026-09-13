@@ -728,8 +728,15 @@ function structuredTotals(session, vma) {
 function buildPhases(totalWeeks) {
   if (totalWeeks <= 3) return Array(totalWeeks).fill("taper");
   const taperWeeks = totalWeeks >= 10 ? 3 : 2;
-  const baseWeeks = Math.max(1, Math.round((totalWeeks - taperWeeks) * 0.45));
-  const buildWeeks = Math.max(1, Math.round((totalWeeks - taperWeeks) * 0.4));
+
+  // La part consacrée à la base dépend du temps restant : sur un bloc court,
+  // l'athlète a forcément déjà construit sa base ailleurs — lui réallouer
+  // 45 % de semaines faciles lui ferait perdre l'essentiel du temps utile.
+  const partBase = totalWeeks >= 14 ? 0.45
+                 : totalWeeks >= 11 ? 0.35
+                 : 0.22;
+  const baseWeeks = Math.max(1, Math.round((totalWeeks - taperWeeks) * partBase));
+  const buildWeeks = Math.max(1, Math.round((totalWeeks - taperWeeks) * 0.45));
   const peakWeeks = Math.max(0, totalWeeks - taperWeeks - baseWeeks - buildWeeks);
   const phases = [
     ...Array(baseWeeks).fill("base"),
@@ -1116,7 +1123,26 @@ function evaluateAndAdjust(sessions, evaluations) {
 // Goal wizard
 // ======================================================================
 
-function GoalWizard({ initial, onSave }) {
+/**
+ * Volume hebdomadaire réellement couru sur les dernières semaines complètes.
+ * Sert à proposer un point de départ à jour : saisir une valeur périmée fait
+ * redescendre tout le plan au niveau d'il y a un mois.
+ */
+function volumeRecent(sessions) {
+  const semaine = toISO(isoWeekStart(new Date()));
+  const parSemaine = {};
+  sessions.filter(s => s.done && !isCross(s.type)).forEach(s => {
+    const wk = sessionWeek(s);
+    if (!wk || wk >= semaine) return;          // semaine en cours exclue
+    parSemaine[wk] = (parSemaine[wk] || 0) + (s.actual?.distance ?? s.distance ?? 0);
+  });
+  const semaines = Object.keys(parSemaine).sort().slice(-3);
+  if (!semaines.length) return null;
+  const moyenne = semaines.reduce((a, k) => a + parSemaine[k], 0) / semaines.length;
+  return { km: Math.round(moyenne), nb: semaines.length };
+}
+
+function GoalWizard({ initial, onSave, sessions }) {
   const [type, setType] = useState(initial?.type || "trail");
   const [raceDate, setRaceDate] = useState(initial?.raceDate || "");
   const [distanceKm, setDistanceKm] = useState(initial?.distanceKm || "");
@@ -1124,6 +1150,7 @@ function GoalWizard({ initial, onSave }) {
   const [daysPerWeek, setDaysPerWeek] = useState(initial?.daysPerWeek || 4);
   const [vma, setVma] = useState(initial?.vma || "");
   const [startVolumeKm, setStartVolumeKm] = useState(initial?.startVolumeKm || "");
+  const recent = useMemo(() => volumeRecent(sessions || []), [sessions]);
   const [otherSports, setOtherSports] = useState(initial?.otherSports || []);
   const [newSport, setNewSport] = useState(SPORT_OPTIONS[0]);
   const [newFreq, setNewFreq] = useState(1);
@@ -1177,6 +1204,13 @@ function GoalWizard({ initial, onSave }) {
         <div>
           <label className={labelCls} style={{ color: "var(--muted)" }}>Volume actuel (km/semaine)</label>
           <input type="number" value={startVolumeKm} onChange={e => setStartVolumeKm(e.target.value)} className={inputCls} style={inputStyle} />
+          {recent && (
+            <button onClick={() => setStartVolumeKm(String(recent.km))}
+              className="text-xs mt-1 underline text-left"
+              style={{ color: recent.km !== Number(startVolumeKm) ? "var(--accent)" : "var(--muted)" }}>
+              {recent.km} km sur tes {recent.nb} dernières semaines — appliquer
+            </button>
+          )}
         </div>
         <div>
           <label className={labelCls} style={{ color: "var(--muted)" }}>Jours dispo/semaine</label>
@@ -5240,7 +5274,7 @@ function App() {
                 </>
               )}
             </div>
-            <GoalWizard initial={goal} onSave={saveGoal} />
+            <GoalWizard initial={goal} onSave={saveGoal} sessions={sessions} />
           </div>
         )}
 
