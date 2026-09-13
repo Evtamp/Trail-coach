@@ -4587,6 +4587,59 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
 // Plan view (weeks grouped, with adjustment banners)
 // ======================================================================
 
+/**
+ * Rend visible la chaîne de calcul du volume. Sans ça, un objectif hebdo
+ * surprenant est indébuggable : on ne sait pas si c'est le niveau de départ,
+ * le nombre de jours, le plafond ou la pénalité des sports annexes.
+ */
+function VolumeExplain({ goal, sessions }) {
+  if (!goal) return null;
+  const pv = peakVolumeFor(goal);
+  const penalite = Math.round(crossTrainingPenaltyKm(goal.otherSports));
+  const wk = toISO(isoWeekStart(new Date()));
+  const semaines = [...new Set(sessions.filter(s => s.generated).map(s => s.weekStart))].sort();
+  const prochaine = semaines.find(x => x > wk);
+  const kmProchaine = prochaine
+    ? Math.round(sessions.filter(s => s.generated && s.weekStart === prochaine)
+        .reduce((a, s) => a + (s.distance || 0), 0))
+    : null;
+
+  const lignes = [
+    ["Niveau de départ saisi", `${goal.startVolumeKm} km/sem`],
+    ["Jours de course/semaine", `${goal.daysPerWeek}`],
+    ["Pic souhaité (distance course)", `${pv.souhaite} km`],
+    ["Plafond (jours × 22 km)", `${goal.daysPerWeek * 22} km`],
+    ["Pic effectivement visé", `${pv.retenu} km`],
+    ["Retiré pour sports annexes", penalite ? `−${penalite} km/sem` : "aucun"],
+  ];
+
+  return (
+    <div className="rounded-xl p-4 space-y-2" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
+      <p className="text-xs uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
+        D'où vient le volume
+      </p>
+      {lignes.map(([l, v]) => (
+        <div key={l} className="flex justify-between text-xs">
+          <span style={{ color: "var(--muted2)" }}>{l}</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{v}</span>
+        </div>
+      ))}
+      {kmProchaine !== null && (
+        <div className="flex justify-between text-sm pt-2" style={{ borderTop: "1px solid var(--border)" }}>
+          <span style={{ color: "var(--muted2)" }}>Semaine prochaine</span>
+          <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--accent)" }}>{kmProchaine} km</span>
+        </div>
+      )}
+      {pv.plafonne && (
+        <p className="text-xs leading-relaxed" style={{ color: "var(--amber)" }}>
+          Le pic est bridé par le nombre de jours : {pv.souhaite} km demandés,
+          {" "}{pv.retenu} km retenus. Passe à {Math.ceil(pv.souhaite / 22)} jours pour l'atteindre.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma, products }) {
   const weeks = useMemo(() => {
     const map = new Map();
