@@ -852,7 +852,10 @@ function sessionTemplateForDays(daysPerWeek, raceType) {
 function longRunTargets(goal, phases) {
   const raceKm = goal.distanceKm || 42;
   const peak = Math.min(Math.round(raceKm * 0.34), 36);
-  const start = Math.max(16, Math.round(goal.startVolumeKm * 0.4));
+  // Point de départ = la plus longue sortie déjà réalisée. Sans ça, chaque
+  // régénération ramène la progression à 40 % du volume hebdo, bien en
+  // dessous de ce que l'athlète encaisse déjà.
+  const start = Math.max(16, Math.round(goal.startLongKm || goal.startVolumeKm * 0.4));
   const taperCount = phases.filter(p => p === "taper").length;
   const buildWeeks = phases.length - taperCount;
 
@@ -1194,6 +1197,16 @@ function volumeRecent(sessions) {
   return { km: Math.round(moyenne), nb: semaines.length };
 }
 
+/** Plus longue sortie de course des 5 dernières semaines. */
+function longueRecente(sessions) {
+  const limite = toISO(addDays(new Date(), -35));
+  const km = sessions
+    .filter(s => s.done && !isCross(s.type) && (s.date || "") >= limite)
+    .map(s => s.actual?.distance ?? s.distance ?? 0);
+  if (!km.length) return null;
+  return Math.round(Math.max(...km));
+}
+
 function GoalWizard({ initial, onSave, sessions }) {
   const [type, setType] = useState(initial?.type || "trail");
   const [raceDate, setRaceDate] = useState(initial?.raceDate || "");
@@ -1203,6 +1216,8 @@ function GoalWizard({ initial, onSave, sessions }) {
   const [vma, setVma] = useState(initial?.vma || "");
   const [startVolumeKm, setStartVolumeKm] = useState(initial?.startVolumeKm || "");
   const recent = useMemo(() => volumeRecent(sessions || []), [sessions]);
+  const [startLongKm, setStartLongKm] = useState(initial?.startLongKm || "");
+  const longue = useMemo(() => longueRecente(sessions || []), [sessions]);
   const [otherSports, setOtherSports] = useState(initial?.otherSports || []);
   const [newSport, setNewSport] = useState(SPORT_OPTIONS[0]);
   const [newFreq, setNewFreq] = useState(1);
@@ -1265,6 +1280,18 @@ function GoalWizard({ initial, onSave, sessions }) {
           )}
         </div>
         <div>
+          <label className={labelCls} style={{ color: "var(--muted)" }}>Plus longue sortie (km)</label>
+          <input type="number" value={startLongKm} onChange={e => setStartLongKm(e.target.value)} className={inputCls} style={inputStyle} />
+          {longue && (
+            <button onClick={() => setStartLongKm(String(longue))}
+              className="text-xs mt-1 underline text-left"
+              style={{ color: longue !== Number(startLongKm) ? "var(--accent)" : "var(--muted)" }}>
+              {longue} km récemment — appliquer
+            </button>
+          )}
+        </div>
+
+        <div>
           <label className={labelCls} style={{ color: "var(--muted)" }}>Jours dispo/semaine</label>
           <select value={daysPerWeek} onChange={e => setDaysPerWeek(Number(e.target.value))} className={inputCls} style={inputStyle}>
             {[2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} jours</option>)}
@@ -1303,7 +1330,7 @@ function GoalWizard({ initial, onSave, sessions }) {
 
       <button
         disabled={!canSave}
-        onClick={() => onSave({ type, raceDate, distanceKm: Number(distanceKm), dPlus: Number(dPlus) || 0, daysPerWeek, vma: Number(vma), startVolumeKm: Number(startVolumeKm), otherSports })}
+        onClick={() => onSave({ type, raceDate, distanceKm: Number(distanceKm), dPlus: Number(dPlus) || 0, daysPerWeek, vma: Number(vma), startVolumeKm: Number(startVolumeKm), startLongKm: Number(startLongKm) || 0, otherSports })}
         className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
         style={{ background: "var(--accent)", color: "var(--bg)" }}
       >
