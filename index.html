@@ -50,6 +50,10 @@
 <!-- Tes cles Firebase, dans un fichier a part : ne pas remplacer lors des mises a jour -->
 <script src="firebase-config.js" onerror="console.warn('firebase-config.js absent : mode local')"></script>
 
+<!-- Trail Coach + : import FIT/GPX/TCX/Strava, analyse de charge, coach IA -->
+<script src="trailcoach-plus.js"></script>
+<script src="coach-ia.js"></script>
+
 <script>
 // Affiche les erreurs à l'écran : sans ça, un plantage laisse "Chargement…" indéfiniment
 function showFatal(msg) {
@@ -251,7 +255,7 @@ const SPORT_IMPACT = {
 };
 const SPORT_OPTIONS = Object.keys(SPORT_IMPACT);
 
-const PHASE_LABEL = { base: "Base", build: "Développement", peak: "Spécifique", taper: "Affûtage" };
+const PHASE_LABEL = { base: "Base", build: "Développement", peak: "Spécifique", taper: "Affûtage", recup: "Récupération", maintien: "Maintien" };
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
@@ -875,16 +879,75 @@ function longRunTargets(goal, phases) {
   });
 }
 
+// ----------------------------------------------------------------------
+// Mode « maintien de forme » : pas de course objectif, un bloc roulant de
+// quelques semaines qui stabilise le volume actuel. S'il suit un ultra, il
+// commence par des semaines de récupération sans intensité.
+// ----------------------------------------------------------------------
+function maintienPhases(totalWeeks, recupWeeks) {
+  const r = Math.min(totalWeeks, recupWeeks || 0);
+  return [...Array(r).fill("recup"), ...Array(Math.max(0, totalWeeks - r)).fill("maintien")];
+}
+
+/** Semaines de récupération restantes après un ultra récent (0 à 3). */
+function semainesRecupRestantes(sessions) {
+  const u = window.TCP && window.TCP.recentUltra ? window.TCP.recentUltra(sessions || []) : null;
+  if (!u) return 0;
+  // Nombre de semaines du plan (la 1re étant la semaine en cours) qui
+  // démarrent avant la fin de la période de récupération conseillée.
+  const fin = addDays(new Date(u.session.date + "T12:00:00"), u.semainesRecup * 7);
+  const jours = (fin - isoWeekStart(new Date())) / 86400000;
+  return Math.min(4, Math.max(0, Math.ceil(jours / 7)));
+}
+
+function maintienVolumes(goal, phases) {
+  const v = goal.startVolumeKm || 40;
+  const nRecup = phases.filter(p => p === "recup").length;
+  const recupCurve = nRecup >= 3 ? [0.3, 0.5, 0.7] : nRecup === 2 ? [0.4, 0.65] : [0.65];
+  let k = 0;
+  return phases.map((p, i) => {
+    if (p === "recup") return Math.round(v * recupCurve[i]);
+    k++;
+    // au sortir d'une récupération, on remonte en deux paliers
+    if (nRecup > 0 && k <= 2) return Math.round(v * (k === 1 ? 0.8 : 0.9));
+    // cycle de 4 semaines : 3 semaines stables puis une semaine allégée
+    return Math.round(v * (k % 4 === 0 ? 0.75 : [1, 0.95, 1.05][(k - 1) % 4] || 1));
+  });
+}
+
+function maintienLongues(goal, phases) {
+  const base = Math.min(30, Math.max(12, Math.round(goal.startLongKm || (goal.startVolumeKm || 40) * 0.35)));
+  let k = 0;
+  return phases.map(p => {
+    if (p === "recup") return 0;
+    k++;
+    return Math.round(base * (k % 4 === 0 ? 0.7 : 1));
+  });
+}
+
+function maintienDplus(goal, phases, volumes) {
+  if (goal.type !== "trail") return phases.map(() => 0);
+  const v = goal.startVolumeKm || 40;
+  return phases.map((p, i) => Math.round((goal.dPlus || 0) * (volumes[i] / v) * (p === "recup" ? 0.6 : 1)));
+}
+
+/** Semaine de récupération : uniquement du facile, pas de sortie longue. */
+function recupTemplate(daysPerWeek) {
+  const n = Math.max(2, Math.min(5, (daysPerWeek || 4) - 1));
+  return Array.from({ length: n }, (_, i) => (i % 2 === 0 ? "recup" : "fonda"));
+}
+
 function generatePlan(goal, cal) {
   const today = new Date();
   const race = new Date(goal.raceDate);
   const totalWeeks = Math.max(1, Math.ceil((race - isoWeekStart(today)) / (7 * 24 * 60 * 60 * 1000)));
-  const phases = buildPhases(totalWeeks);
-  const longKmByWeek = longRunTargets(goal, phases);
+  const isMaintien = goal.mode === "maintien";
+  const phases = isMaintien ? maintienPhases(totalWeeks, goal.recupWeeks) : buildPhases(totalWeeks);
+  const longKmByWeek = isMaintien ? maintienLongues(goal, phases) : longRunTargets(goal, phases);
   const penalty = crossTrainingPenaltyKm(goal.otherSports);
   const minVolume = goal.daysPerWeek * 5;
 
-  const volByWeek = volumeTargets(goal, phases);
+  const volByWeek = isMaintien ? maintienVolumes(goal, phases) : volumeTargets(goal, phases);
 
   // Week-ends chocs : sortie longue suivie d'une seconde sortie le lendemain,
   // sur jambes fatiguées. C'est ce qui reproduit le mieux les derniers
@@ -901,9 +964,9 @@ function generatePlan(goal, cal) {
       const decharge = (pw + 1) % 4 === 0;
       if ((ph === "build" || ph === "peak") && !decharge) candidates.push(i);
     });
-    return new Set(candidates.slice(-3));
+    return new Set(isMaintien ? [] : candidates.slice(-3));
   })();
-  const dplusByWeek = dplusTargets(goal, phases, volByWeek);
+  const dplusByWeek = isMaintien ? maintienDplus(goal, phases, volByWeek) : dplusTargets(goal, phases, volByWeek);
 
   const sessions = [];
   let phaseWeekIdx = 0, prevPhase = null;
@@ -914,7 +977,9 @@ function generatePlan(goal, cal) {
 
     const weekStart = addDays(isoWeekStart(today), weekIdx * 7);
     const rotation = weekRotation(toISO(weekStart));
-    let targetVolume = Math.max(minVolume, volByWeek[weekIdx] - penalty);
+    let targetVolume = phase === "recup"
+      ? Math.max(0, volByWeek[weekIdx] - penalty)
+      : Math.max(minVolume, volByWeek[weekIdx] - penalty);
 
     // La sortie longue ne doit pas dépasser ~45 % du volume de la semaine :
     // si elle est plus ambitieuse que le volume prévu, c'est le volume qui
@@ -929,9 +994,12 @@ function generatePlan(goal, cal) {
     // (fractionné/seuil) restent quasi plates.
     const raceGradient = goal.type === "trail" ? goal.dPlus / goal.distanceKm : 0;
     const climbDensity = { longue: 0.8, fractionne: 0.1, seuil: 0.1, cotes: 3.5, fonda: 0.5, recup: 0.2 };
-    const phaseDPlusFactor = { base: 0.7, build: 1.0, peak: 1.3, taper: 0.5 }[phase];
+    const phaseDPlusFactor = { base: 0.7, build: 1.0, peak: 1.3, taper: 0.5, recup: 0.5, maintien: 1.0 }[phase];
 
-    const template = sessionTemplateForDays(goal.daysPerWeek, goal.type);
+    // Juste après une récupération post-ultra : pas encore de fractionné
+    const firstAfterRecup = isMaintien && weekIdx > 0 && phases[weekIdx - 1] === "recup";
+    const template = phase === "recup" ? recupTemplate(goal.daysPerWeek)
+      : sessionTemplateForDays(goal.daysPerWeek, goal.type).map(t => (firstAfterRecup && t === "fractionne" ? "fonda" : t));
     const shareByType = { longue: 0.38, fractionne: 0.16, seuil: 0.18, cotes: 0.2, fonda: 0.16, recup: 0.12 };
 
     // Les séances de qualité ont une distance et une durée dictées par leur
@@ -1223,6 +1291,18 @@ function GoalWizard({ initial, onSave, sessions }) {
   const [otherSports, setOtherSports] = useState(initial?.otherSports || []);
   const [newSport, setNewSport] = useState(SPORT_OPTIONS[0]);
   const [newFreq, setNewFreq] = useState(1);
+  // Mode « maintien de forme » : pas de course, un bloc roulant de N semaines
+  const [mode, setMode] = useState(initial?.mode || "course");
+  const [blocWeeks, setBlocWeeks] = useState(initial?.blocWeeks || 8);
+  const recupWeeks = useMemo(() => semainesRecupRestantes(sessions || []), [sessions]);
+  const ultra = useMemo(() => (window.TCP ? window.TCP.recentUltra(sessions || []) : null), [sessions]);
+  const dplusRecent = useMemo(() => {
+    if (!window.TCP) return null;
+    const w = window.TCP.weeklyStats(sessions || [], 6).slice(0, -1).filter(x => x.n > 0);
+    return w.length ? Math.round(w.reduce((a, x) => a + x.dplus, 0) / w.length) : null;
+  }, [sessions]);
+  const estVma = useMemo(() => (window.TCP ? window.TCP.estimateVma(sessions || []) : null), [sessions]);
+  const maintien = mode === "maintien";
 
   const inputCls = "w-full rounded-lg px-3 py-2 text-sm outline-none";
   const inputStyle = { background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)" };
@@ -1233,13 +1313,37 @@ function GoalWizard({ initial, onSave, sessions }) {
   };
   const removeSport = (i) => setOtherSports(prev => prev.filter((_, idx) => idx !== i));
 
-  const canSave = raceDate && distanceKm && daysPerWeek && vma && startVolumeKm && (type === "route" || dPlus);
+  const canSave = maintien
+    ? daysPerWeek && vma && startVolumeKm
+    : raceDate && distanceKm && daysPerWeek && vma && startVolumeKm && (type === "route" || dPlus);
+
+  const buildGoal = () => {
+    const base = { type, daysPerWeek, vma: Number(vma), startVolumeKm: Number(startVolumeKm), startLongKm: Number(startLongKm) || 0, otherSports };
+    if (!maintien) return { ...base, mode: "course", raceDate, distanceKm: Number(distanceKm), dPlus: Number(dPlus) || 0 };
+    // En maintien, la « distance » de référence est le volume hebdo à tenir
+    // et le D+ celui de la semaine : le gradient du plan reste cohérent.
+    return {
+      ...base, mode: "maintien", blocWeeks: Number(blocWeeks), recupWeeks,
+      raceDate: toISO(addDays(isoWeekStart(new Date()), Number(blocWeeks) * 7 - 1)),
+      distanceKm: Number(startVolumeKm), dPlus: type === "trail" ? (Number(dPlus) || 0) : 0,
+    };
+  };
 
   return (
     <div className="rounded-xl p-4 space-y-4" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
       <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
         Objectif
       </p>
+
+      <div className="flex gap-2">
+        {[["course", "Préparer une course"], ["maintien", "Maintien de forme"]].map(([k, label]) => (
+          <button key={k} onClick={() => setMode(k)}
+            className="flex-1 py-2 rounded-lg text-sm"
+            style={{ background: mode === k ? "var(--blue)" : "var(--surface2)", color: mode === k ? "var(--bg)" : "var(--muted2)" }}>
+            {label}
+          </button>
+        ))}
+      </div>
 
       <div className="flex gap-2">
         {["trail", "route"].map(t => (
@@ -1251,24 +1355,61 @@ function GoalWizard({ initial, onSave, sessions }) {
         ))}
       </div>
 
+      {maintien && (
+        <div className="rounded-lg p-3 text-xs leading-relaxed" style={{ background: "var(--surface2)", color: "var(--muted2)" }}>
+          Pas de course en vue : le plan stabilise ton volume actuel sur un bloc de quelques semaines
+          (3 semaines stables, 1 semaine allégée), avec une séance de qualité et une sortie longue par semaine.
+          {ultra && (
+            <span style={{ color: "var(--accent)" }}>
+              {" "}Ultra détecté le {fmtDate(ultra.session.date)} ({Math.round(ultra.km)} km, il y a {ultra.jours} j) :
+              {recupWeeks > 0 ? ` le bloc commence par ${recupWeeks} semaine(s) de récupération sans intensité.` : " ta période de récupération est terminée."}
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className={labelCls} style={{ color: "var(--muted)" }}>Date de la course</label>
-          <input type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)} className={inputCls} style={inputStyle} />
-        </div>
-        <div>
-          <label className={labelCls} style={{ color: "var(--muted)" }}>Distance (km)</label>
-          <input type="number" value={distanceKm} onChange={e => setDistanceKm(e.target.value)} className={inputCls} style={inputStyle} />
-        </div>
+        {!maintien && (
+          <>
+            <div>
+              <label className={labelCls} style={{ color: "var(--muted)" }}>Date de la course</label>
+              <input type="date" value={raceDate} onChange={e => setRaceDate(e.target.value)} className={inputCls} style={inputStyle} />
+            </div>
+            <div>
+              <label className={labelCls} style={{ color: "var(--muted)" }}>Distance (km)</label>
+              <input type="number" value={distanceKm} onChange={e => setDistanceKm(e.target.value)} className={inputCls} style={inputStyle} />
+            </div>
+          </>
+        )}
+        {maintien && (
+          <div>
+            <label className={labelCls} style={{ color: "var(--muted)" }}>Durée du bloc</label>
+            <select value={blocWeeks} onChange={e => setBlocWeeks(Number(e.target.value))} className={inputCls} style={inputStyle}>
+              {[4, 6, 8, 10, 12].map(n => <option key={n} value={n}>{n} semaines</option>)}
+            </select>
+          </div>
+        )}
         {type === "trail" && (
           <div>
-            <label className={labelCls} style={{ color: "var(--muted)" }}>D+ (m)</label>
+            <label className={labelCls} style={{ color: "var(--muted)" }}>{maintien ? "D+ par semaine (m)" : "D+ (m)"}</label>
             <input type="number" value={dPlus} onChange={e => setDPlus(e.target.value)} className={inputCls} style={inputStyle} />
+            {maintien && dplusRecent != null && (
+              <button onClick={() => setDPlus(String(dplusRecent))} className="text-xs mt-1 underline text-left"
+                style={{ color: dplusRecent !== Number(dPlus) ? "var(--accent)" : "var(--muted)" }}>
+                {dplusRecent} m/sem récemment — appliquer
+              </button>
+            )}
           </div>
         )}
         <div>
           <label className={labelCls} style={{ color: "var(--muted)" }}>VMA (km/h)</label>
           <input type="number" value={vma} onChange={e => setVma(e.target.value)} className={inputCls} style={inputStyle} />
+          {estVma && (
+            <button onClick={() => setVma(String(estVma.vma))} className="text-xs mt-1 underline text-left"
+              style={{ color: estVma.vma !== Number(vma) ? "var(--accent)" : "var(--muted)" }}>
+              ~{String(estVma.vma).replace(".", ",")} km/h estimée ({fmtDate(estVma.date)}) — appliquer
+            </button>
+          )}
         </div>
         <div>
           <label className={labelCls} style={{ color: "var(--muted)" }}>Volume actuel (km/semaine)</label>
@@ -1319,7 +1460,7 @@ function GoalWizard({ initial, onSave, sessions }) {
         ))}
       </div>
 
-      {distanceKm && daysPerWeek && Number(distanceKm) > daysPerWeek * 22 && (
+      {!maintien && distanceKm && daysPerWeek && Number(distanceKm) > daysPerWeek * 22 && (
         <div className="rounded-lg p-3 text-xs leading-relaxed"
           style={{ background: "var(--warnbg)", color: "var(--accent2)", border: "1px solid var(--warnborder)" }}>
           Avec {daysPerWeek} séances par semaine, le pic de volume sera plafonné à
@@ -1332,7 +1473,7 @@ function GoalWizard({ initial, onSave, sessions }) {
 
       <button
         disabled={!canSave}
-        onClick={() => onSave({ type, raceDate, distanceKm: Number(distanceKm), dPlus: Number(dPlus) || 0, daysPerWeek, vma: Number(vma), startVolumeKm: Number(startVolumeKm), startLongKm: Number(startLongKm) || 0, otherSports })}
+        onClick={() => onSave(buildGoal())}
         className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
         style={{ background: "var(--accent)", color: "var(--bg)" }}
       >
@@ -1361,14 +1502,16 @@ function ElevationHero({ goal, progress, daysLeft }) {
       <div className="px-6 pt-6 flex items-baseline justify-between">
         <div>
           <p className="uppercase tracking-[0.2em] text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
-            {goal ? (goal.type === "trail" ? "Objectif trail" : "Objectif route") : "Aucun objectif"}
+            {goal ? (goal.mode === "maintien" ? "Maintien de forme" : goal.type === "trail" ? "Objectif trail" : "Objectif route") : "Aucun objectif"}
           </p>
           <h1 className="text-2xl sm:text-3xl mt-1" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "var(--text)" }}>
-            {goal ? `${goal.distanceKm} km${goal.type === "trail" ? ` · ${goal.dPlus} m D+` : ""}` : "—"}
+            {goal ? (goal.mode === "maintien"
+              ? `${goal.startVolumeKm} km/sem${goal.type === "trail" && goal.dPlus ? ` · ${goal.dPlus} m D+/sem` : ""}`
+              : `${goal.distanceKm} km${goal.type === "trail" ? ` · ${goal.dPlus} m D+` : ""}`) : "—"}
           </h1>
         </div>
         <div className="text-right">
-          <p className="uppercase tracking-[0.2em] text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>Départ</p>
+          <p className="uppercase tracking-[0.2em] text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>{goal && goal.mode === "maintien" ? "Fin du bloc" : "Départ"}</p>
           <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{goal ? `${daysLeft} j` : "—"}</p>
         </div>
       </div>
@@ -3787,8 +3930,22 @@ function ActualForm({ defaults, onSubmit, onCancel, products }) {
     setPaste(""); setPasteErr("");
   };
 
+  // Remplissage depuis une activité importée (fichier de montre ou Strava)
+  const fillFrom = (act) => {
+    const x = act.actual || {};
+    if (act.date) setDate(act.date);
+    if (x.distance != null) setDistance(x.distance);
+    if (x.dplus != null) setDplus(x.dplus);
+    if (x.duree != null) setDuree(x.duree);
+    if (x.fc != null) setFc(x.fc);
+    if (x.fcMax != null) setFcMax(x.fcMax);
+    if (x.cadence != null) setCadence(x.cadence);
+    if (x.laps && x.laps.length) setLapsText(x.laps.map(l => `${l.sec} ; ${Math.round(l.m)} ; ${l.fc ?? ""}`).join("\n"));
+  };
+
   return (
     <div className="mt-3 pt-3 space-y-2" style={{ borderTop: "1px solid var(--border)" }}>
+      <FillFromActivity onFill={fillFrom} />
       <div className="flex gap-2">
         <input type="text" value={paste} onChange={e => setPaste(e.target.value)}
           placeholder="coller : date ; km ; D+ ; min ; ressenti ; FC ; FCmax ; cad"
@@ -3888,7 +4045,11 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
             {s.backToBack ? "Sortie longue enchaînée" : t.label}
             {s.generated && <span style={{ color: "var(--muted)" }}>· plan</span>}
             {s.backToBack && <span style={{ color: "var(--amber)" }}> · J+1</span>}
+            {s.source && <span style={{ color: "var(--muted)" }}> · {s.source === "strava" ? "Strava" : s.source.toUpperCase()}</span>}
           </p>
+          {s.coachNote && !s.done && (
+            <p className="text-xs mt-0.5" style={{ color: "var(--accent)" }}>✎ Coach : {s.coachNote}</p>
+          )}
           <p className="text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
             {s.date ? fmtDate(s.date) : "à placer"} · {s.timeLed && s.duree
               ? `${fmtDuree(s.duree)}${s.dplus ? ` · ${s.dplus} m D+` : ""} · ~${s.distance} km`
@@ -3922,6 +4083,15 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
           </div>
         )}
       </div>
+      {s.done && !s.generated && expanded && (
+        <div className="flex items-center gap-2 mt-2 text-xs" style={{ color: "var(--muted)" }}>
+          Type de séance :
+          <select value={s.type} onChange={e => onToggle(s.id, { type: e.target.value })}
+            className="rounded-lg px-2 py-1 text-xs" style={{ background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)" }}>
+            {Object.entries(TYPES).filter(([k]) => k !== "repos").map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          </select>
+        </div>
+      )}
       {showActual && <ActualForm defaults={s} onSubmit={complete} onCancel={() => setShowActual(false)} products={products} />}
       {expanded && (
         <SessionDetail s={s} vma={vma} onSaveNotes={onSaveNotes} onClose={() => setExpanded(false)} products={products} />
@@ -5142,6 +5312,511 @@ function Stats({ sessions }) {
 // App
 // ======================================================================
 
+// ======================================================================
+// Trail Coach + : import d'activités, analyse de charge, coach IA
+// (la logique vit dans trailcoach-plus.js et coach-ia.js)
+// ======================================================================
+
+const cardStyle = { background: "var(--surface)", border: "1px solid var(--border)" };
+const titleStyle = { color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" };
+const fieldStyle = { background: "var(--surface2)", color: "var(--text)", border: "1px solid var(--border)" };
+const RUN_TYPES = ["longue", "fractionne", "cotes", "seuil", "fonda", "recup"];
+
+function CardTitle({ children }) {
+  return <p className="text-sm uppercase tracking-wider" style={titleStyle}>{children}</p>;
+}
+
+/** Résumé d'une activité importée, affiché dans les listes d'import. */
+function ImportedLine({ a, status }) {
+  const x = a.actual || {};
+  return (
+    <div className="flex items-center justify-between text-xs py-1 gap-2" style={{ color: "var(--muted2)", borderBottom: "1px solid var(--border)" }}>
+      <span className="truncate">
+        <span style={{ color: "var(--text)" }}>{fmtDate(a.date)}</span> · {TYPES[a.type]?.label || a.type}
+        {x.distance ? ` · ${String(x.distance).replace(".", ",")} km` : ""}{x.dplus ? ` · ${x.dplus} m D+` : ""}{x.duree ? ` · ${fmtDuree(x.duree)}` : ""}
+        {x.fc ? ` · FC ${x.fc}` : ""}
+      </span>
+      {status && <span className="shrink-0" style={{ color: status === "ajoutée" ? "var(--green)" : "var(--muted)" }}>{status}</span>}
+    </div>
+  );
+}
+
+/** Import en masse de fichiers d'activité (FIT de la Fenix, GPX, TCX). */
+function FileImportCard({ sessions, onAddMany }) {
+  const [busy, setBusy] = useState(false);
+  const [report, setReport] = useState([]);
+  const [msg, setMsg] = useState("");
+
+  const onFiles = async (files) => {
+    if (!files || !files.length || !window.TCP) return;
+    setBusy(true); setMsg(""); setReport([]);
+    const added = [], lines = [];
+    const known = [...sessions];
+    for (const f of Array.from(files)) {
+      try {
+        const a = await window.TCP.parseActivityFile(f);
+        if (window.TCP.isDuplicate(known, a)) { lines.push({ a, status: "déjà présente" }); continue; }
+        const s = window.TCP.activityToSession(a, uid);
+        known.push(s); added.push(s);
+        lines.push({ a, status: "ajoutée" });
+      } catch (e) {
+        lines.push({ a: { date: "", type: "", actual: {} }, status: `${f.name} : ${e.message || e}` });
+      }
+    }
+    if (added.length) onAddMany(added);
+    setReport(lines);
+    setMsg(`${added.length} séance(s) ajoutée(s) à l'historique.`);
+    setBusy(false);
+  };
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={cardStyle}>
+      <CardTitle>Importer des fichiers de montre</CardTitle>
+      <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+        Fichiers <b>.FIT</b> (Garmin : Fenix, Forerunner…), <b>.GPX</b> ou <b>.TCX</b>. Sur la Fenix, branche-la en USB :
+        les activités sont dans <span style={{ fontFamily: "'JetBrains Mono', monospace" }}>GARMIN/Activity</span>. Depuis Garmin Connect :
+        une activité → ⚙ → « Exporter l'original ». Distance, D+, durée, FC, cadence et tours sont repris ; le type de séance est
+        deviné (modifiable ensuite dans l'historique). Les doublons sont ignorés.
+      </p>
+      <label className="block w-full rounded-lg py-2.5 text-sm font-medium text-center cursor-pointer"
+        style={{ background: busy ? "var(--border)" : "var(--accent)", color: "var(--bg)" }}>
+        {busy ? "Lecture en cours…" : "Choisir des fichiers"}
+        <input type="file" multiple accept=".fit,.gpx,.tcx" className="hidden" disabled={busy}
+          onChange={e => { onFiles(e.target.files); e.target.value = ""; }} />
+      </label>
+      {msg && <p className="text-xs" style={{ color: "var(--green)" }}>{msg}</p>}
+      {report.length > 0 && <div>{report.map((r, i) => <ImportedLine key={i} a={r.a} status={r.status} />)}</div>}
+    </div>
+  );
+}
+
+/** Connexion Strava et synchronisation des dernières activités. */
+function StravaCard({ sessions, onAddMany, flash }) {
+  const [cfg, setCfg] = useState(() => (window.TCP ? window.TCP.getLocal().strava || {} : {}));
+  const [clientId, setClientId] = useState(cfg.clientId || "");
+  const [clientSecret, setClientSecret] = useState(cfg.clientSecret || "");
+  const [days, setDays] = useState(30);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(flash || "");
+  const [report, setReport] = useState([]);
+  const [showSetup, setShowSetup] = useState(!cfg.refreshToken);
+  const connected = !!cfg.refreshToken;
+
+  useEffect(() => { if (flash) setMsg(flash); setCfg(window.TCP.getLocal().strava || {}); }, [flash]);
+
+  const saveAndConnect = () => {
+    const strava = { ...(window.TCP.getLocal().strava || {}), clientId: clientId.trim(), clientSecret: clientSecret.trim() };
+    window.TCP.setLocal({ strava });
+    try { window.location.href = window.TCP.stravaAuthorizeUrl(); }
+    catch (e) { setMsg(e.message); }
+  };
+
+  const disconnect = () => {
+    const strava = { clientId: cfg.clientId, clientSecret: cfg.clientSecret };
+    window.TCP.setLocal({ strava });
+    setCfg(strava); setShowSetup(true); setMsg("Strava déconnecté sur cet appareil.");
+  };
+
+  const sync = async () => {
+    setBusy(true); setMsg("Récupération des activités…"); setReport([]);
+    try {
+      const recent = await window.TCP.stravaRecent(days, 100);
+      const known = [...sessions];
+      const fresh = recent.filter(a => !window.TCP.isDuplicate(known, a));
+      const lines = recent.filter(a => !fresh.includes(a)).map(a => ({ a, status: "déjà présente" }));
+      const added = [];
+      // Les tours ne sont demandés que pour les activités nouvelles (2 appels
+      // chacune) : on reste loin de la limite Strava de 100 appels / 15 min.
+      for (let i = 0; i < fresh.length; i++) {
+        let a = fresh[i];
+        if (i < 25 && !isCross(a.type)) {
+          setMsg(`Détail des tours ${i + 1}/${Math.min(25, fresh.length)}…`);
+          try { a = await window.TCP.stravaWithLaps(a.stravaId); } catch (e) { /* on garde le résumé */ }
+        }
+        const s = window.TCP.activityToSession(a, uid);
+        known.push(s); added.push(s); lines.push({ a, status: "ajoutée" });
+      }
+      if (added.length) onAddMany(added);
+      window.TCP.setLocal({ strava: { ...window.TCP.getLocal().strava, lastSync: Date.now() } });
+      setCfg(window.TCP.getLocal().strava);
+      setReport(lines.sort((x, y) => (y.a.date || "").localeCompare(x.a.date || "")));
+      setMsg(`${added.length} nouvelle(s) activité(s) importée(s) sur ${recent.length}.`);
+    } catch (e) {
+      setMsg(/Failed to fetch|NetworkError/i.test(String(e.message)) ? "Strava injoignable (hors ligne ?)." : (e.message || String(e)));
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={cardStyle}>
+      <div className="flex items-center justify-between">
+        <CardTitle>Strava</CardTitle>
+        {connected && <span className="text-xs" style={{ color: "var(--green)" }}>● connecté{cfg.athlete ? ` · ${cfg.athlete}` : ""}</span>}
+      </div>
+
+      {connected && (
+        <>
+          <div className="flex gap-2">
+            <select value={days} onChange={e => setDays(Number(e.target.value))} className="rounded-lg px-2 py-2 text-sm" style={fieldStyle}>
+              {[[7, "7 jours"], [30, "30 jours"], [90, "3 mois"], [180, "6 mois"], [365, "1 an"]].map(([d, l]) => <option key={d} value={d}>{l}</option>)}
+            </select>
+            <button onClick={sync} disabled={busy} className="flex-1 rounded-lg py-2 text-sm font-medium disabled:opacity-50"
+              style={{ background: "#FC4C02", color: "#fff" }}>
+              {busy ? "Synchronisation…" : "Synchroniser"}
+            </button>
+          </div>
+          {cfg.lastSync && <p className="text-xs" style={{ color: "var(--muted)" }}>Dernière synchro : {new Date(cfg.lastSync).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>}
+        </>
+      )}
+
+      {msg && <p className="text-xs" style={{ color: "var(--green)" }}>{msg}</p>}
+      {report.length > 0 && <div className="max-h-64 overflow-auto">{report.map((r, i) => <ImportedLine key={i} a={r.a} status={r.status} />)}</div>}
+
+      <button onClick={() => setShowSetup(v => !v)} className="text-xs underline" style={{ color: "var(--muted2)" }}>
+        {showSetup ? "Masquer la configuration" : "Configuration Strava"}
+      </button>
+      {showSetup && (
+        <div className="space-y-2">
+          <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+            Une seule fois : crée ta propre « application » Strava sur{" "}
+            <a href="https://www.strava.com/settings/api" target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--accent)" }}>strava.com/settings/api</a>
+            {" "}avec comme <i>Authorization Callback Domain</i> :{" "}
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{window.location.hostname || "localhost"}</span>.
+            Copie ensuite le Client ID et le Client Secret ici. Ils restent sur cet appareil (non synchronisés) : refais l'opération sur ton téléphone.
+          </p>
+          <input value={clientId} onChange={e => setClientId(e.target.value)} placeholder="Client ID" className="w-full rounded-lg px-3 py-2 text-sm" style={fieldStyle} />
+          <input value={clientSecret} onChange={e => setClientSecret(e.target.value)} placeholder="Client Secret" type="password" className="w-full rounded-lg px-3 py-2 text-sm" style={fieldStyle} />
+          <div className="flex gap-2">
+            <button onClick={saveAndConnect} disabled={!clientId || !clientSecret} className="flex-1 rounded-lg py-2 text-sm disabled:opacity-40" style={{ background: "#FC4C02", color: "#fff" }}>
+              {connected ? "Reconnecter Strava" : "Connecter Strava"}
+            </button>
+            {connected && <button onClick={disconnect} className="rounded-lg px-3 text-sm" style={{ background: "var(--border)", color: "var(--text)" }}>Déconnecter</button>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Profil cardio : sert au calcul de charge (TRIMP). */
+function ProfileCard({ profile, onChange }) {
+  const p = profile || {};
+  const set = (k, v) => onChange({ ...p, [k]: v === "" ? null : Number(v) });
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={cardStyle}>
+      <CardTitle>Profil cardio</CardTitle>
+      <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+        Avec ta FC max et ta FC de repos (visibles dans Garmin Connect), la charge de chaque séance est calculée à partir
+        de la fréquence cardiaque (TRIMP). Sans elles, l'appli utilise la durée × ressenti.
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs" style={{ color: "var(--muted)" }}>FC max</label>
+          <input type="number" value={p.fcMax ?? ""} onChange={e => set("fcMax", e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={fieldStyle} />
+        </div>
+        <div>
+          <label className="text-xs" style={{ color: "var(--muted)" }}>FC repos</label>
+          <input type="number" value={p.fcRepos ?? ""} onChange={e => set("fcRepos", e.target.value)} className="w-full rounded-lg px-3 py-2 text-sm" style={fieldStyle} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Forme / fatigue / fraîcheur, km-effort et récupération post-ultra. */
+function ChargeCard({ sessions, profile }) {
+  const an = useMemo(() => (window.TCP ? window.TCP.analyse(sessions, profile) : null), [sessions, profile]);
+  if (!an) return null;
+  const { LineChart, Line, Legend, ReferenceLine } = _R;
+  const cur = an.current || {};
+  const data = an.series.slice(-90).map(p => ({ ...p, label: fmtDate(p.date) }));
+  const weeks = an.weeks.map(w => ({ label: fmtDate(w.week), km: w.km, effort: Math.round((w.kmEffort - w.km) * 10) / 10 }));
+  const u = an.ultra;
+  const Stat = ({ label, value, hint, color }) => (
+    <div className="rounded-lg p-2 text-center" style={{ background: "var(--surface2)" }}>
+      <p className="text-xs" style={{ color: "var(--muted)" }}>{label}</p>
+      <p className="text-lg" style={{ fontFamily: "'JetBrains Mono', monospace", color: color || "var(--text)" }}>{value}</p>
+      {hint && <p className="text-[0.65rem]" style={{ color: "var(--muted)" }}>{hint}</p>}
+    </div>
+  );
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={cardStyle}>
+      <CardTitle>Forme & fatigue</CardTitle>
+      <div className="rounded-lg p-3" style={{ background: "var(--surface2)" }}>
+        <p className="text-sm font-medium" style={{ color: an.state.color }}>{an.state.label}</p>
+        <p className="text-xs mt-1" style={{ color: "var(--muted2)" }}>{an.state.advice}</p>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <Stat label="Forme" value={Math.round(cur.forme || 0)} hint="charge 42 j" />
+        <Stat label="Fatigue" value={Math.round(cur.fatigue || 0)} hint="charge 7 j" />
+        <Stat label="Fraîcheur" value={Math.round(cur.fraicheur || 0)} hint="forme − fatigue" color={cur.fraicheur < -10 ? "var(--accent2)" : "var(--green)"} />
+      </div>
+
+      {u && (
+        <div className="rounded-lg p-3 text-xs leading-relaxed" style={{ background: "var(--warnbg)", border: "1px solid var(--warnborder)", color: "var(--text)" }}>
+          <b>Récupération post-ultra · J+{u.jours}</b> — {Math.round(u.km)} km{u.dplus ? ` / ${u.dplus} m D+` : ""} le {fmtDate(u.session.date)}.<br />
+          Repère : environ {u.semainesRecup} semaines avant de retrouver de l'intensité. {u.phase}.
+        </div>
+      )}
+
+      {CHARTS_OK && LineChart && data.length > 7 && (
+        <div style={{ width: "100%", height: 190 }}>
+          <ResponsiveContainer>
+            <LineChart data={data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--muted)" }} interval={14} />
+              <YAxis tick={{ fontSize: 10, fill: "var(--muted)" }} />
+              <Tooltip contentStyle={{ background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 12 }} />
+              {ReferenceLine && <ReferenceLine y={0} stroke="var(--muted)" />}
+              <Line type="monotone" dataKey="forme" name="Forme" stroke="var(--blue)" dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="fatigue" name="Fatigue" stroke="var(--accent2)" dot={false} strokeWidth={1.5} />
+              <Line type="monotone" dataKey="fraicheur" name="Fraîcheur" stroke="var(--green)" dot={false} strokeWidth={1.5} strokeDasharray="4 3" />
+              {Legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      <p className="text-xs pt-1" style={{ color: "var(--muted)" }}>
+        Km-effort par semaine (km + D+/100) · moyenne 4 sem. : {String(an.moy4.kmEffort).replace(".", ",")} km-effort,
+        {" "}{String(an.moy4.km).replace(".", ",")} km, {an.moy4.dplus} m D+
+      </p>
+      {CHARTS_OK && (
+        <div style={{ width: "100%", height: 150 }}>
+          <ResponsiveContainer>
+            <BarChart data={weeks} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--muted)" }} interval={1} />
+              <YAxis tick={{ fontSize: 10, fill: "var(--muted)" }} />
+              <Tooltip contentStyle={{ background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 12 }} />
+              <Bar dataKey="km" name="km" stackId="a" fill="var(--accent)" />
+              <Bar dataKey="effort" name="équivalent D+" stackId="a" fill="var(--accent3)" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      {an.vma && (
+        <p className="text-xs" style={{ color: "var(--muted2)" }}>
+          VMA estimée d'après tes tours rapides : ~{String(an.vma.vma).replace(".", ",")} km/h ({fmtDate(an.vma.date)}). Estimation, à confirmer par un test.
+        </p>
+      )}
+      <p className="text-[0.65rem] leading-relaxed" style={{ color: "var(--muted)" }}>
+        Charge = TRIMP (FC) si ton profil cardio est renseigné, sinon durée × ressenti. Ce sont des estimations de tendance, pas des mesures.
+      </p>
+    </div>
+  );
+}
+
+/** Rendu léger du texte du coach : paragraphes, listes et gras. */
+function CoachText({ text }) {
+  const blocks = String(text || "").split(/\n{2,}/);
+  const inline = (t, k) => t.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    /^\*\*[^*]+\*\*$/.test(part) ? <b key={k + "-" + i}>{part.slice(2, -2)}</b> : <React.Fragment key={k + "-" + i}>{part}</React.Fragment>);
+  return (
+    <div className="space-y-2">
+      {blocks.map((b, i) => {
+        const lines = b.split("\n").filter(Boolean);
+        if (lines.length && lines.every(l => /^\s*([-•*]|\d+[.)])\s+/.test(l))) {
+          return <ul key={i} className="list-disc pl-5 space-y-0.5">{lines.map((l, j) => <li key={j}>{inline(l.replace(/^\s*([-•*]|\d+[.)])\s+/, ""), `${i}-${j}`)}</li>)}</ul>;
+        }
+        return <p key={i}>{lines.map((l, j) => <React.Fragment key={j}>{j > 0 && <br />}{inline(l.replace(/^#+\s*/, ""), `${i}-${j}`)}</React.Fragment>)}</p>;
+      })}
+    </div>
+  );
+}
+
+const COACH_SUGGESTIONS = [
+  "Fais le bilan de ma semaine et ajuste la semaine prochaine si besoin.",
+  "Où en est ma récupération après mon ultra ? Que dois-je faire ces 2 prochaines semaines ?",
+  "Analyse ma dernière sortie.",
+  "Comment maintenir ma forme cet hiver sans objectif précis ?",
+];
+
+function CoachTab({ getState, setSessions }) {
+  const [key, setKey] = useState(() => (window.TCP ? window.TCP.getLocal().anthropicKey || "" : ""));
+  const [keyInput, setKeyInput] = useState("");
+  const [history, setHistory] = useState(() => (window.TCP && window.TCP.coach ? window.TCP.coach.loadHistory() : []));
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [live, setLive] = useState("");
+  const [tool, setTool] = useState("");
+  const [changes, setChanges] = useState([]);
+  const [err, setErr] = useState("");
+  const endRef = React.useRef(null);
+
+  useEffect(() => { endRef.current && endRef.current.scrollIntoView({ block: "end" }); }, [history, live]);
+
+  const bubbles = window.TCP && window.TCP.coach ? window.TCP.coach.toBubbles(history) : [];
+  const TOOL_LABEL = {
+    lire_etat_athlete: "lit ton état de forme", lister_seances: "parcourt tes séances", detail_seance: "examine une séance",
+    modifier_seance: "ajuste une séance", ajouter_seance: "ajoute une séance", supprimer_seance: "retire une séance",
+  };
+
+  const send = async (text) => {
+    const q = (text ?? input).trim();
+    if (!q || busy) return;
+    setBusy(true); setErr(""); setInput(""); setLive(""); setChanges([]);
+    setHistory(h => h.concat([{ role: "user", content: q }]));
+    try {
+      const msgs = await window.TCP.coach.ask(q, { getState, setSessions, uid }, {
+        onText: t => setLive(v => v + t),
+        onToolStart: n => setTool(TOOL_LABEL[n] || n),
+        onChange: c => setChanges(v => v.concat([c])),
+      });
+      setHistory(msgs);
+    } catch (e) {
+      const m = e && (e.message || String(e));
+      setErr(/401|authentication|invalid x-api-key/i.test(m) ? "Clé API refusée : vérifie-la dans les réglages du coach."
+        : /Failed to fetch|NetworkError|import/i.test(m) ? "Connexion impossible (hors ligne ?)." : m);
+      setHistory(window.TCP.coach.loadHistory());
+    }
+    setLive(""); setTool(""); setBusy(false);
+  };
+
+  const saveKey = () => {
+    window.TCP.setLocal({ anthropicKey: keyInput.trim() });
+    setKey(keyInput.trim()); setKeyInput("");
+  };
+
+  if (!key) {
+    return (
+      <div className="rounded-xl p-4 space-y-3 lg:max-w-xl" style={cardStyle}>
+        <CardTitle>Coach IA</CardTitle>
+        <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>
+          Le coach (Claude) lit tes séances importées et ton analyse de forme, répond à tes questions et ajuste ton plan.
+        </p>
+        <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+          Il faut une clé API Anthropic : crée-la sur{" "}
+          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--accent)" }}>console.anthropic.com</a>
+          {" "}(facturation à l'usage, quelques centimes par échange). Elle reste enregistrée sur cet appareil uniquement,
+          jamais dans la synchro. Ne la partage pas.
+        </p>
+        <input value={keyInput} onChange={e => setKeyInput(e.target.value)} placeholder="sk-ant-…" type="password"
+          className="w-full rounded-lg px-3 py-2 text-sm" style={{ ...fieldStyle, fontFamily: "'JetBrains Mono', monospace" }} />
+        <button onClick={saveKey} disabled={!keyInput.trim().startsWith("sk-")} className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
+          style={{ background: "var(--accent)", color: "var(--bg)" }}>
+          Activer le coach
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 lg:max-w-3xl">
+      <div className="rounded-xl p-4 space-y-3" style={cardStyle}>
+        <div className="flex items-center justify-between">
+          <CardTitle>Coach IA</CardTitle>
+          <div className="flex gap-3">
+            <button onClick={() => { window.TCP.coach.clearHistory(); setHistory([]); setChanges([]); }} className="text-xs underline" style={{ color: "var(--muted2)" }}>Nouvelle conversation</button>
+            <button onClick={() => { window.TCP.setLocal({ anthropicKey: "" }); setKey(""); }} className="text-xs underline" style={{ color: "var(--muted)" }}>Retirer la clé</button>
+          </div>
+        </div>
+
+        {bubbles.length === 0 && !busy && (
+          <div className="space-y-2">
+            <p className="text-xs" style={{ color: "var(--muted2)" }}>Pose une question, ou commence par :</p>
+            {COACH_SUGGESTIONS.map(q => (
+              <button key={q} onClick={() => send(q)} className="block w-full text-left text-sm rounded-lg px-3 py-2"
+                style={{ background: "var(--surface2)", color: "var(--text)" }}>{q}</button>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-3">
+          {bubbles.map((b, i) => (
+            <div key={i} className={b.role === "user" ? "flex justify-end" : ""}>
+              <div className="rounded-xl px-3 py-2 text-sm leading-relaxed max-w-[90%]"
+                style={b.role === "user"
+                  ? { background: "var(--accent)", color: "var(--bg)" }
+                  : { background: "var(--surface2)", color: "var(--text)" }}>
+                {b.role === "user" ? b.text : <CoachText text={b.text} />}
+              </div>
+            </div>
+          ))}
+          {busy && (
+            <div className="rounded-xl px-3 py-2 text-sm leading-relaxed" style={{ background: "var(--surface2)", color: "var(--text)" }}>
+              {live ? <CoachText text={live} /> : null}
+              <p className="text-xs mt-1" style={{ color: "var(--muted)" }}>Le coach {tool || "réfléchit"}…</p>
+            </div>
+          )}
+          {changes.length > 0 && (
+            <div className="rounded-lg p-3 text-xs space-y-1" style={{ background: "var(--warnbg)", border: "1px solid var(--warnborder)", color: "var(--text)" }}>
+              <b>Plan modifié par le coach :</b>
+              {changes.map((c, i) => <p key={i}>✎ {c}</p>)}
+            </div>
+          )}
+          {err && <p className="text-xs" style={{ color: "var(--accent2)" }}>{err}</p>}
+          <div ref={endRef} />
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <textarea value={input} onChange={e => setInput(e.target.value)} rows={2}
+          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+          placeholder="Ex. : j'ai mal au mollet, adapte ma semaine"
+          className="flex-1 rounded-lg px-3 py-2 text-sm outline-none" style={fieldStyle} />
+        <button onClick={() => send()} disabled={busy || !input.trim()} className="rounded-lg px-4 text-sm font-medium disabled:opacity-40"
+          style={{ background: "var(--accent)", color: "var(--bg)" }}>
+          Envoyer
+        </button>
+      </div>
+      <p className="text-[0.65rem]" style={{ color: "var(--muted)" }}>
+        Le coach peut se tromper : garde ton jugement, et consulte en cas de douleur. Modèle : {window.TCP.coach.MODEL}.
+      </p>
+    </div>
+  );
+}
+
+/** Dans le formulaire « séance réalisée » : remplir depuis un fichier ou Strava. */
+function FillFromActivity({ onFill }) {
+  const [list, setList] = useState(null);
+  const [msg, setMsg] = useState("");
+  const stravaOk = !!(window.TCP && (window.TCP.getLocal().strava || {}).refreshToken);
+
+  const fromFile = async (f) => {
+    if (!f) return;
+    try { const a = await window.TCP.parseActivityFile(f); onFill(a); setMsg(`Rempli depuis ${f.name}`); }
+    catch (e) { setMsg(e.message || String(e)); }
+  };
+  const loadStrava = async () => {
+    setMsg("Chargement…");
+    try { setList(await window.TCP.stravaRecent(14, 30)); setMsg(""); }
+    catch (e) { setMsg(e.message || String(e)); }
+  };
+  const pick = async (a) => {
+    setMsg("Récupération des tours…");
+    try { onFill(await window.TCP.stravaWithLaps(a.stravaId)); } catch (e) { onFill(a); }
+    setList(null); setMsg("Rempli depuis Strava");
+  };
+
+  return (
+    <div className="space-y-1">
+      <div className="flex gap-2">
+        <label className="flex-1 text-center rounded-lg px-2 py-1.5 text-xs cursor-pointer" style={{ background: "var(--border)", color: "var(--text)" }}>
+          Depuis un fichier .fit / .gpx
+          <input type="file" accept=".fit,.gpx,.tcx" className="hidden" onChange={e => { fromFile(e.target.files[0]); e.target.value = ""; }} />
+        </label>
+        {stravaOk && (
+          <button onClick={loadStrava} className="flex-1 rounded-lg px-2 py-1.5 text-xs" style={{ background: "#FC4C02", color: "#fff" }}>
+            Depuis Strava
+          </button>
+        )}
+      </div>
+      {msg && <p className="text-xs" style={{ color: "var(--green)" }}>{msg}</p>}
+      {list && (
+        <div className="rounded-lg max-h-48 overflow-auto" style={{ background: "var(--bg)", border: "1px solid var(--border)" }}>
+          {list.length === 0 && <p className="text-xs p-2" style={{ color: "var(--muted)" }}>Aucune activité ces 14 derniers jours.</p>}
+          {list.map(a => (
+            <button key={a.externalId} onClick={() => pick(a)} className="block w-full text-left px-2">
+              <ImportedLine a={a} status={a.name ? a.name.slice(0, 22) : ""} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [goal, setGoal] = useState(null);
   const [sessions, setSessions] = useState([]);
@@ -5184,6 +5859,17 @@ function App() {
   const [weightKg, setWeightKg] = useState("");
   const [targetWeight, setTargetWeight] = useState("");
   const [products, setProducts] = useState({ ...DEFAULT_PRODUCTS });
+  // Profil cardio (FC max / repos) : synchronisé avec le reste des données
+  const [profile, setProfile] = useState({});
+  const [stravaFlash, setStravaFlash] = useState("");
+
+  // Retour de Strava après autorisation (?code=… dans l'adresse)
+  useEffect(() => {
+    if (!window.TCP) return;
+    window.TCP.stravaHandleRedirect()
+      .then(r => { if (r) { setStravaFlash(`Strava connecté${r.athlete ? ` (${r.athlete})` : ""}. Lance une synchronisation.`); setTab("ajouter"); } })
+      .catch(e => { setStravaFlash(e.message || String(e)); setTab("ajouter"); });
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -5206,6 +5892,7 @@ function App() {
           setWeightKg(data.weightKg || "");
           setTargetWeight(data.targetWeight || "");
           setProducts({ ...DEFAULT_PRODUCTS, ...(data.products || {}) });
+          setProfile(data.profile || {});
           if (!data.goal) setEditingGoal(true);
         } else {
           setEditingGoal(true);
@@ -5244,7 +5931,7 @@ function App() {
           setStorageMsg("stockage indisponible");
           return;
         }
-        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight, products, updatedAt: Date.now() }), false);
+        const r = await window.storage.set("appstate", JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight, products, profile, updatedAt: Date.now() }), false);
         const ok = r !== null && r !== undefined;
         if (ok) lastSavedRef.current = Date.now();
         setStorageOk(ok);
@@ -5254,7 +5941,7 @@ function App() {
         setStorageMsg("erreur : " + String(e).slice(0, 60));
       }
     })();
-  }, [goal, sessions, evaluations, weightKg, targetWeight, products, loaded]);
+  }, [goal, sessions, evaluations, weightKg, targetWeight, products, profile, loaded]);
 
   // Quand l'app revient au premier plan, récupère ce qui a pu être modifié
   // sur un autre appareil. On ne remplace que si la version distante est
@@ -5274,7 +5961,7 @@ function App() {
         setEvaluations(data.evaluations || {});
         if (data.weightKg) setWeightKg(data.weightKg);
         if (data.targetWeight) setTargetWeight(data.targetWeight);
-        if (data.products) setProducts({ ...DEFAULT_PRODUCTS, ...data.products });
+        if (data.products) setProducts({ ...DEFAULT_PRODUCTS, ...data.products }); if (data.profile) setProfile(data.profile);
         lastSavedRef.current = data.updatedAt;
         setStorageMsg("mis à jour depuis un autre appareil");
       } catch (e) { /* hors ligne : on garde la version locale */ }
@@ -5305,7 +5992,7 @@ function App() {
         setEvaluations(data.evaluations || {});
         if (data.weightKg) setWeightKg(data.weightKg);
         if (data.targetWeight) setTargetWeight(data.targetWeight);
-        if (data.products) setProducts({ ...DEFAULT_PRODUCTS, ...data.products });
+        if (data.products) setProducts({ ...DEFAULT_PRODUCTS, ...data.products }); if (data.profile) setProfile(data.profile);
         setEditingGoal(!data.goal);
         setSyncMsg("Synchronisé — données récupérées depuis le cloud.");
       } else {
@@ -5319,7 +6006,7 @@ function App() {
   };
 
   const exportBackup = () => {
-    setBackupText(JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight, products }));
+    setBackupText(JSON.stringify({ goal, sessions, evaluations, weightKg, targetWeight, products, profile }));
     setBackupStatus("Copie ce texte et garde-le quelque part.");
   };
 
@@ -5331,7 +6018,7 @@ function App() {
       setEvaluations(data.evaluations || {});
       if (data.weightKg) setWeightKg(data.weightKg);
       if (data.targetWeight) setTargetWeight(data.targetWeight);
-      if (data.products) setProducts({ ...DEFAULT_PRODUCTS, ...data.products });
+      if (data.products) setProducts({ ...DEFAULT_PRODUCTS, ...data.products }); if (data.profile) setProfile(data.profile);
       setEditingGoal(!data.goal);
       setShowRestore(false);
       setTab("plan");
@@ -5394,6 +6081,18 @@ function App() {
    */
   const refreshFuture = () => {
     if (!goal) return;
+    // En maintien de forme, le bloc est roulant : actualiser le prolonge
+    // à partir d'aujourd'hui (et recalcule la récupération post-ultra).
+    if (goal.mode === "maintien") {
+      const g = { ...goal, recupWeeks: semainesRecupRestantes(sessions),
+        raceDate: toISO(addDays(isoWeekStart(new Date()), (goal.blocWeeks || 8) * 7 - 1)) };
+      setGoal(g);
+      return refreshWith(g);
+    }
+    return refreshWith(goal);
+  };
+
+  const refreshWith = (goal) => {
     const currentWeek = toISO(isoWeekStart(new Date()));
     const kept = sessions.filter(s =>
       !s.generated || s.done || (sessionWeek(s) || "") <= currentWeek
@@ -5443,6 +6142,15 @@ function App() {
   };
 
   const addSession = (s) => setSessions(prev => [...prev, s]);
+  const addMany = (list) => setSessions(prev => [...prev, ...list]);
+
+  // Le coach lit toujours l'état le plus récent (y compris ses propres modifs)
+  const stateRef = React.useRef({});
+  stateRef.current = { goal, sessions, evaluations, profile };
+  const getState = React.useCallback(() => stateRef.current, []);
+  const setSessionsForCoach = React.useCallback((fn) => {
+    setSessions(prev => { const next = fn(prev); stateRef.current = { ...stateRef.current, sessions: next }; return next; });
+  }, []);
   const deleteSession = (id) => setSessions(prev => prev.filter(s => s.id !== id));
   const toggleSession = (id, patch) => setSessions(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
 
@@ -5551,6 +6259,10 @@ function App() {
               <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
                 <SessionForm onAdd={addSession} products={products} />
 
+                <StravaCard sessions={sessions} onAddMany={addMany} flash={stravaFlash} />
+                <FileImportCard sessions={sessions} onAddMany={addMany} />
+                <ProfileCard profile={profile} onChange={setProfile} />
+
                 <InstallCard />
 
                 {!storageOk && (
@@ -5636,7 +6348,13 @@ function App() {
             {tab === "nutrition" && (
               <NutritionTab goal={goal} sessions={sessions} weightKg={weightKg} onWeightChange={setWeightKg} targetWeight={targetWeight} onTargetChange={setTargetWeight} products={products} onProductsChange={setProducts} />
             )}
-            {tab === "stats" && <Stats sessions={sessions} />}
+            {tab === "stats" && (
+              <div className="space-y-4">
+                <ChargeCard sessions={sessions} profile={profile} />
+                <Stats sessions={sessions} />
+              </div>
+            )}
+            {tab === "coach" && <CoachTab getState={getState} setSessions={setSessionsForCoach} />}
             {tab === "historique" && (
               <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
                 {past.length === 0 && <p className="text-sm text-center py-6 lg:col-span-2" style={{ color: "var(--muted)" }}>Pas encore de séance réalisée.</p>}
@@ -5653,7 +6371,7 @@ function App() {
               style={{ background: "var(--bg)", borderTop: "1px solid var(--border)",
                        paddingBottom: "calc(0.5rem + env(safe-area-inset-bottom))" }}>
             <div className="flex gap-1 rounded-xl p-1 max-w-md lg:max-w-3xl mx-auto" style={{ background: "var(--surface2)" }}>
-              {[["plan", "Plan"], ["ajouter", "Ajouter"], ["nutrition", "Nutrition"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
+              {[["plan", "Plan"], ["ajouter", "Ajouter"], ["coach", "Coach"], ["nutrition", "Nutrition"], ["stats", "Stats"], ["historique", "Historique"]].map(([k, label]) => (
                 <button key={k} onClick={() => setTab(k)} className="flex-1 py-2 rounded-lg text-xs"
                   style={{ background: tab === k ? "var(--accent)" : "transparent", color: tab === k ? "var(--bg)" : "var(--muted2)", fontFamily: "'Space Grotesk', sans-serif" }}>
                   {label}

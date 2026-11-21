@@ -1,7 +1,7 @@
 // Trail Coach — service worker
 // Stratégie : network-first pour index.html (pour recevoir les mises à jour),
 // cache-first pour le reste.
-const CACHE = "trailcoach-v2";
+const CACHE = "trailcoach-v3";
 const SHELL = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", e => {
@@ -22,8 +22,13 @@ self.addEventListener("fetch", e => {
 
   // Ne jamais mettre en cache les appels Firebase
   if (url.hostname.includes("firebase") || url.hostname.includes("googleapis")) return;
+  // Ni les API Strava / Anthropic (données personnelles, toujours fraîches)
+  if (url.hostname.includes("strava.com") || url.hostname.includes("anthropic.com")) return;
 
-  const isDoc = e.request.mode === "navigate" || url.pathname.endsWith("index.html");
+  // Les scripts de l'app suivent la même règle que index.html : réseau
+  // d'abord, sinon une mise à jour resterait bloquée sur l'ancienne version.
+  const sameOriginScript = url.origin === self.location.origin && url.pathname.endsWith(".js");
+  const isDoc = e.request.mode === "navigate" || url.pathname.endsWith("index.html") || sameOriginScript;
 
   if (isDoc) {
     e.respondWith(
