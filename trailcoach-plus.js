@@ -506,10 +506,22 @@
   }
 
   /** Activités récentes (résumés), sans les tours. */
-  async function stravaRecent(days, perPage) {
-    const after = Math.floor((Date.now() - (days || 30) * 86400000) / 1000);
-    const list = await stravaGet("/athlete/activities", { after, per_page: perPage || 100, page: 1 });
-    return list.map(a => stravaToActivity(a));
+  /**
+   * days = 0 : tout l'historique. Pagination par 200 (limite Strava), donc
+   * ~1 appel pour 200 activités. Les traces de plus d'un an ne sont pas
+   * conservées, pour garder des données légères.
+   */
+  async function stravaRecent(days, perPage, onProgress) {
+    const after = days ? Math.floor((Date.now() - days * 86400000) / 1000) : 0;
+    const size = perPage || 200, out = [];
+    for (let page = 1; page <= 60; page++) {
+      if (page > 1 && onProgress) onProgress("Liste des activités… " + out.length);
+      const list = await stravaGet("/athlete/activities", { after, per_page: size, page });
+      out.push.apply(out, list);
+      if (list.length < size) break;
+    }
+    const old = toISO(Date.now() - 365 * 86400000);
+    return out.map(a => { const x = stravaToActivity(a); if (x.date < old) delete x.actual.trace; return x; });
   }
 
   /** Activité complète avec ses tours (pour l'analyse par intervalle). */
@@ -525,9 +537,10 @@
    * Renvoie { added: [séances], total, lines: [{a, status}] }.
    */
   async function stravaSyncNew(sessions, days, uid, onProgress) {
-    const recent = await stravaRecent(days, 100);
+    const recent = await stravaRecent(days, 200, onProgress);
     const known = sessions.slice();
-    const fresh = recent.filter(a => !isDuplicate(known, a));
+    // les plus récentes d'abord : ce sont elles qui reçoivent tours, trace et records
+    const fresh = recent.filter(a => !isDuplicate(known, a)).sort((x, y) => (y.date || "").localeCompare(x.date || ""));
     const lines = recent.filter(a => fresh.indexOf(a) < 0).map(a => ({ a, status: "déjà présente" }));
     const added = [];
     const CROSS_T = { renfo: 1, velo: 1, natation: 1, autre: 1 };
@@ -550,7 +563,8 @@
    * séance, au plus `max` par passage. Renvoie [{id, trace, best}].
    */
   async function stravaBackfill(sessions, max, onProgress) {
-    const todo = sessions.filter(s => s.source === "strava" && s.externalId && s.actual && !s.actual.detail)
+    const old = toISO(Date.now() - 365 * 86400000);
+    const todo = sessions.filter(s => s.source === "strava" && s.externalId && s.actual && !s.actual.detail && (s.date || "") >= old)
       .sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, max || 20);
     const out = [];
     for (let i = 0; i < todo.length; i++) {
