@@ -5787,15 +5787,17 @@ const ICONS = {
   ajouter: "M12 5v14|M5 12h14",
   nutrition: "M7 3v8a3 3 0 0 0 6 0V3|M10 3v18|M17 3c-2 2-2 6 0 8v10",
   reglages: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z|M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
+  objectif: "M5 21V4|M5 4h11l-2 4 2 4H5",
   sync: "M21 12a9 9 0 0 1-15.5 6.2L3 16|M3 12a9 9 0 0 1 15.5-6.2L21 8|M21 3v5h-5|M3 21v-5h5",
 };
 
 const MAIN_TABS = [["accueil", "Accueil"], ["plan", "Plan"], ["coach", "Coach"], ["stats", "Stats"]];
 const MORE_TABS = [
+  ["objectif", "Objectif", "Préparer une course, bloc de maintien, ou rien"],
   ["historique", "Historique", "Toutes tes séances réalisées"],
   ["ajouter", "Ajouter / importer", "Strava, fichiers de montre, saisie manuelle"],
   ["nutrition", "Nutrition", "Apports, ravitaillement, poids de forme"],
-  ["reglages", "Réglages", "Objectif, synchro, sauvegarde, affichage"],
+  ["reglages", "Réglages", "Synchro, sauvegarde, affichage"],
 ];
 
 /** Barre d'onglets fixée en bas, avec « ⋯ Plus » pour les onglets secondaires. */
@@ -5848,16 +5850,16 @@ function BottomNav({ tab, setTab }) {
 }
 
 /** En-tête compact : remplace l'ancien profil altimétrique. */
-function TopBar({ goal, daysLeft, syncState, onSync }) {
+function TopBar({ goal, daysLeft, syncState, onSync, onGoal }) {
   const label = !goal ? "Aucun objectif"
     : goal.mode === "maintien" ? "Maintien"
     : `${goal.type === "trail" ? "Trail" : "Route"} ${goal.distanceKm} km${goal.type === "trail" && goal.dPlus ? ` · ${goal.dPlus} m D+` : ""}`;
   const right = !goal ? "" : goal.mode === "maintien" ? `jusqu'au ${fmtDate(goal.raceDate)}` : `J-${daysLeft}`;
   return (
     <header className="flex items-center justify-between gap-3">
-      <div className="min-w-0">
+      <div className="min-w-0 text-left">
         <p className="text-lg leading-tight" style={{ ...HEAD, color: "var(--text)" }}>Trail Coach</p>
-        <p className="text-xs truncate" style={{ ...MONO, color: "var(--green)" }}>{label}{right ? ` · ${right}` : ""}</p>
+        <button onClick={onGoal} className="block max-w-full text-xs truncate text-left" style={{ ...MONO, color: "var(--green)" }}>{label}{right ? ` · ${right}` : ""}</button>
       </div>
       {syncState && (
         <button onClick={onSync} disabled={syncState.busy} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs shrink-0"
@@ -6363,7 +6365,18 @@ function App() {
     setTimeout(() => setRefreshMsg(""), 5000);
   };
 
+  const [confirmStop, setConfirmStop] = useState(false);
+  const stopGoal = () => {
+    const currentWeek = toISO(isoWeekStart(new Date()));
+    setSessions(prev => prev.filter(s => !s.generated || s.done || (sessionWeek(s) || "") <= currentWeek));
+    setGoal(null);
+    setEvaluations({});
+    setConfirmStop(false);
+    setEditingGoal(false);
+  };
+
   const saveGoal = (g) => {
+    setTab("plan");
     // Regénérer le plan ne doit JAMAIS effacer l'historique : on conserve les
     // séances ajoutées à la main, celles déjà réalisées, et les semaines
     // écoulées. Seules les semaines à venir sont recalculées.
@@ -6440,11 +6453,48 @@ function App() {
       `}</style>
 
       <div className="max-w-md lg:max-w-5xl mx-auto px-4 py-5 space-y-5" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
-        <TopBar goal={editingGoal ? null : goal} daysLeft={daysLeft} syncState={syncState} onSync={syncStrava} />
+        <TopBar goal={goal} daysLeft={daysLeft} syncState={syncState} onSync={syncStrava} onGoal={() => setTab("objectif")} />
 
-        {(editingGoal || !goal) && (
-          <div className="lg:max-w-xl space-y-5">
-            {goal && editingGoal && (
+        <>
+            {tab === "objectif" && (
+              <div className="lg:max-w-xl space-y-5">
+                {goal && !editingGoal ? (
+                  <div className="rounded-2xl p-4 space-y-3" style={cardStyle}>
+                    <SectionTitle>Objectif en cours</SectionTitle>
+                    <p className="text-lg" style={{ ...HEAD, color: "var(--text)" }}>
+                      {goal.mode === "maintien" ? "Maintien de forme" : `${goal.type === "trail" ? "Trail" : "Route"} ${goal.distanceKm} km${goal.type === "trail" && goal.dPlus ? ` · ${goal.dPlus} m D+` : ""}`}
+                    </p>
+                    <p className="text-sm" style={{ ...MONO, color: "var(--muted2)" }}>
+                      {goal.mode === "maintien" ? `Bloc jusqu'au ${fmtDate(goal.raceDate)}` : `Course le ${fmtDate(goal.raceDate)} · J-${daysLeft}`}
+                      {` · ${goal.daysPerWeek} j/sem`}{goal.vma ? ` · VMA ${goal.vma}` : ""}
+                    </p>
+                    <div className="flex gap-2">
+                      <button onClick={() => setEditingGoal(true)} className="flex-1 rounded-lg py-2.5 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>
+                        Modifier
+                      </button>
+                      <button onClick={() => setConfirmStop(v => !v)} className="flex-1 rounded-lg py-2.5 text-sm" style={{ background: "var(--surface2)", color: "var(--text)" }}>
+                        Arrêter l'objectif
+                      </button>
+                    </div>
+                    {confirmStop && (
+                      <div className="rounded-lg p-3 space-y-2" style={{ background: "var(--warnbg)", border: "1px solid var(--warnborder)" }}>
+                        <p className="text-xs" style={{ color: "var(--text)" }}>
+                          Les séances prévues à partir de la semaine prochaine seront retirées du plan. Ton historique, la semaine en cours et les séances ajoutées à la main sont conservés.
+                        </p>
+                        <button onClick={stopGoal} className="w-full rounded-lg py-2 text-sm font-medium" style={{ background: "var(--accent2)", color: "var(--bg)" }}>
+                          Confirmer l'arrêt
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {!goal && (
+                      <p className="text-sm leading-relaxed px-1" style={{ color: "var(--muted2)" }}>
+                        Pas d'objectif en cours : l'appli suit tes séances, ta forme et ton volume sans plan. Crée un objectif quand tu veux préparer une course ou un bloc de maintien.
+                      </p>
+                    )}
+            {goal && (
               <button onClick={() => setEditingGoal(false)} className="text-xs px-3 py-1.5 rounded-lg" style={{ background: "var(--surface2)", color: "var(--muted2)" }}>
                 ← Annuler, garder l'objectif actuel
               </button>
@@ -6474,33 +6524,32 @@ function App() {
             </div>
             <GoalWizard initial={goal} onSave={saveGoal} sessions={sessions} />
 
-            {/* Import accessible avant tout objectif : l'assistant s'appuie
-                sur l'historique importé pour proposer volume, D+ et VMA. */}
-            <div className="space-y-4">
-              <p className="text-xs leading-relaxed px-1" style={{ color: "var(--muted2)" }}>
-                Importe d'abord tes séances (Strava ou fichiers de montre) : l'assistant ci-dessus s'en sert pour
-                te proposer ton volume, ton D+, ta VMA et détecter une récupération post-ultra.
-              </p>
-              <StravaCard sessions={sessions} onAddMany={addMany} flash={stravaFlash} />
-              <FileImportCard sessions={sessions} onAddMany={addMany} />
-              <ProfileCard profile={profile} onChange={setProfile} />
-            </div>
-          </div>
-        )}
-
-        {goal && !editingGoal && (
-          <>
+            <p className="text-xs leading-relaxed px-1" style={{ color: "var(--muted2)" }}>
+              L'assistant s'appuie sur tes séances importées pour proposer volume, D+ et VMA.{" "}
+              <button onClick={() => setTab("ajouter")} className="underline" style={{ color: "var(--accent)" }}>Importer des séances</button>
+            </p>
+                  </>
+                )}
+              </div>
+            )}
             {tab === "accueil" && <HomeTab sessions={sessions} profile={profile} setTab={setTab} />}
             {tab === "plan" && (
               <>
-                <div className="flex items-center gap-2 flex-wrap">
+                {!goal && (
+                  <div className="rounded-2xl p-4 space-y-2" style={cardStyle}>
+                    <p className="text-sm" style={{ color: "var(--text)" }}>Aucun objectif en cours, donc pas de plan généré.</p>
+                    <p className="text-xs" style={{ color: "var(--muted2)" }}>Les séances que tu ajoutes à la main apparaissent ici. Pour un plan complet, crée un objectif.</p>
+                    <button onClick={() => setTab("objectif")} className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--accent)", color: "var(--bg)" }}>Créer un objectif</button>
+                  </div>
+                )}
+                {goal && <div className="flex items-center gap-2 flex-wrap">
                   <button onClick={refreshFuture} className="text-xs px-3 py-1.5 rounded-lg"
                     style={{ background: "var(--border)", color: "var(--text)" }}>
                     ↻ Actualiser les semaines à venir
                   </button>
                   {refreshMsg && <span className="text-xs" style={{ color: "var(--green)" }}>{refreshMsg}</span>}
-                </div>
-                <WeekRings sessions={sessions} />
+                </div>}
+                {goal && <WeekRings sessions={sessions} />}
                 <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
                 onSaveNotes={saveNotes} vma={goal?.vma} products={products} />
               </>
@@ -6544,17 +6593,6 @@ function App() {
             )}
             {tab === "reglages" && (
               <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
-                <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
-                  <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
-                    Objectif
-                  </p>
-                  <p className="text-xs" style={{ color: "var(--muted2)" }}>
-                    {goal.mode === "maintien" ? `Maintien de forme jusqu'au ${fmtDate(goal.raceDate)}` : `${goal.type === "trail" ? "Trail" : "Route"} ${goal.distanceKm} km le ${fmtDate(goal.raceDate)}`}
-                  </p>
-                  <button onClick={() => { setEditingGoal(true); window.scrollTo({ top: 0 }); }} className="w-full rounded-lg py-2.5 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>
-                    Modifier l'objectif
-                  </button>
-                </div>
                 <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
                     Affichage
@@ -6662,8 +6700,7 @@ function App() {
             )}
 
             <BottomNav tab={tab} setTab={setTab} />
-          </>
-        )}
+        </>
       </div>
     </div>
   );
