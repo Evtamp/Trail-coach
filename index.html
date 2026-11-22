@@ -1553,11 +1553,16 @@ function WeekRings({ sessions }) {
   // Sans plan pour cette semaine : la référence devient la moyenne des
   // 4 semaines précédentes (comme Garmin / Strava).
   const noPlan = planned.length === 0;
+  // Sans plan : cible proposée selon la période (récup, reprise, entretien)
+  const ap = useMemo(() => (noPlan ? autoPlan(sessions) : null), [noPlan, sessions]);
+  const autoWk = ap && ap.semaines.find(x => x.weekStart === wk);
   const prev4 = [1, 2, 3, 4].map(i => toISO(addDays(wk, -7 * i)));
-  const prevRuns = noPlan ? sessions.filter(s => s.done && !isCross(s.type) && prev4.includes(sessionWeek(s))) : [];
-  const targetKm = noPlan ? sum(prevRuns, s => s.actual?.distance ?? s.distance) / 4 : sum(planned, s => s.distance);
-  const targetD = noPlan ? sum(prevRuns, s => s.actual?.dplus ?? s.dplus) / 4 : sum(planned, s => s.dplus);
-  const targetMin = noPlan ? sum(prevRuns, s => s.actual?.duree ?? s.duree) / 4 : sum(planned, s => s.duree);
+  const prevRuns = noPlan && !autoWk ? sessions.filter(s => s.done && !isCross(s.type) && prev4.includes(sessionWeek(s))) : [];
+  const plannedRuns = planned.filter(s => !isCross(s.type));
+  const targetKm = autoWk ? autoWk.km : noPlan ? sum(prevRuns, s => s.actual?.distance ?? s.distance) / 4 : sum(plannedRuns, s => s.distance);
+  const targetD = autoWk ? autoWk.dplus : noPlan ? sum(prevRuns, s => s.actual?.dplus ?? s.dplus) / 4 : sum(plannedRuns, s => s.dplus);
+  const targetMin = autoWk ? autoWk.min : noPlan ? sum(prevRuns, s => s.actual?.duree ?? s.duree) / 4 : sum(plannedRuns, s => s.duree);
+  const refLabel = autoWk ? `cible ${PHASE_AUTO[autoWk.phase] || ""}` : "vs moy. 4 sem.";
   const realKm = sum(doneRun, s => s.actual?.distance ?? s.distance);
   const realD = sum(doneRun, s => s.actual?.dplus ?? s.dplus);
   const realMin = sum(doneRun, s => s.actual?.duree ?? s.duree);
@@ -1580,7 +1585,7 @@ function WeekRings({ sessions }) {
               : `Semaine du ${fmtDate(wk)}`}
           </p>
           <p className="text-sm" style={{ color: "var(--muted2)", fontFamily: "'JetBrains Mono', monospace" }}>
-            {isCurrent ? (noPlan ? `${doneRun.length} séance(s) · vs moy. 4 sem.` : `${doneRun.length}/${planned.length} séances`)
+            {isCurrent ? (noPlan ? `${doneRun.length} séance(s) · ${refLabel}` : `${doneRun.length}/${plannedRuns.length} séances`)
                        : `${fmtDate(wk)} — ${fmtDate(addDays(wk, 6))}`}
           </p>
         </button>
@@ -1592,7 +1597,7 @@ function WeekRings({ sessions }) {
 
       {!isCurrent && (
         <p className="text-xs text-center mb-2" style={{ color: "var(--muted)" }}>
-          {noPlan ? `${doneRun.length} séance(s) · vs moy. 4 sem.` : `${doneRun.length}/${planned.length} séances`} · touche le titre pour revenir à aujourd'hui
+          {noPlan ? `${doneRun.length} séance(s) · ${refLabel}` : `${doneRun.length}/${plannedRuns.length} séances`} · touche le titre pour revenir à aujourd'hui
         </p>
       )}
 
@@ -6055,6 +6060,13 @@ function VolumeSparkCard({ sessions, onOpen }) {
 }
 
 function HomeTab({ sessions, profile, setTab, garmin }) {
+  // Sans séance prévue : on montre la prochaine séance proposée automatiquement
+  const withAuto = useMemo(() => {
+    const wk = toISO(isoWeekStart(new Date()));
+    if (sessions.some(s => !s.done && s.type !== "repos" && (sessionWeek(s) || "") >= wk)) return sessions;
+    const ap = autoPlan(sessions);
+    return ap ? [...sessions, ...ap.semaines.flatMap(w => w.seances.filter(x => !isCross(x.type)))] : sessions;
+  }, [sessions]);
   const last = useMemo(() => sessions.filter(s => s.done && s.date)
     .sort((a, b) => b.date.localeCompare(a.date) || (b.actual?.duree || 0) - (a.actual?.duree || 0))[0], [sessions]);
   const name = (window.TCP && (window.TCP.getLocal().strava || {}).athlete || "").split(" ")[0];
@@ -6070,7 +6082,7 @@ function HomeTab({ sessions, profile, setTab, garmin }) {
       <div className="lg:col-span-2"><WeekRings sessions={sessions} /></div>
       {garmin && garmin.now && <div className="lg:col-span-2"><RecoveryCard garmin={garmin} onOpen={() => setTab("stats")} /></div>}
       <div className="space-y-3">
-        <NextSessionCard sessions={sessions} onOpen={() => setTab("plan")} />
+        <NextSessionCard sessions={withAuto} onOpen={() => setTab("plan")} />
         <LastActivityCard s={last} onOpen={() => setTab("historique")} />
       </div>
       <div className="space-y-3">
@@ -6324,6 +6336,160 @@ function GarminSetupCard({ onRefresh, state }) {
         </div>
       )}
       {msg && <p className="text-xs" style={{ color: "var(--green)" }}>{msg}</p>}
+    </div>
+  );
+}
+
+
+// ======================================================================
+// Sans objectif : semaines proposées automatiquement selon la période
+// (récupération post-ultra, reprise, entretien), à partir de l'historique.
+// ======================================================================
+
+/** Profil de référence calculé sur les semaines « normales » (hors ultra). */
+function autoProfile(sessions) {
+  const T = window.TCP;
+  if (!T) return null;
+  const runs = sessions.filter(s => s.done && s.date && !isCross(s.type));
+  if (runs.length < 3) return null;
+  const week = s => T.mondayISO(s.date);
+  const cur = T.mondayISO(toISO(new Date()));
+  const ultraWeeks = new Set(runs.filter(s => (s.actual?.distance ?? s.distance ?? 0) >= 60 || (s.actual?.duree ?? s.duree ?? 0) >= 420).map(week));
+  const u = T.recentUltra(sessions);
+  // Référence : les 8 semaines AVANT l'ultra récent (sinon les 8 dernières),
+  // en excluant les semaines d'ultra et la semaine en cours.
+  const fin = u ? T.mondayISO(u.session.date) : cur;
+  const weeks = {};
+  runs.forEach(s => {
+    const w = week(s);
+    if (w >= fin || ultraWeeks.has(w) || w < T.addDaysISO(fin, -8 * 7)) return;
+    const e = weeks[w] || (weeks[w] = { km: 0, dplus: 0, min: 0, n: 0, long: 0 });
+    const km = s.actual?.distance ?? s.distance ?? 0;
+    e.km += km; e.dplus += s.actual?.dplus ?? s.dplus ?? 0; e.min += s.actual?.duree ?? s.duree ?? 0; e.n++; e.long = Math.max(e.long, km);
+  });
+  const list = Object.values(weeks);
+  if (!list.length) return null;
+  const avgOf = k => list.reduce((a, w) => a + w[k], 0) / list.length;
+  const km = avgOf("km"), dplus = avgOf("dplus");
+  return {
+    volume: Math.max(15, Math.round(km)),
+    dplus: Math.round(dplus),
+    jours: Math.min(6, Math.max(3, Math.round(avgOf("n")))),
+    longue: Math.round(avgOf("long")),
+    trail: km > 0 && dplus / km >= 15,
+    vma: T.estimateVma(sessions) ? T.estimateVma(sessions).vma : 14,
+    ultra: u,
+  };
+}
+
+const CROSS_PROPOSES = {
+  recup: [
+    { type: "velo", duree: 45, notes: "Home trainer très souple (Z1-Z2), cadence 85-95 tr/min : fait circuler sans impact." },
+    { type: "renfo", duree: 25, notes: "Mobilité + gainage léger, pas de pliométrie ni de charges lourdes." },
+    { type: "velo", duree: 40, notes: "Home trainer souple, ou marche active / natation." },
+  ],
+  maintien: [
+    { type: "renfo", duree: 35, notes: "Gainage, chaîne postérieure, mollets et fessiers : protège les descentes." },
+    { type: "velo", duree: 60, notes: "Home trainer endurance (Z2), ou vélo dehors : du volume aérobie sans impact." },
+  ],
+};
+
+/**
+ * Semaine en cours + semaine suivante proposées sans objectif.
+ * Renvoie { profil, phases, semaines: [{ weekStart, phase, seances, km, dplus, min }] }.
+ */
+function autoPlan(sessions) {
+  const p = autoProfile(sessions);
+  if (!p) return null;
+  const recupWeeks = semainesRecupRestantes(sessions);
+  const goal = {
+    mode: "maintien", type: p.trail ? "trail" : "route", daysPerWeek: p.jours, vma: p.vma,
+    startVolumeKm: p.volume, startLongKm: p.longue, otherSports: [], blocWeeks: 2, recupWeeks,
+    raceDate: toISO(addDays(isoWeekStart(new Date()), 13)),
+    distanceKm: p.volume, dPlus: p.trail ? p.dplus : 0,
+  };
+  const { valeurs: cal } = calibrationFromHistory(sessions, p.vma);
+  const course = generatePlan(goal, cal);
+  const semaines = [0, 1].map(i => {
+    const wk = toISO(addDays(isoWeekStart(new Date()), i * 7));
+    const runs = course.filter(s => s.weekStart === wk);
+    const phase = runs[0]?.phase || (i < recupWeeks ? "recup" : "maintien");
+    const cross = (CROSS_PROPOSES[phase] || CROSS_PROPOSES.maintien).map((c, j) => ({
+      id: `auto-${wk}-x${j}`, type: c.type, date: null, order: 10 + j, distance: null, dplus: null, duree: c.duree,
+      notes: c.notes, done: false, actual: null, generated: true, auto: true, phase, weekStart: wk,
+    }));
+    const seances = [...runs.map((s, j) => ({ ...s, id: `auto-${wk}-${j}`, auto: true })), ...cross];
+    const sum = k => runs.reduce((a, s) => a + (s[k] || 0), 0);
+    return { weekStart: wk, phase, seances, km: Math.round(sum("distance")), dplus: Math.round(sum("dplus")), min: Math.round(sum("duree")) };
+  });
+  const u = p.ultra;
+  const periode = recupWeeks > 0 && u
+    ? `Récupération après ton ${Math.round(u.km)} km du ${fmtDate(u.session.date)} (J+${u.jours})`
+    : u ? `Reprise après ton ${Math.round(u.km)} km : retour progressif au volume habituel` : "Entretien de la forme";
+  return { profil: p, recupWeeks, periode, semaines };
+}
+
+const PHASE_AUTO = { recup: "récupération", maintien: "entretien" };
+
+/** Onglet Plan sans objectif : la période et les deux semaines proposées. */
+function AutoWeeksCard({ sessions, onAdopt, setTab }) {
+  const ap = useMemo(() => autoPlan(sessions), [sessions]);
+  if (!ap) {
+    return (
+      <div className="rounded-2xl p-4 space-y-2" style={cardStyle}>
+        <p className="text-sm" style={{ color: "var(--text)" }}>Importe quelques semaines de séances (Strava ou montre) pour que je te propose tes semaines.</p>
+      </div>
+    );
+  }
+  const p = ap.profil;
+  return (
+    <div className="space-y-3">
+      <div className="rounded-2xl p-4" style={cardStyle}>
+        <SectionTitle>Ta période</SectionTitle>
+        <p className="text-base" style={{ ...HEAD, color: "var(--text)" }}>{ap.periode}</p>
+        <p className="text-xs mt-1 leading-relaxed" style={{ color: "var(--muted2)" }}>
+          Référence avant l'ultra : {p.volume} km{p.trail ? ` · ${p.dplus} m D+` : ""} sur {p.jours} sorties par semaine. Sans objectif, l'appli te propose les deux prochaines semaines.
+          Pour un plan sur plusieurs semaines,{" "}
+          <button onClick={() => setTab("objectif")} className="underline" style={{ color: "var(--accent)" }}>crée un objectif</button>.
+        </p>
+      </div>
+      {ap.semaines.map((w, i) => {
+        const adopted = sessions.some(s => s.auto && s.weekStart === w.weekStart);
+        return (
+          <div key={w.weekStart} className="rounded-2xl p-4 space-y-2" style={cardStyle}>
+            <SectionTitle action={<span className="text-xs" style={{ color: "var(--muted2)" }}>{PHASE_AUTO[w.phase] || w.phase}</span>}>
+              {i === 0 ? "Cette semaine" : `Semaine du ${fmtDate(w.weekStart)}`}
+            </SectionTitle>
+            <p className="text-sm" style={{ ...MONO, color: "var(--accent)" }}>
+              Course : {w.km} km{w.dplus ? ` · ${w.dplus} m D+` : ""} · {fmtDuree(w.min)}
+            </p>
+            {w.seances.map(s => {
+              const t = TYPES[s.type] || { label: s.type, color: "var(--muted)" };
+              return (
+                <div key={s.id} className="flex items-start gap-2 py-1.5" style={{ borderTop: "1px solid var(--border)" }}>
+                  <span className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: t.color }} />
+                  <div className="min-w-0">
+                    <p className="text-sm" style={{ color: "var(--text)" }}>
+                      {s.type === "velo" ? "Home trainer" : t.label}
+                      <span className="ml-2 text-xs" style={{ ...MONO, color: "var(--muted2)" }}>
+                        {s.distance ? `${String(s.distance).replace(".", ",")} km · ` : ""}{s.dplus ? `${s.dplus} m · ` : ""}{fmtDuree(s.duree)}
+                      </span>
+                    </p>
+                    {s.notes && <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>{s.notes}</p>}
+                  </div>
+                </div>
+              );
+            })}
+            {adopted ? (
+              <p className="text-xs" style={{ color: "var(--green)" }}>✓ Ajoutée à ton plan, plus bas : coche les séances au fur et à mesure.</p>
+            ) : (
+              <button onClick={() => onAdopt(w)} className="w-full rounded-lg py-2 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>
+                Ajouter ces séances à mon plan
+              </button>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -6636,6 +6802,10 @@ function App() {
 
   const [confirmStop, setConfirmStop] = useState(false);
   const [histLimit, setHistLimit] = useState(50);
+  const adoptWeek = (w) => setSessions(prev => [
+    ...prev.filter(s => !(s.auto && !s.done && s.weekStart === w.weekStart)),
+    ...w.seances.map(x => ({ ...x, id: uid() })),
+  ]);
   const stopGoal = () => {
     const currentWeek = toISO(isoWeekStart(new Date()));
     setSessions(prev => prev.filter(s => !s.generated || s.done || (sessionWeek(s) || "") <= currentWeek));
@@ -6728,7 +6898,7 @@ function App() {
 
   // Le coach lit toujours l'état le plus récent (y compris ses propres modifs)
   const stateRef = React.useRef({});
-  stateRef.current = { goal, sessions, evaluations, profile, garmin: window.TCP ? window.TCP.garminResume(garmin) : null };
+  stateRef.current = { goal, sessions, evaluations, profile, propositions: !goal ? (() => { try { const ap = autoPlan(sessions); return ap && { periode: ap.periode, reference: { kmSemaine: ap.profil.volume, dplusSemaine: ap.profil.dplus, sortiesParSemaine: ap.profil.jours }, semaines: ap.semaines.map(w => ({ semaine: w.weekStart, phase: w.phase, km: w.km, dplus: w.dplus, min: w.min, seances: w.seances.map(x => ({ type: x.type, km: x.distance, dplus: x.dplus, min: x.duree })) })) }; } catch (e) { return null; } })() : null, garmin: window.TCP ? window.TCP.garminResume(garmin) : null };
   const getState = React.useCallback(() => stateRef.current, []);
   const setSessionsForCoach = React.useCallback((fn) => {
     setSessions(prev => { const next = fn(prev); stateRef.current = { ...stateRef.current, sessions: next }; return next; });
@@ -6833,13 +7003,7 @@ function App() {
             {tab === "accueil" && <HomeTab sessions={sessions} profile={profile} setTab={setTab} garmin={garmin} />}
             {tab === "plan" && (
               <>
-                {!goal && (
-                  <div className="rounded-2xl p-4 space-y-2" style={cardStyle}>
-                    <p className="text-sm" style={{ color: "var(--text)" }}>Aucun objectif en cours, donc pas de plan généré.</p>
-                    <p className="text-xs" style={{ color: "var(--muted2)" }}>Les séances que tu ajoutes à la main apparaissent ici. Pour un plan complet, crée un objectif.</p>
-                    <button onClick={() => setTab("objectif")} className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--accent)", color: "var(--bg)" }}>Créer un objectif</button>
-                  </div>
-                )}
+                {!goal && <AutoWeeksCard sessions={sessions} onAdopt={adoptWeek} setTab={setTab} />}
                 {goal && <div className="flex items-center gap-2 flex-wrap">
                   <button onClick={refreshFuture} className="text-xs px-3 py-1.5 rounded-lg"
                     style={{ background: "var(--border)", color: "var(--text)" }}>
