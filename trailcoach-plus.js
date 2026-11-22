@@ -603,6 +603,65 @@
   }
 
   // ---------------------------------------------------------------------
+  // Liaison automatique : une activité importée (Strava, montre) le jour
+  // d'une séance prévue devient la réalisation de cette séance.
+  // ---------------------------------------------------------------------
+  const CROSS_L = { renfo: 1, velo: 1, natation: 1, autre: 1 };
+  function memeFamille(a, b) {
+    if (a === "repos" || b === "repos") return false;
+    if (CROSS_L[a] || CROSS_L[b]) return a === b || (a === "autre" || b === "autre") && !!(CROSS_L[a] && CROSS_L[b]);
+    return true; // deux séances de course
+  }
+
+  /**
+   * Renvoie { sessions, linked } : chaque séance importée non planifiée qui
+   * tombe le jour d'une séance prévue (ou, à défaut, dans la semaine d'une
+   * séance prévue « à placer ») est fusionnée dans cette séance prévue.
+   * Les données réalisées sont conservées telles quelles (actual, trace,
+   * records, identifiant Strava) ; le lien peut être défait.
+   */
+  function linkPlanned(sessions) {
+    const today = toISO(Date.now());
+    const planned = sessions.filter(s => !s.done && !s.noAutoLink && (s.generated || s.auto || s.date) && s.type !== "repos");
+    if (!planned.length) return { sessions, linked: 0 };
+    const used = new Set(), merged = {}, removed = new Set();
+    const imports = sessions.filter(s => s.done && s.source && s.externalId && !s.generated && !s.auto && !s.linked && s.date && s.date <= today)
+      .sort((a, b) => a.date.localeCompare(b.date));
+    const ecart = (p, a) => Math.abs((p.distance || 0) - ((a.actual && a.actual.distance) || 0)) + Math.abs((p.duree || 0) - ((a.actual && a.actual.duree) || 0)) / 6;
+    imports.forEach(a => {
+      const libres = planned.filter(p => !used.has(p.id) && memeFamille(p.type, a.type));
+      let cands = libres.filter(p => p.date === a.date);
+      if (!cands.length) cands = libres.filter(p => !p.date && p.weekStart === mondayISO(a.date));
+      if (!cands.length) return;
+      cands.sort((x, y) => ecart(x, a) - ecart(y, a) || (x.order || 99) - (y.order || 99));
+      const p = cands[0];
+      used.add(p.id); removed.add(a.id);
+      merged[p.id] = Object.assign({}, p, {
+        done: true, date: a.date, weekStart: mondayISO(a.date), actual: a.actual,
+        source: a.source, externalId: a.externalId,
+        linked: { plannedDate: p.date || null, name: a.notes || "", type: a.type, importId: a.id },
+      });
+    });
+    if (!removed.size) return { sessions, linked: 0 };
+    return { sessions: sessions.filter(s => !removed.has(s.id)).map(s => merged[s.id] || s), linked: removed.size };
+  }
+
+  /** Défait un lien : la séance prévue redevient à faire, l'activité réapparaît seule. */
+  function unlinkSession(sessions, id) {
+    const s = sessions.find(x => x.id === id);
+    if (!s || !s.linked) return sessions;
+    const l = s.linked;
+    const act = {
+      id: l.importId || id + "-a", type: l.type || s.type, date: s.date,
+      distance: s.actual && s.actual.distance, dplus: s.actual && s.actual.dplus, duree: s.actual && s.actual.duree,
+      notes: l.name || "", done: true, actual: s.actual, generated: false, source: s.source, externalId: s.externalId,
+    };
+    const back = Object.assign({}, s, { done: false, actual: null, date: l.plannedDate, source: undefined, externalId: undefined, linked: undefined, noAutoLink: true });
+    delete back.source; delete back.externalId; delete back.linked;
+    return sessions.map(x => x.id === id ? back : x).concat([act]);
+  }
+
+  // ---------------------------------------------------------------------
   // Analyse de charge
   // ---------------------------------------------------------------------
   const CROSS = { renfo: 1, velo: 1, natation: 1, autre: 1 };
@@ -819,6 +878,6 @@
     stravaAuthorizeUrl, stravaHandleRedirect, stravaRecent, stravaWithLaps, stravaRedirectUri, stravaSyncNew, stravaConnected,
     stravaBackfill, decodePolyline, encodePolyline, records, RECORD_DIST,
     haConfig, haConnected, garminFetch, garminCache, garminResume, STATUT_FR, VFC_FR,
-    isDuplicate, activityToSession, sessionLoad, loadSeries, formState, recentUltra, weeklyStats, estimateVma, analyse, kmEffort,
+    isDuplicate, activityToSession, linkPlanned, unlinkSession, sessionLoad, loadSeries, formState, recentUltra, weeklyStats, estimateVma, analyse, kmEffort,
   };
 })();
