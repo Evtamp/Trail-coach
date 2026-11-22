@@ -4000,7 +4000,7 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
             {s.backToBack ? "Sortie longue enchaînée" : t.label}
             {s.generated && <span style={{ color: "var(--muted)" }}>· plan</span>}
             {s.backToBack && <span style={{ color: "var(--amber)" }}> · J+1</span>}
-            {s.source && <span style={{ color: "var(--muted)" }}> · {s.source === "strava" ? "Strava" : s.source.toUpperCase()}</span>}
+            {s.source && <span style={{ color: s.linked ? "var(--green)" : "var(--muted)" }}> · {s.linked ? "✓ lié à " : ""}{s.source === "strava" ? "Strava" : s.source.toUpperCase()}</span>}
           </p>
           {s.coachNote && !s.done && (
             <p className="text-xs mt-0.5" style={{ color: "var(--accent)" }}>✎ Coach : {s.coachNote}</p>
@@ -4030,7 +4030,7 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
             </button>
             <button
               onClick={() => onToggle(s.id, { done: false, actual: null, date: s.generated ? null : s.date })}
-              title="Annuler la validation — la séance retourne dans le planning"
+              title={s.linked ? "Délier : la séance prévue redevient à faire, l'activité reste dans l'historique" : "Annuler la validation — la séance retourne dans le planning"}
               className="text-xs px-2 py-1.5 rounded-lg"
               style={{ background: "var(--border)", color: "var(--green)" }}>
               ↺
@@ -4952,59 +4952,155 @@ function VolumeExplain({ goal, sessions }) {
   );
 }
 
-function PlanView({ sessions, evaluations, onToggle, onDelete, onSaveNotes, vma, products }) {
+const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+/**
+ * Glisser-déposer à la souris comme au doigt : on suit le pointeur depuis
+ * la poignée ⠿ et on repère la case jour survolée (data-day).
+ */
+function useDayDrag(onMove) {
+  const [drag, setDrag] = useState(null);
+  const ref = React.useRef(null);
+  const targetAt = (x, y) => {
+    const el = document.elementFromPoint(x, y);
+    const z = el && el.closest("[data-day]");
+    return z ? z.getAttribute("data-day") : null;
+  };
+  const start = (e, s, label) => {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    const d = { id: s.id, label, x: e.clientX, y: e.clientY, over: null, moved: false };
+    ref.current = d; setDrag(d);
+  };
+  const move = (e) => {
+    const d = ref.current; if (!d) return;
+    const n = { ...d, x: e.clientX, y: e.clientY, over: targetAt(e.clientX, e.clientY), moved: true };
+    ref.current = n; setDrag(n);
+    // fait défiler la page quand on approche du bord
+    if (e.clientY < 70) window.scrollBy(0, -12); else if (e.clientY > window.innerHeight - 110) window.scrollBy(0, 12);
+  };
+  const end = () => {
+    const d = ref.current; ref.current = null; setDrag(null);
+    if (d && d.moved && d.over) onMove(d.id, d.over === "none" ? null : d.over);
+  };
+  const handle = (s, label) => ({
+    onPointerDown: e => start(e, s, label), onPointerMove: move, onPointerUp: end, onPointerCancel: () => { ref.current = null; setDrag(null); },
+  });
+  return { drag, handle };
+}
+
+function PlanView({ sessions, evaluations, onToggle, onDelete, onMove, onSaveNotes, vma, products }) {
   const weeks = useMemo(() => {
     const map = new Map();
     sessions.forEach(s => {
       const wk = sessionWeek(s);
+      if (!wk) return;
       if (!map.has(wk)) map.set(wk, []);
       map.get(wk).push(s);
     });
-    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+    // on n'affiche que les semaines qui ont encore quelque chose à faire
+    // (et toujours la semaine en cours, pour voir ce qui a été lié à Strava)
+    const cur = toISO(isoWeekStart(new Date()));
+    return [...map.entries()].filter(([wk, l]) => l.some(s => !s.done) || (wk === cur && l.some(s => s.generated || s.auto)))
+      .sort(([a], [b]) => a.localeCompare(b));
   }, [sessions]);
-
+  const { drag, handle } = useDayDrag(onMove || (() => {}));
   const todayISO = toISO(new Date());
+  const dragged = drag && sessions.find(s => s.id === drag.id);
+
+  const row = (s) => {
+    const movable = !s.done && onMove;
+    return (
+      <div key={s.id} className="flex items-stretch gap-1" style={{ opacity: drag && drag.id === s.id ? 0.35 : 1 }}>
+        {movable ? (
+          <button {...handle(s, s.type === "velo" && s.auto ? "Home trainer" : (TYPES[s.type] || {}).label)}
+            aria-label="Glisser pour changer de jour" title="Glisser pour changer de jour"
+            className="w-7 shrink-0 rounded-lg text-base select-none"
+            style={{ touchAction: "none", cursor: "grab", color: "var(--muted2)", background: "var(--surface)", border: "1px solid var(--border)" }}>⠿</button>
+        ) : <span className="w-7 shrink-0" />}
+        <div className="flex-1 min-w-0">
+          <SessionRow s={s} onToggle={onToggle} onDelete={onDelete} onSaveNotes={onSaveNotes} vma={vma} products={products} />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
       {weeks.map(([weekStart, weekSessions]) => {
-        const isPast = addDays(weekStart, 6) < new Date();
+        const isPast = addDays(weekStart, 7) <= new Date();
         if (isPast && weekSessions.every(s => s.done || !s.generated)) return null; // masque semaines passées complètes
         const phase = weekSessions.find(s => s.generated)?.phase;
-        const evalInfo = evaluations[weekStart];
         const adjustedFrom = Object.entries(evaluations).find(([wk, e]) => toISO(addDays(wk, 7)) === weekStart && e.multiplier !== 1);
+        const prevus = weekSessions.filter(x => !x.done || x.generated || x.auto);
+        const faits = weekSessions.filter(x => x.done && !isCross(x.type));
+        const kmFait = Math.round(faits.reduce((a, x) => a + (x.actual?.distance ?? x.distance ?? 0), 0));
+        const jours = [0, 1, 2, 3, 4, 5, 6].map(i => toISO(addDays(weekStart, i)));
+        const sansJour = weekSessions.filter(x => !x.date);
+        const tri = (a, b) => (a.done === b.done ? 0 : a.done ? -1 : 1) || (a.order ?? 99) - (b.order ?? 99);
+        const zone = (key) => ({
+          "data-day": key,
+          style: {
+            borderRadius: 12, padding: "4px 6px",
+            outline: drag && drag.over === key ? "2px dashed var(--accent)" : "none",
+            background: drag && drag.over === key ? "var(--surface)" : "transparent",
+          },
+        });
 
         return (
           <div key={weekStart}>
             <div className="flex items-center justify-between px-1 mb-2 gap-2">
               <div className="min-w-0">
                 <p className="text-xs uppercase tracking-wider truncate" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
-                  Semaine du {fmtDate(weekStart)} {phase && `· ${PHASE_LABEL[phase]}`}
+                  Semaine du {fmtDate(weekStart)} {phase && `· ${PHASE_LABEL[phase] || PHASE_AUTO[phase] || phase}`}
                 </p>
-                {/* cumul de la semaine : rend la progression lisible sans
-                    avoir à additionner les séances une à une */}
                 <p className="text-xs" style={{ color: "var(--accent)", fontFamily: "'JetBrains Mono', monospace" }}>
-                  {Math.round(weekSessions.reduce((a, x) => a + (x.distance || 0), 0))} km
-                  {weekSessions.some(x => x.dplus) &&
-                    ` · ${Math.round(weekSessions.reduce((a, x) => a + (x.dplus || 0), 0))} m D+`}
-                  {` · ${fmtDuree(weekSessions.reduce((a, x) => a + (x.duree || 0), 0))}`}
+                  prévu {Math.round(prevus.reduce((a, x) => a + (x.distance || 0), 0))} km
+                  {prevus.some(x => x.dplus) && ` · ${Math.round(prevus.reduce((a, x) => a + (x.dplus || 0), 0))} m D+`}
+                  {` · ${fmtDuree(prevus.reduce((a, x) => a + (x.duree || 0), 0))}`}
+                  {faits.length > 0 && <span style={{ color: "var(--blue)" }}>{` · fait ${kmFait} km`}</span>}
                 </p>
               </div>
-              <p className="text-xs shrink-0" style={{ color: "var(--muted)" }}>ordre conseillé</p>
+              <p className="text-xs shrink-0 text-right" style={{ color: "var(--muted)" }}>⠿ glisse pour<br />changer de jour</p>
             </div>
             {adjustedFrom && (
               <div className="rounded-lg px-3 py-2 mb-2 text-xs" style={{ background: "var(--warnbg)", color: "var(--accent2)", border: "1px solid var(--warnborder)" }}>
                 {adjustedFrom[1].reason}
               </div>
             )}
-            <div className="space-y-2">
-              {weekSessions.sort((a, b) => (a.order ?? 99) - (b.order ?? 99) || (a.date || "").localeCompare(b.date || "")).map(s => (
-                <SessionRow key={s.id} s={s} onToggle={onToggle} onDelete={onDelete} onSaveNotes={onSaveNotes} vma={vma} products={products} />
-              ))}
+            <div className="space-y-1">
+              {(sansJour.length > 0 || drag) && (
+                <div {...zone("none")}>
+                  <p className="text-xs py-1" style={{ ...MONO, color: "var(--amber)" }}>À placer{sansJour.length ? ` · ${sansJour.length}` : ""}</p>
+                  <div className="space-y-2">{sansJour.sort(tri).map(row)}</div>
+                </div>
+              )}
+              {jours.map((d, i) => {
+                const list = weekSessions.filter(x => x.date === d).sort(tri);
+                const auj = d === todayISO;
+                return (
+                  <div key={d} {...zone(d)}>
+                    <div className="flex items-center gap-2 py-1">
+                      <p className="text-xs w-16 shrink-0" style={{ ...MONO, color: auj ? "var(--accent)" : "var(--muted2)", fontWeight: auj ? 600 : 400 }}>
+                        {JOURS_COURTS[i]} {Number(d.slice(8))}{auj ? " ·auj." : ""}
+                      </p>
+                      {!list.length && <p className="text-xs" style={{ color: "var(--muted)" }}>Repos</p>}
+                    </div>
+                    {list.length > 0 && <div className="space-y-2 pb-1">{list.map(row)}</div>}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
       })}
+      {drag && drag.moved && (
+        <div className="fixed z-50 pointer-events-none rounded-lg px-3 py-2 text-sm shadow-lg"
+          style={{ left: drag.x + 12, top: drag.y - 18, background: "var(--accent)", color: "var(--bg)" }}>
+          {drag.label || (dragged && dragged.type)}{drag.over ? ` → ${drag.over === "none" ? "à placer" : fmtDate(drag.over)}` : ""}
+        </div>
+      )}
     </div>
   );
 }
@@ -6960,7 +7056,12 @@ function App() {
   };
 
   const addSession = (s) => setSessions(prev => [...prev, s]);
-  const addMany = (list) => setSessions(prev => [...prev, ...list]);
+  // Les activités importées le jour d'une séance prévue la valident d'office
+  const linkAll = (list) => (window.TCP && window.TCP.linkPlanned ? window.TCP.linkPlanned(list).sessions : list);
+  const addMany = (list) => setSessions(prev => linkAll([...prev, ...list]));
+  useEffect(() => { if (loaded) setSessions(prev => linkAll(prev)); }, [loaded]);
+  const moveSession = (id, date) => setSessions(prev => prev.map(s => s.id !== id || s.done ? s
+    : { ...s, date, weekStart: date ? toISO(isoWeekStart(date)) : s.weekStart, noAutoLink: undefined }));
 
   const patchDetails = (list) => setSessions(prev => prev.map(s => {
     const p = list.find(x => x.id === s.id);
@@ -7028,7 +7129,11 @@ function App() {
     setSessions(prev => { const next = fn(prev); stateRef.current = { ...stateRef.current, sessions: next }; return next; });
   }, []);
   const deleteSession = (id) => setSessions(prev => prev.filter(s => s.id !== id));
-  const toggleSession = (id, patch) => setSessions(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
+  const toggleSession = (id, patch) => setSessions(prev => {
+    const cur = prev.find(s => s.id === id);
+    if (cur && cur.linked && patch.done === false && window.TCP) return window.TCP.unlinkSession(prev, id);
+    return prev.map(s => s.id === id ? { ...s, ...patch } : s);
+  });
 
   const now = new Date();
   const daysLeft = goal ? Math.max(0, Math.ceil((new Date(goal.raceDate) - now) / 86400000)) : 0;
@@ -7136,7 +7241,7 @@ function App() {
                   {refreshMsg && <span className="text-xs" style={{ color: "var(--green)" }}>{refreshMsg}</span>}
                 </div>}
                 <WeekRings sessions={sessions} profile={profile} />
-                <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
+                <PlanView sessions={sessions} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession} onMove={moveSession}
                 onSaveNotes={saveNotes} vma={goal?.vma} products={products} />
               </>
             )}
