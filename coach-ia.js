@@ -127,6 +127,7 @@
       "- Appuie chaque affirmation sur les chiffres que les outils renvoient, et distingue ce qui est mesuré (montre) de ce qui est estimé (forme/fatigue, VMA estimée, km-effort = km + D+/100).",
       "- La « forme » est une moyenne de charge sur 42 jours, la « fatigue » sur 7 jours, la « fraîcheur » = forme − fatigue de la veille. Une fraîcheur très négative signale un besoin de récupération.",
       "- Après un ultra, la reprise est progressive : pas d'intensité tant que la récupération n'est pas terminée.",
+      "- Si « garmin » est renseigné (données de sa montre via Home Assistant) : disponibilité à l'entraînement, statut, VFC, sommeil, FC repos et Body Battery décrivent sa récupération du jour. Une disponibilité basse (< 40), une VFC « basse » ou sous sa référence, une FC repos au-dessus de sa moyenne ou un mauvais sommeil justifient d'alléger ou de décaler la séance d'intensité du jour ; plusieurs signaux convergents pèsent plus qu'un seul. Croise-les avec la fraîcheur de l'appli.",
       "- Tu n'es pas médecin : en cas de douleur persistante, de malaise ou de signe inquiétant, recommande de consulter.",
       "",
       "Format : réponses courtes et concrètes, en texte simple (listes autorisées, pas de tableaux). Quand tu as modifié le plan, termine par la liste des changements.",
@@ -173,6 +174,8 @@
           ultraRecent: an.ultra ? { date: an.ultra.session.date, km: an.ultra.km, dplus: an.ultra.dplus, joursDepuis: an.ultra.jours, semainesRecupConseillees: an.ultra.semainesRecup, phase: an.ultra.phase } : null,
           vmaEstimee: an.vma,
           evaluationsRecentes: evals,
+          garmin: st.garmin || null,
+          records: window.TCP.records ? (r => ({ meilleursTempsSec: r.temps.map(x => ({ distance: x.nom, sec: x.sec, date: x.date })), extremes: r.extremes.map(x => ({ quoi: x.nom, valeur: x.valeur, unite: x.unite, date: x.date })) }))(window.TCP.records(sessions)) : null,
           nbSeancesRealisees: sessions.filter(s => s.done).length,
           nbSeancesAVenir: sessions.filter(s => !s.done).length,
         };
@@ -191,7 +194,7 @@
       case "detail_seance": {
         const s = find(input.id);
         if (!s) return { erreur: "Séance introuvable : " + input.id };
-        return Object.assign(compact(s), { tours: (s.actual && s.actual.laps) || [], ravitaillement: s.actual && s.actual.fueling ? s.actual.fueling : undefined, notesCompletes: s.notes || "" });
+        return Object.assign(compact(s), { meilleursTempsSec: (s.actual && s.actual.best) || undefined, traceGps: !!(s.actual && s.actual.trace), tours: (s.actual && s.actual.laps) || [], ravitaillement: s.actual && s.actual.fueling ? s.actual.fueling : undefined, notesCompletes: s.notes || "" });
       }
       case "modifier_seance": {
         const s = find(input.id);

@@ -1,7 +1,7 @@
 // Trail Coach — service worker
 // Stratégie : network-first pour index.html (pour recevoir les mises à jour),
 // cache-first pour le reste.
-const CACHE = "trailcoach-v5";
+const CACHE = "trailcoach-v6";
 const SHELL = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", e => {
@@ -24,6 +24,9 @@ self.addEventListener("fetch", e => {
   if (url.hostname.includes("firebase") || url.hostname.includes("googleapis")) return;
   // Ni les API Strava / Anthropic (données personnelles, toujours fraîches)
   if (url.hostname.includes("strava.com") || url.hostname.includes("anthropic.com")) return;
+  // Ni Home Assistant (ou tout appel authentifié), ni les tuiles de carte
+  if (e.request.headers.get("Authorization") || url.pathname.startsWith("/api/")) return;
+  if (url.hostname.endsWith("tile.openstreetmap.org")) return;
 
   // Les scripts de l'app suivent la même règle que index.html : réseau
   // d'abord, sinon une mise à jour resterait bloquée sur l'ancienne version.

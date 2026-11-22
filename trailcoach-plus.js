@@ -243,6 +243,8 @@
       fcMax: summary.hrMax || (hrs.length ? Math.max.apply(null, hrs) : null),
       cadence: summary.cad || (cads.length ? Math.round(avg(cads)) : null),
       laps: outLaps.filter(l => l.sec > 0).slice(0, 200),
+      trace: traceFromPoints(points),
+      best: bestEffortsFromPoints(points, p => (hasDist ? p.dist : (p === points[0] ? 0 : p._cum))),
     };
     const sport = meta.sport || "running";
     return {
@@ -255,6 +257,81 @@
       actual,
       type: guessType(sport, actual),
     };
+  }
+
+
+  // ---------------------------------------------------------------------
+  // Trace GPS (polyline encodée façon Google, précision 1e-5) et records
+  // ---------------------------------------------------------------------
+  function encodePolyline(pts) {
+    let out = "", pLat = 0, pLon = 0;
+    const enc = v => { v = v < 0 ? ~(v << 1) : v << 1; let r = ""; while (v >= 0x20) { r += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; } return r + String.fromCharCode(v + 63); };
+    pts.forEach(([la, lo]) => { const a = Math.round(la * 1e5), b = Math.round(lo * 1e5); out += enc(a - pLat) + enc(b - pLon); pLat = a; pLon = b; });
+    return out;
+  }
+  function decodePolyline(str) {
+    const pts = []; let i = 0, lat = 0, lon = 0;
+    while (str && i < str.length) {
+      for (let k = 0; k < 2; k++) {
+        let shift = 0, res = 0, b;
+        do { b = str.charCodeAt(i++) - 63; res |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20 && i <= str.length);
+        const d = res & 1 ? ~(res >> 1) : res >> 1;
+        if (k === 0) lat += d; else lon += d;
+      }
+      pts.push([lat / 1e5, lon / 1e5]);
+    }
+    return pts;
+  }
+  /** Trace allégée (≤ 250 points) : ~2 Ko par séance, raisonnable pour la synchro. */
+  function traceFromPoints(points) {
+    const gps = points.filter(p => p.lat != null && p.lon != null && isFinite(p.lat) && isFinite(p.lon) && (p.lat || p.lon));
+    if (gps.length < 2) return null;
+    const step = Math.max(1, Math.ceil(gps.length / 250));
+    const kept = gps.filter((p, i) => i % step === 0);
+    if (kept[kept.length - 1] !== gps[gps.length - 1]) kept.push(gps[gps.length - 1]);
+    return encodePolyline(kept.map(p => [p.lat, p.lon]));
+  }
+
+  const RECORD_DIST = [["1 km", 1000], ["5 km", 5000], ["10 km", 10000], ["Semi", 21097], ["Marathon", 42195], ["50 km", 50000], ["100 km", 100000]];
+  /** Meilleurs temps (s) sur chaque distance de référence, fenêtre glissante. */
+  function bestEffortsFromPoints(points, cumOf) {
+    const P = points.map(p => ({ t: p.t, d: cumOf(p) })).filter(p => p.t != null && p.d != null);
+    if (P.length < 10) return {};
+    const total = P[P.length - 1].d - P[0].d, best = {};
+    RECORD_DIST.forEach(([name, dist]) => {
+      if (total < dist) return;
+      let j = 0, min = Infinity;
+      for (let i = 0; i < P.length; i++) {
+        while (j < P.length && P[j].d - P[i].d < dist) j++;
+        if (j >= P.length) break;
+        const a = P[j - 1], b = P[j], over = (b.d - a.d) > 0 ? (dist - (a.d - P[i].d)) / (b.d - a.d) : 0;
+        const t = (a.t + over * (b.t - a.t) - P[i].t) / 1000;
+        if (t > 0 && t < min) min = t;
+      }
+      if (isFinite(min) && min > dist / 7) best[name] = Math.round(min); // < 25 km/h : exclut les sauts GPS
+    });
+    return best;
+  }
+  const STRAVA_BEST = { "1k": "1 km", "5k": "5 km", "10k": "10 km", "Half-Marathon": "Semi", "Marathon": "Marathon", "50k": "50 km" };
+
+  /** Records tous terrains : meilleurs temps par distance + plus longue / plus haute / plus longue durée. */
+  function records(sessions) {
+    const runs = sessions.filter(s => s.done && s.date && !CROSS[s.type]);
+    const out = { temps: [], extremes: [] };
+    RECORD_DIST.forEach(([name]) => {
+      let b = null;
+      runs.forEach(s => { const t = s.actual && s.actual.best && s.actual.best[name]; if (t && (!b || t < b.sec)) b = { sec: t, s }; });
+      if (b) out.temps.push({ nom: name, sec: b.sec, date: b.s.date, id: b.s.id, titre: b.s.notes || "" });
+    });
+    const top = (label, f, unit) => {
+      let b = null; runs.forEach(s => { const v = f(s); if (v && (!b || v > b.v)) b = { v, s }; });
+      if (b) out.extremes.push({ nom: label, valeur: b.v, unite: unit, date: b.s.date, id: b.s.id, titre: b.s.notes || "" });
+    };
+    top("Plus longue sortie", s => val(s, "distance"), "km");
+    top("Plus gros dénivelé", s => val(s, "dplus"), "m D+");
+    top("Plus longue durée", s => val(s, "duree"), "min");
+    top("Plus gros km-effort", s => Math.round(kmEffort(s) * 10) / 10, "km-effort");
+    return out;
   }
 
   function parseFitFile(buffer, name) {
@@ -407,6 +484,13 @@
       laps: (laps || []).map(l => ({ sec: l.moving_time || l.elapsed_time, m: Math.round(l.distance || 0), fc: l.average_heartrate ? Math.round(l.average_heartrate) : null })).filter(l => l.sec > 0),
     };
     if (actual.laps.length < 2) actual.laps = [];
+    const poly = a.map && (a.map.polyline || a.map.summary_polyline);
+    if (poly) actual.trace = poly;
+    if (Array.isArray(a.best_efforts)) {
+      actual.best = {};
+      a.best_efforts.forEach(e => { const k = STRAVA_BEST[e.name]; if (k && e.moving_time) actual.best[k] = Math.min(actual.best[k] || Infinity, e.elapsed_time || e.moving_time); });
+      actual.detail = true;
+    }
     const sport = a.sport_type || a.type || "Run";
     return {
       date: (a.start_date_local || a.start_date || "").slice(0, 10),
@@ -459,6 +543,24 @@
     const strava = Object.assign({}, getLocal().strava, { lastSync: Date.now() });
     setLocal({ strava });
     return { added, total: recent.length, lines };
+  }
+
+  /**
+   * Complète les anciennes séances Strava (trace + records) : 1 appel par
+   * séance, au plus `max` par passage. Renvoie [{id, trace, best}].
+   */
+  async function stravaBackfill(sessions, max, onProgress) {
+    const todo = sessions.filter(s => s.source === "strava" && s.externalId && s.actual && !s.actual.detail)
+      .sort((a, b) => (b.date || "").localeCompare(a.date || "")).slice(0, max || 20);
+    const out = [];
+    for (let i = 0; i < todo.length; i++) {
+      onProgress && onProgress("Traces et records " + (i + 1) + "/" + todo.length + "…");
+      try {
+        const a = stravaToActivity(await stravaGet("/activities/" + todo[i].externalId.split(":")[1]));
+        out.push({ id: todo[i].id, trace: a.actual.trace || null, best: a.actual.best || {} });
+      } catch (e) { if (/Limite/.test(e.message)) break; }
+    }
+    return out;
   }
 
   function stravaConnected() { return !!(getLocal().strava || {}).refreshToken; }
@@ -620,10 +722,89 @@
     };
   }
 
+
+  // ---------------------------------------------------------------------
+  // Garmin via Home Assistant (intégration « Garmin Connect »)
+  // URL + jeton longue durée stockés localement, jamais synchronisés.
+  // ---------------------------------------------------------------------
+  const GARMIN_SENSORS = {
+    disponibilite: "training_readiness", disponibiliteMatin: "morning_training_readiness",
+    statut: "training_status", recuperationH: "recovery_time",
+    bodyBattery: "body_battery", bbMax: "body_battery_highest", bbMin: "body_battery_lowest",
+    vfcNuit: "hrv_last_night_average", vfc7j: "hrv_weekly_average", vfcRef: "hrv_baseline", vfcStatut: "hrv_status",
+    sommeilScore: "sleep_score", sommeilMin: "sleep_duration", sommeilProfond: "deep_sleep", sommeilLeger: "light_sleep", sommeilParadoxal: "rem_sleep",
+    fcRepos: "resting_heart_rate", fcRepos7j: "7_day_average_resting_heart_rate",
+    endurance: "endurance_score", montee: "hill_score", vo2max: "vo2_max", fcSeuil: "lactate_threshold_heart_rate",
+    stress: "average_stress_level", majGarmin: "last_synced",
+  };
+  const GARMIN_HISTO = ["disponibiliteMatin", "vfcNuit", "sommeilScore", "fcRepos", "bbMax", "endurance", "montee"];
+  const gid = k => "sensor.garmin_connect_" + GARMIN_SENSORS[k];
+
+  function haConfig() { return getLocal().ha || {}; }
+  function haConnected() { const c = haConfig(); return !!(c.url && c.token); }
+  async function haGet(path) {
+    const c = haConfig();
+    if (!c.url || !c.token) throw new Error("Home Assistant n'est pas configuré.");
+    let r;
+    try { r = await fetch(c.url.replace(/\/+$/, "") + path, { headers: { Authorization: "Bearer " + c.token } }); }
+    catch (e) { throw new Error("Home Assistant injoignable (adresse, connexion ou réglage CORS)."); }
+    if (r.status === 401) throw new Error("Jeton Home Assistant refusé.");
+    if (!r.ok) throw new Error("Erreur Home Assistant " + r.status);
+    return r.json();
+  }
+  const numOrText = v => (v == null || v === "unknown" || v === "unavailable" || v === "") ? null : (isFinite(+v) ? +v : v);
+
+  /** Valeurs du jour + historique quotidien sur `jours` jours. Mis en cache localement. */
+  async function garminFetch(jours) {
+    jours = jours || 30;
+    const now = {};
+    await Promise.all(Object.keys(GARMIN_SENSORS).map(async k => {
+      try { now[k] = numOrText((await haGet("/api/states/" + gid(k))).state); } catch (e) { if (/refusé|injoignable/.test(e.message)) throw e; now[k] = null; }
+    }));
+    const start = new Date(Date.now() - jours * 86400000).toISOString();
+    let histo = {};
+    try {
+      const raw = await haGet("/api/history/period/" + encodeURIComponent(start) + "?minimal_response&no_attributes&filter_entity_id=" + GARMIN_HISTO.map(gid).join(","));
+      (raw || []).forEach(list => {
+        if (!list || !list.length) return;
+        const eid = list[0].entity_id, k = GARMIN_HISTO.find(x => gid(x) === eid);
+        if (!k) return;
+        const byDay = {};
+        list.forEach(st => { const v = numOrText(st.state); const t = st.last_changed || st.last_updated; if (typeof v === "number" && t) byDay[toISO(Date.parse(t))] = v; });
+        histo[k] = Object.keys(byDay).sort().map(d => ({ date: d, v: byDay[d] }));
+      });
+    } catch (e) { histo = {}; }
+    const data = { now, histo, at: Date.now() };
+    try { localStorage.setItem("trailcoach:garmin", JSON.stringify(data)); } catch (e) {}
+    return data;
+  }
+  function garminCache() { try { return JSON.parse(localStorage.getItem("trailcoach:garmin") || "null"); } catch (e) { return null; } }
+
+  const STATUT_FR = { productive: "Productif", maintaining: "Maintien", recovery: "Récupération", unproductive: "Non productif", detraining: "Désentraînement", overreaching: "Surcharge", peaking: "Pic de forme", strained: "Sous tension", no_status: "Sans statut" };
+  const VFC_FR = { balanced: "Équilibrée", unbalanced: "Déséquilibrée", low: "Basse", poor: "Faible", none: "—" };
+  /** Résumé compact pour le coach IA. */
+  function garminResume(g) {
+    if (!g || !g.now) return null;
+    const n = g.now, moy = k => { const h = (g.histo && g.histo[k]) || []; const v = h.slice(-7).map(x => x.v); return v.length ? Math.round(avg(v) * 10) / 10 : null; };
+    return {
+      misAJour: new Date(g.at).toISOString(),
+      disponibiliteEntrainement: n.disponibilite, disponibiliteAuReveil: n.disponibiliteMatin,
+      statutEntrainement: STATUT_FR[n.statut] || n.statut, tempsRecuperationHeures: n.recuperationH != null ? Math.round(n.recuperationH) : null,
+      bodyBattery: { actuel: n.bodyBattery, max: n.bbMax, min: n.bbMin },
+      vfc: { nuit: n.vfcNuit, moyenne7j: n.vfc7j, reference: n.vfcRef, statut: VFC_FR[n.vfcStatut] || n.vfcStatut },
+      sommeil: { score: n.sommeilScore, dureeMin: n.sommeilMin, profondMin: n.sommeilProfond, paradoxalMin: n.sommeilParadoxal },
+      fcRepos: n.fcRepos, fcRepos7j: n.fcRepos7j, fcSeuilLactique: n.fcSeuil, vo2max: n.vo2max,
+      scoreEndurance: n.endurance, scoreMontee: n.montee,
+      moyennes7j: { disponibilite: moy("disponibiliteMatin"), vfc: moy("vfcNuit"), sommeil: moy("sommeilScore"), fcRepos: moy("fcRepos") },
+    };
+  }
+
   window.TCP = {
     toISO, addDaysISO, mondayISO, decodeFit, parseActivityFile, parseFitFile, parseGpxText, parseTcxText,
     buildActivity, guessType, getLocal, setLocal,
     stravaAuthorizeUrl, stravaHandleRedirect, stravaRecent, stravaWithLaps, stravaRedirectUri, stravaSyncNew, stravaConnected,
+    stravaBackfill, decodePolyline, encodePolyline, records, RECORD_DIST,
+    haConfig, haConnected, garminFetch, garminCache, garminResume, STATUT_FR, VFC_FR,
     isDuplicate, activityToSession, sessionLoad, loadSeries, formState, recentUltra, weeklyStats, estimateVma, analyse, kmEffort,
   };
 })();

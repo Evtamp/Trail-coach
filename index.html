@@ -1550,9 +1550,14 @@ function WeekRings({ sessions }) {
   const doneCross = sessions.filter(s => s.done && isCross(s.type) && sessionWeek(s) === wk);
 
   const sum = (arr, f) => arr.reduce((a, s) => a + (f(s) || 0), 0);
-  const targetKm = sum(planned, s => s.distance);
-  const targetD = sum(planned, s => s.dplus);
-  const targetMin = sum(planned, s => s.duree);
+  // Sans plan pour cette semaine : la référence devient la moyenne des
+  // 4 semaines précédentes (comme Garmin / Strava).
+  const noPlan = planned.length === 0;
+  const prev4 = [1, 2, 3, 4].map(i => toISO(addDays(wk, -7 * i)));
+  const prevRuns = noPlan ? sessions.filter(s => s.done && !isCross(s.type) && prev4.includes(sessionWeek(s))) : [];
+  const targetKm = noPlan ? sum(prevRuns, s => s.actual?.distance ?? s.distance) / 4 : sum(planned, s => s.distance);
+  const targetD = noPlan ? sum(prevRuns, s => s.actual?.dplus ?? s.dplus) / 4 : sum(planned, s => s.dplus);
+  const targetMin = noPlan ? sum(prevRuns, s => s.actual?.duree ?? s.duree) / 4 : sum(planned, s => s.duree);
   const realKm = sum(doneRun, s => s.actual?.distance ?? s.distance);
   const realD = sum(doneRun, s => s.actual?.dplus ?? s.dplus);
   const realMin = sum(doneRun, s => s.actual?.duree ?? s.duree);
@@ -1575,7 +1580,7 @@ function WeekRings({ sessions }) {
               : `Semaine du ${fmtDate(wk)}`}
           </p>
           <p className="text-sm" style={{ color: "var(--muted2)", fontFamily: "'JetBrains Mono', monospace" }}>
-            {isCurrent ? `${doneRun.length}/${planned.length} séances`
+            {isCurrent ? (noPlan ? `${doneRun.length} séance(s) · vs moy. 4 sem.` : `${doneRun.length}/${planned.length} séances`)
                        : `${fmtDate(wk)} — ${fmtDate(addDays(wk, 6))}`}
           </p>
         </button>
@@ -1587,7 +1592,7 @@ function WeekRings({ sessions }) {
 
       {!isCurrent && (
         <p className="text-xs text-center mb-2" style={{ color: "var(--muted)" }}>
-          {doneRun.length}/{planned.length} séances · touche le titre pour revenir à aujourd'hui
+          {noPlan ? `${doneRun.length} séance(s) · vs moy. 4 sem.` : `${doneRun.length}/${planned.length} séances`} · touche le titre pour revenir à aujourd'hui
         </p>
       )}
 
@@ -1600,7 +1605,7 @@ function WeekRings({ sessions }) {
       {(targetKm > 0 || realKm > 0) && (
       <div className="grid grid-cols-3 gap-3 sm:gap-5">
         <Ring value={realKm} target={targetKm} label="Distance" unit="km" color="var(--accent)" format={v => Math.round(v)} />
-        <Ring value={realD} target={targetD} label="Dénivelé" unit="m D+" color="var(--amber)" format={v => Math.round(v)} />
+        <Ring value={realD} target={targetD} label="Dénivelé" unit="m" color="var(--amber)" format={v => Math.round(v)} />
         <Ring value={realMin} target={targetMin} label="Temps" unit="" color="var(--green)" format={hrs} />
       </div>
       )}
@@ -4676,6 +4681,8 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
 
   return (
     <div className="mt-3 pt-3 space-y-4" style={{ borderTop: "1px solid var(--border)" }}>
+        {s.actual?.trace && <TraceMap trace={s.actual.trace} height={240} interactive />}
+        <SessionBests s={s} />
         <p className="text-xs" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
           {s.date ? fmtDate(s.date) : "jour libre"} {s.phase && `· phase ${PHASE_LABEL[s.phase]}`}
         </p>
@@ -5336,7 +5343,7 @@ function FileImportCard({ sessions, onAddMany }) {
 }
 
 /** Connexion Strava et synchronisation des dernières activités. */
-function StravaCard({ sessions, onAddMany, flash }) {
+function StravaCard({ sessions, onAddMany, onPatch, flash }) {
   const [cfg, setCfg] = useState(() => (window.TCP ? window.TCP.getLocal().strava || {} : {}));
   const [clientId, setClientId] = useState(cfg.clientId || "");
   const [clientSecret, setClientSecret] = useState(cfg.clientSecret || "");
@@ -5360,6 +5367,17 @@ function StravaCard({ sessions, onAddMany, flash }) {
     const strava = { clientId: cfg.clientId, clientSecret: cfg.clientSecret };
     window.TCP.setLocal({ strava });
     setCfg(strava); setShowSetup(true); setMsg("Strava déconnecté sur cet appareil.");
+  };
+
+  const missing = sessions.filter(s => s.source === "strava" && s.actual && !s.actual.detail).length;
+  const backfill = async () => {
+    setBusy(true);
+    try {
+      const r = await window.TCP.stravaBackfill(sessions, 40, setMsg);
+      if (r.length) onPatch && onPatch(r);
+      setMsg(`${r.length} séance(s) complétée(s).${missing > r.length ? " Relance pour les suivantes." : ""}`);
+    } catch (e) { setMsg(e.message || String(e)); }
+    setBusy(false);
   };
 
   const sync = async () => {
@@ -5394,6 +5412,11 @@ function StravaCard({ sessions, onAddMany, flash }) {
               {busy ? "Synchronisation…" : "Synchroniser"}
             </button>
           </div>
+          {missing > 0 && (
+            <button onClick={backfill} disabled={busy} className="w-full rounded-lg py-2 text-xs disabled:opacity-50" style={{ background: "var(--surface2)", color: "var(--text)" }}>
+              Ajouter traces GPS et records aux {missing} séance(s) Strava déjà importée(s)
+            </button>
+          )}
           {cfg.lastSync && <p className="text-xs" style={{ color: "var(--muted)" }}>Dernière synchro : {new Date(cfg.lastSync).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>}
         </>
       )}
@@ -5932,6 +5955,7 @@ function LastActivityCard({ s, onOpen }) {
         <p className="text-base truncate" style={{ ...HEAD, color: "var(--text)" }}>{title}</p>
       </div>
       <p className="text-xs mb-3" style={{ color: "var(--muted2)" }}>{t.label} · {ilYA(s.date)}</p>
+      {a.trace && <div className="mb-3"><TraceMap trace={a.trace} height={160} /></div>}
       <div className="grid grid-cols-3 gap-y-3 gap-x-2">
         <Metric label="Distance" value={km != null ? String(km).replace(".", ",") : "—"} unit="km" big />
         <Metric label="Temps" value={fmtDuree(min)} big />
@@ -5941,6 +5965,7 @@ function LastActivityCard({ s, onOpen }) {
         <Metric label="Ressenti" value={a.feeling ? `${a.feeling}/5` : "—"} />
       </div>
       <LapBars laps={a.laps} />
+      {a.best && Object.keys(a.best).length > 0 && <div className="mt-3"><SessionBests s={s} /></div>}
     </button>
   );
 }
@@ -6028,7 +6053,7 @@ function VolumeSparkCard({ sessions, onOpen }) {
   );
 }
 
-function HomeTab({ sessions, profile, setTab }) {
+function HomeTab({ sessions, profile, setTab, garmin }) {
   const last = useMemo(() => sessions.filter(s => s.done && s.date)
     .sort((a, b) => b.date.localeCompare(a.date) || (b.actual?.duree || 0) - (a.actual?.duree || 0))[0], [sessions]);
   const name = (window.TCP && (window.TCP.getLocal().strava || {}).athlete || "").split(" ")[0];
@@ -6041,13 +6066,14 @@ function HomeTab({ sessions, profile, setTab }) {
           {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
         </span>
       </p>
+      <div className="lg:col-span-2"><WeekRings sessions={sessions} /></div>
+      {garmin && garmin.now && <div className="lg:col-span-2"><RecoveryCard garmin={garmin} onOpen={() => setTab("stats")} /></div>}
       <div className="space-y-3">
         <NextSessionCard sessions={sessions} onOpen={() => setTab("plan")} />
         <LastActivityCard s={last} onOpen={() => setTab("historique")} />
       </div>
       <div className="space-y-3">
         <FormeCard sessions={sessions} profile={profile} onOpen={() => setTab("stats")} />
-        {sessions.some(s => !s.done && s.type !== "repos" && sessionWeek(s) === toISO(isoWeekStart(new Date()))) && <WeekRings sessions={sessions} />}
         <VolumeSparkCard sessions={sessions} onOpen={() => setTab("stats")} />
         <button onClick={() => setTab("coach")} className="w-full rounded-2xl p-4 text-left flex items-center gap-3"
           style={{ background: "var(--accent)", color: "var(--bg)" }}>
@@ -6055,6 +6081,248 @@ function HomeTab({ sessions, profile, setTab }) {
           <span className="text-sm" style={HEAD}>Demander au coach un bilan de ta semaine</span>
         </button>
       </div>
+    </div>
+  );
+}
+
+
+// ======================================================================
+// Trace GPS, records et données Garmin (via Home Assistant)
+// ======================================================================
+
+let leafletPromise = null;
+/** Charge Leaflet à la demande (seulement quand une carte est affichée). */
+function loadLeaflet() {
+  if (window.L) return Promise.resolve(window.L);
+  if (!leafletPromise) {
+    leafletPromise = new Promise((resolve, reject) => {
+      const css = document.createElement("link");
+      css.rel = "stylesheet";
+      css.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
+      document.head.appendChild(css);
+      const js = document.createElement("script");
+      js.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js";
+      js.onload = () => resolve(window.L);
+      js.onerror = () => { leafletPromise = null; reject(new Error("Leaflet indisponible")); };
+      document.head.appendChild(js);
+    });
+  }
+  return leafletPromise;
+}
+
+/** Trace seule en SVG (hors ligne, ou carte indisponible). */
+function TraceSvg({ pts, height }) {
+  const lats = pts.map(p => p[0]), lons = pts.map(p => p[1]);
+  const minLa = Math.min(...lats), maxLa = Math.max(...lats), minLo = Math.min(...lons), maxLo = Math.max(...lons);
+  const k = Math.cos(((minLa + maxLa) / 2) * Math.PI / 180);
+  const w = Math.max(1e-6, (maxLo - minLo) * k), h = Math.max(1e-6, maxLa - minLa);
+  const sc = 90 / Math.max(w, h);
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${(5 + ((p[1] - minLo) * k) * sc + (90 - w * sc) / 2).toFixed(2)},${(5 + (maxLa - p[0]) * sc + (90 - h * sc) / 2).toFixed(2)}`).join(" ");
+  return (
+    <svg viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height, background: "var(--surface2)", borderRadius: 12 }}>
+      <path d={d} fill="none" stroke="var(--accent)" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      <circle cx={d.split(" ")[0].slice(1).split(",")[0]} cy={d.split(" ")[0].split(",")[1]} r="2" fill="var(--green)" />
+    </svg>
+  );
+}
+
+/** Carte de la trace : Leaflet + OpenStreetMap, repli en SVG. */
+function TraceMap({ trace, height = 180, interactive = false }) {
+  const ref = React.useRef(null);
+  const [fallback, setFallback] = useState(false);
+  const pts = useMemo(() => (trace && window.TCP ? window.TCP.decodePolyline(trace) : []), [trace]);
+  useEffect(() => {
+    if (pts.length < 2 || !ref.current) return;
+    let map = null, dead = false;
+    loadLeaflet().then(L => {
+      if (dead || !ref.current) return;
+      map = L.map(ref.current, {
+        zoomControl: interactive, attributionControl: true, dragging: interactive, scrollWheelZoom: false,
+        doubleClickZoom: interactive, touchZoom: interactive, boxZoom: false, keyboard: false,
+      });
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 17, attribution: "© OpenStreetMap" }).addTo(map);
+      const line = L.polyline(pts, { color: "#E07A2F", weight: 4, opacity: 0.95 }).addTo(map);
+      L.circleMarker(pts[0], { radius: 5, color: "#fff", weight: 2, fillColor: "#3BA55C", fillOpacity: 1 }).addTo(map);
+      L.circleMarker(pts[pts.length - 1], { radius: 5, color: "#fff", weight: 2, fillColor: "#D9534F", fillOpacity: 1 }).addTo(map);
+      map.fitBounds(line.getBounds(), { padding: [14, 14] });
+    }).catch(() => !dead && setFallback(true));
+    return () => { dead = true; if (map) map.remove(); };
+  }, [pts, interactive]);
+  if (pts.length < 2) return null;
+  if (fallback) return <TraceSvg pts={pts} height={height} />;
+  return <div ref={ref} onClick={e => interactive && e.stopPropagation()} style={{ height, borderRadius: 12, overflow: "hidden", background: "var(--surface2)", zIndex: 0, position: "relative" }} />;
+}
+
+function fmtChrono(sec) {
+  if (!sec) return "—";
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = Math.round(sec % 60);
+  return h ? `${h}h${String(m).padStart(2, "0")}'${String(s).padStart(2, "0")}` : `${m}'${String(s).padStart(2, "0")}`;
+}
+
+/** Meilleurs temps réalisés pendant une séance (chips). */
+function SessionBests({ s }) {
+  const b = s.actual && s.actual.best;
+  if (!b || !Object.keys(b).length) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {(window.TCP ? window.TCP.RECORD_DIST : []).filter(([n]) => b[n]).map(([n]) => (
+        <span key={n} className="text-xs rounded-full px-2.5 py-1" style={{ background: "var(--surface2)", color: "var(--text)", ...MONO }}>
+          {n} <span style={{ color: "var(--accent)" }}>{fmtChrono(b[n])}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function RecordsCard({ sessions }) {
+  const r = useMemo(() => (window.TCP ? window.TCP.records(sessions) : { temps: [], extremes: [] }), [sessions]);
+  const recent = d => d && (Date.now() - Date.parse(d)) / 86400000 < 14;
+  const Row = ({ nom, valeur, date, titre, isNew }) => (
+    <div className="flex items-baseline justify-between gap-3 py-2" style={{ borderBottom: "1px solid var(--border)" }}>
+      <div className="min-w-0">
+        <p className="text-sm" style={{ color: "var(--text)" }}>{nom}{isNew && <span className="ml-2 text-[0.65rem] rounded px-1.5 py-0.5" style={{ background: "var(--accent)", color: "var(--bg)" }}>NOUVEAU</span>}</p>
+        <p className="text-xs truncate" style={{ color: "var(--muted)" }}>{fmtDate(date)}{titre ? ` · ${titre}` : ""}</p>
+      </div>
+      <p className="text-base shrink-0" style={{ ...HEAD, color: "var(--accent)" }}>{valeur}</p>
+    </div>
+  );
+  return (
+    <div className="rounded-2xl p-4" style={cardStyle}>
+      <SectionTitle>Meilleurs temps et records</SectionTitle>
+      {!r.temps.length && !r.extremes.length && (
+        <p className="text-sm" style={{ color: "var(--muted2)" }}>Importe tes séances (Strava ou fichiers de montre) pour voir tes records.</p>
+      )}
+      {r.temps.map(x => <Row key={x.nom} nom={x.nom} valeur={fmtChrono(x.sec)} date={x.date} titre={x.titre} isNew={recent(x.date)} />)}
+      {r.extremes.map(x => <Row key={x.nom} nom={x.nom} valeur={x.unite === "min" ? fmtDuree(x.valeur) : `${String(x.valeur).replace(".", ",")} ${x.unite}`} date={x.date} titre={x.titre} isNew={recent(x.date)} />)}
+      {r.temps.length > 0 && <p className="text-xs mt-2" style={{ color: "var(--muted)" }}>Meilleurs temps sur une portion de tes sorties, toutes surfaces confondues.</p>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------- Garmin
+
+const fmtMin = m => (m == null ? "—" : `${Math.floor(m / 60)}h${String(Math.round(m % 60)).padStart(2, "0")}`);
+function scoreColor(v, bas, haut) { return v == null ? "var(--muted)" : v >= haut ? "var(--green)" : v >= bas ? "var(--accent)" : "var(--accent2)"; }
+
+function Spark({ data, color = "var(--accent)", height = 28 }) {
+  if (!data || data.length < 2) return <div style={{ height }} />;
+  const v = data.map(d => d.v), min = Math.min(...v), max = Math.max(...v), n = v.length;
+  const d = v.map((x, i) => `${i ? "L" : "M"}${(i / (n - 1)) * 100},${max > min ? 26 - ((x - min) / (max - min)) * 24 : 14}`).join(" ");
+  return (
+    <svg viewBox="0 0 100 28" preserveAspectRatio="none" style={{ width: "100%", height }}>
+      <path d={d} fill="none" stroke={color} strokeWidth="1.8" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Carte d'accueil : récupération du jour (disponibilité, VFC, sommeil, FC repos, Body Battery). */
+function RecoveryCard({ garmin, onOpen }) {
+  if (!garmin || !garmin.now) return null;
+  const n = garmin.now, T = window.TCP;
+  const dispo = n.disponibilite ?? n.disponibiliteMatin;
+  const conseil = dispo == null ? "" : dispo >= 70 ? "Feu vert pour une séance de qualité." : dispo >= 40 ? "Séance possible, sans forcer l'intensité." : "Journée plutôt facile ou repos conseillé.";
+  return (
+    <button onClick={onOpen} className="w-full text-left rounded-2xl p-4" style={cardStyle}>
+      <SectionTitle action={<span className="text-xs" style={{ color: "var(--muted)" }}>Garmin</span>}>Récupération</SectionTitle>
+      <div className="flex items-center gap-4">
+        <div className="shrink-0 text-center">
+          <p className="text-4xl leading-none" style={{ ...HEAD, color: scoreColor(dispo, 40, 70) }}>{dispo ?? "—"}</p>
+          <p className="text-[0.65rem] uppercase mt-1" style={{ color: "var(--muted)" }}>disponibilité</p>
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm" style={{ color: "var(--text)" }}>{T.STATUT_FR[n.statut] || n.statut || "—"}{n.recuperationH != null ? ` · récup ${Math.round(n.recuperationH)} h` : ""}</p>
+          <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>{conseil}</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-2 mt-3">
+        <Metric label="VFC" value={n.vfcNuit ?? "—"} unit={n.vfcNuit ? "ms" : ""} />
+        <Metric label="Sommeil" value={n.sommeilScore ?? "—"} />
+        <Metric label="FC repos" value={n.fcRepos ?? "—"} />
+        <Metric label="Body Bat." value={n.bodyBattery ?? "—"} />
+      </div>
+      <p className="text-xs mt-1" style={{ ...MONO, color: "var(--muted)" }}>
+        VFC {T.VFC_FR[n.vfcStatut] || "—"}{n.vfcRef ? ` (réf. ${n.vfcRef})` : ""} · sommeil {fmtMin(n.sommeilMin)}
+      </p>
+    </button>
+  );
+}
+
+/** Onglet Stats : tendances 30 jours + scores de performance. */
+function GarminCard({ garmin }) {
+  if (!garmin || !garmin.now) return null;
+  const n = garmin.now, h = garmin.histo || {};
+  const Trend = ({ label, k, value, unit, color }) => (
+    <div className="rounded-xl p-3" style={{ background: "var(--surface2)" }}>
+      <p className="text-[0.7rem] uppercase tracking-wide" style={{ color: "var(--muted)" }}>{label}</p>
+      <p className="text-lg" style={{ ...HEAD, color: "var(--text)" }}>{value ?? "—"}{unit && value != null && <span className="text-xs ml-0.5" style={{ color: "var(--muted2)" }}>{unit}</span>}</p>
+      <Spark data={h[k]} color={color} />
+    </div>
+  );
+  return (
+    <div className="rounded-2xl p-4 space-y-3" style={cardStyle}>
+      <SectionTitle action={<span className="text-xs" style={{ color: "var(--muted)" }}>30 jours · Garmin</span>}>Récupération et performances</SectionTitle>
+      <div className="grid grid-cols-2 gap-2">
+        <Trend label="Disponibilité (réveil)" k="disponibiliteMatin" value={n.disponibiliteMatin} color="var(--accent)" />
+        <Trend label="VFC nuit" k="vfcNuit" value={n.vfcNuit} unit="ms" color="var(--blue)" />
+        <Trend label="Score de sommeil" k="sommeilScore" value={n.sommeilScore} color="var(--green)" />
+        <Trend label="FC repos" k="fcRepos" value={n.fcRepos} unit="bpm" color="var(--accent2)" />
+        <Trend label="Score d'endurance" k="endurance" value={n.endurance} color="var(--accent)" />
+        <Trend label="Score de montée" k="montee" value={n.montee} color="var(--accent)" />
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <Metric label="VO2max" value={n.vo2max ?? "—"} />
+        <Metric label="FC seuil" value={n.fcSeuil ?? "—"} unit={n.fcSeuil ? "bpm" : ""} />
+        <Metric label="Body Battery" value={n.bbMax != null ? `${n.bbMin ?? "?"}–${n.bbMax}` : "—"} />
+      </div>
+      <p className="text-xs" style={{ color: "var(--muted)" }}>
+        Sommeil {fmtMin(n.sommeilMin)} (profond {fmtMin(n.sommeilProfond)}, paradoxal {fmtMin(n.sommeilParadoxal)}) · mis à jour {new Date(garmin.at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+      </p>
+    </div>
+  );
+}
+
+/** Réglage de la connexion Home Assistant (URL + jeton, stockés sur l'appareil). */
+function GarminSetupCard({ onRefresh, state }) {
+  const cfg = window.TCP ? window.TCP.haConfig() : {};
+  const [url, setUrl] = useState(cfg.url || "");
+  const [token, setToken] = useState(cfg.token || "");
+  const [msg, setMsg] = useState("");
+  const [open, setOpen] = useState(!cfg.url);
+  const save = async () => {
+    window.TCP.setLocal({ ha: { url: url.trim().replace(/\/+$/, ""), token: token.trim() } });
+    setMsg("Connexion…");
+    const r = await onRefresh();
+    setMsg(r && r.ok ? "Données Garmin récupérées." : (r && r.error) || "Échec.");
+    if (r && r.ok) setOpen(false);
+  };
+  return (
+    <div className="rounded-xl p-4 space-y-3" style={cardStyle}>
+      <div className="flex items-center justify-between">
+        <CardTitle>Garmin (Home Assistant)</CardTitle>
+        {cfg.url && <span className="text-xs" style={{ color: state && state.error ? "var(--accent2)" : "var(--green)" }}>{state && state.error ? "▲ erreur" : "● configuré"}</span>}
+      </div>
+      <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+        Disponibilité, VFC, sommeil, FC repos, Body Battery, scores d'endurance et de montée, lus depuis l'intégration Garmin Connect de ton Home Assistant.
+      </p>
+      {cfg.url && !open && (
+        <div className="flex gap-2">
+          <button onClick={async () => { setMsg("Mise à jour…"); const r = await onRefresh(); setMsg(r && r.ok ? "À jour." : (r && r.error) || "Échec."); }}
+            className="flex-1 rounded-lg py-2 text-sm font-medium" style={{ background: "var(--blue)", color: "var(--bg)" }}>Mettre à jour</button>
+          <button onClick={() => setOpen(true)} className="rounded-lg px-3 py-2 text-sm" style={{ background: "var(--surface2)", color: "var(--text)" }}>Modifier</button>
+        </div>
+      )}
+      {open && (
+        <div className="space-y-2">
+          <input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://xxxx.ui.nabu.casa" className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={fieldStyle} />
+          <input value={token} onChange={e => setToken(e.target.value)} type="password" placeholder="Jeton d'accès longue durée" className="w-full rounded-lg px-3 py-2 text-sm outline-none" style={fieldStyle} />
+          <button onClick={save} disabled={!url || !token} className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-50" style={{ background: "var(--accent)", color: "var(--bg)" }}>Enregistrer et tester</button>
+          <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>
+            Jeton : Home Assistant → ton profil → Sécurité → « Jetons d'accès longue durée ». Il reste sur cet appareil, il n'est jamais synchronisé.
+            Home Assistant doit autoriser cette appli : ajoute <span style={MONO}>https://evtamp.github.io</span> dans <span style={MONO}>http: cors_allowed_origins</span>.
+          </p>
+        </div>
+      )}
+      {msg && <p className="text-xs" style={{ color: "var(--green)" }}>{msg}</p>}
     </div>
   );
 }
@@ -6398,6 +6666,32 @@ function App() {
   const addSession = (s) => setSessions(prev => [...prev, s]);
   const addMany = (list) => setSessions(prev => [...prev, ...list]);
 
+  const patchDetails = (list) => setSessions(prev => prev.map(s => {
+    const p = list.find(x => x.id === s.id);
+    return p ? { ...s, actual: { ...s.actual, trace: p.trace || s.actual?.trace || null, best: p.best || {}, detail: true } } : s;
+  }));
+
+  // Garmin via Home Assistant : cache local, rafraîchi au plus toutes les 30 min
+  const [garmin, setGarmin] = useState(() => (window.TCP ? window.TCP.garminCache() : null));
+  const [garminState, setGarminState] = useState(null);
+  const refreshGarmin = React.useCallback(async () => {
+    if (!window.TCP || !window.TCP.haConnected()) return { ok: false, error: "Home Assistant n'est pas configuré." };
+    setGarminState({ busy: true });
+    try {
+      const g = await window.TCP.garminFetch(30);
+      setGarmin(g); setGarminState({ busy: false });
+      return { ok: true };
+    } catch (e) {
+      setGarminState({ busy: false, error: e.message });
+      return { ok: false, error: e.message };
+    }
+  }, []);
+  useEffect(() => {
+    if (!loaded || !window.TCP || !window.TCP.haConnected()) return;
+    const g = window.TCP.garminCache();
+    if (!g || Date.now() - g.at > 30 * 60000) refreshGarmin();
+  }, [loaded]);
+
   // Synchro Strava automatique à l'ouverture (au plus toutes les 20 min)
   const [syncState, setSyncState] = useState(null);
   const sessionsRef = React.useRef(sessions);
@@ -6416,6 +6710,8 @@ function App() {
     try {
       const r = await window.TCP.stravaSyncNew(sessionsRef.current, days, uid);
       if (r.added.length) addMany(r.added);
+      // Complète en douceur les anciennes séances (trace + records), 10 par ouverture
+      try { const b = await window.TCP.stravaBackfill(sessionsRef.current, 10); if (b.length) patchDetails(b); } catch (e) {}
       setSyncState({ busy: false, label: r.added.length ? `+${r.added.length} · Strava` : syncLabel() });
     } catch (e) {
       setSyncState({ busy: false, error: true, label: "Strava : échec" });
@@ -6430,7 +6726,7 @@ function App() {
 
   // Le coach lit toujours l'état le plus récent (y compris ses propres modifs)
   const stateRef = React.useRef({});
-  stateRef.current = { goal, sessions, evaluations, profile };
+  stateRef.current = { goal, sessions, evaluations, profile, garmin: window.TCP ? window.TCP.garminResume(garmin) : null };
   const getState = React.useCallback(() => stateRef.current, []);
   const setSessionsForCoach = React.useCallback((fn) => {
     setSessions(prev => { const next = fn(prev); stateRef.current = { ...stateRef.current, sessions: next }; return next; });
@@ -6453,7 +6749,7 @@ function App() {
       `}</style>
 
       <div className="max-w-md lg:max-w-5xl mx-auto px-4 py-5 space-y-5" style={{ paddingBottom: "calc(6rem + env(safe-area-inset-bottom))" }}>
-        <TopBar goal={goal} daysLeft={daysLeft} syncState={syncState} onSync={syncStrava} onGoal={() => setTab("objectif")} />
+        <TopBar goal={goal} daysLeft={daysLeft} syncState={syncState} onSync={() => { syncStrava(); refreshGarmin(); }} onGoal={() => setTab("objectif")} />
 
         <>
             {tab === "objectif" && (
@@ -6532,7 +6828,7 @@ function App() {
                 )}
               </div>
             )}
-            {tab === "accueil" && <HomeTab sessions={sessions} profile={profile} setTab={setTab} />}
+            {tab === "accueil" && <HomeTab sessions={sessions} profile={profile} setTab={setTab} garmin={garmin} />}
             {tab === "plan" && (
               <>
                 {!goal && (
@@ -6549,7 +6845,7 @@ function App() {
                   </button>
                   {refreshMsg && <span className="text-xs" style={{ color: "var(--green)" }}>{refreshMsg}</span>}
                 </div>}
-                {goal && <WeekRings sessions={sessions} />}
+                <WeekRings sessions={sessions} />
                 <PlanView sessions={upcoming} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession}
                 onSaveNotes={saveNotes} vma={goal?.vma} products={products} />
               </>
@@ -6557,8 +6853,9 @@ function App() {
 
             {tab === "ajouter" && (
               <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
-                <StravaCard sessions={sessions} onAddMany={addMany} flash={stravaFlash} />
+                <StravaCard sessions={sessions} onAddMany={addMany} onPatch={patchDetails} flash={stravaFlash} />
                 <FileImportCard sessions={sessions} onAddMany={addMany} />
+                <GarminSetupCard onRefresh={refreshGarmin} state={garminState} />
                 <SessionForm onAdd={addSession} products={products} />
                 <ProfileCard profile={profile} onChange={setProfile} />
 
@@ -6687,6 +6984,8 @@ function App() {
             )}
             {tab === "stats" && (
               <div className="space-y-4">
+                <GarminCard garmin={garmin} />
+                <RecordsCard sessions={sessions} />
                 <ChargeCard sessions={sessions} profile={profile} />
                 <Stats sessions={sessions} />
               </div>
