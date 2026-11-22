@@ -1,7 +1,7 @@
 // Trail Coach — service worker
 // Stratégie : network-first pour index.html (pour recevoir les mises à jour),
 // cache-first pour le reste.
-const CACHE = "trailcoach-v11";
+const CACHE = "trailcoach-v12";
 const SHELL = ["./", "./index.html", "./manifest.json"];
 
 self.addEventListener("install", e => {
@@ -35,7 +35,9 @@ self.addEventListener("fetch", e => {
 
   if (isDoc) {
     e.respondWith(
-      fetch(e.request)
+      // cache: "no-cache" : GitHub Pages autorise 10 min de cache navigateur,
+      // ce qui retardait l'arrivée des mises à jour.
+      fetch(e.request, { cache: "no-cache" })
         .then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
         .catch(() => caches.match(e.request).then(r => r || caches.match("./index.html")))
     );

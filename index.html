@@ -4952,6 +4952,9 @@ function VolumeExplain({ goal, sessions }) {
   );
 }
 
+// À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
+const APP_VERSION = "12 · 22 nov. · glisser-déposer";
+
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
 /**
@@ -6634,6 +6637,7 @@ const PHASE_AUTO = { recup: "récupération", maintien: "entretien" };
 /** Onglet Plan sans objectif : la période et les deux semaines proposées. */
 function AutoWeeksCard({ sessions, profile, onProfile, onAdopt, setTab }) {
   const ap = useMemo(() => autoPlan(sessions, profile), [sessions, profile]);
+  const [ouvertes, setOuvertes] = useState({});
   if (!ap) {
     return (
       <div className="rounded-2xl p-4 space-y-2" style={cardStyle}>
@@ -6662,6 +6666,19 @@ function AutoWeeksCard({ sessions, profile, onProfile, onAdopt, setTab }) {
       </div>
       {ap.semaines.map((w, i) => {
         const adopted = sessions.some(s => s.auto && s.weekStart === w.weekStart);
+        // Une semaine déjà ajoutée se règle dans le plan plus bas (jours
+        // déplaçables) : on la replie ici pour ne pas l'afficher deux fois.
+        if (adopted && !ouvertes[w.weekStart]) {
+          return (
+            <div key={w.weekStart} className="rounded-2xl px-4 py-3 flex items-center justify-between gap-3" style={cardStyle}>
+              <div className="min-w-0">
+                <p className="text-sm" style={{ color: "var(--text)" }}>{i === 0 ? "Cette semaine" : `Semaine du ${fmtDate(w.weekStart)}`} · <span style={{ color: "var(--green)" }}>✓ dans ton plan</span></p>
+                <p className="text-xs" style={{ color: "var(--muted2)" }}>Plus bas, glisse les séances ⠿ pour changer de jour.</p>
+              </div>
+              <button onClick={() => setOuvertes(o => ({ ...o, [w.weekStart]: true }))} className="text-xs underline shrink-0" style={{ color: "var(--muted2)" }}>Revoir la proposition</button>
+            </div>
+          );
+        }
         return (
           <div key={w.weekStart} className="rounded-2xl p-4 space-y-2" style={cardStyle}>
             <SectionTitle action={<span className="text-xs" style={{ color: "var(--muted2)" }}>{w.note || PHASE_AUTO[w.phase] || w.phase}</span>}>
@@ -6697,15 +6714,18 @@ function AutoWeeksCard({ sessions, profile, onProfile, onAdopt, setTab }) {
               <p className="text-xs" style={{ color: "var(--muted2)" }}>Rien de plus cette semaine : profite du repos.</p>
             ) : adopted ? (
               <div className="space-y-2">
-                <p className="text-xs" style={{ color: "var(--green)" }}>✓ Ajoutée à ton plan, plus bas : coche les séances au fur et à mesure.</p>
-                <button onClick={() => onAdopt(w)} className="w-full rounded-lg py-2 text-xs" style={{ background: "var(--surface2)", color: "var(--text)" }}>
+                <p className="text-xs" style={{ color: "var(--green)" }}>✓ Ajoutée à ton plan, plus bas : glisse les séances ⠿ pour changer de jour.</p>
+                <button onClick={() => { onAdopt(w); setOuvertes(o => ({ ...o, [w.weekStart]: false })); }} className="w-full rounded-lg py-2 text-xs" style={{ background: "var(--surface2)", color: "var(--text)" }}>
                   Remplacer les séances non faites par cette proposition
                 </button>
               </div>
             ) : (
-              <button onClick={() => onAdopt(w)} className="w-full rounded-lg py-2 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>
-                Ajouter ces séances à mon plan
-              </button>
+              <div className="space-y-1">
+                <button onClick={() => onAdopt(w)} className="w-full rounded-lg py-2 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>
+                  Ajouter ces séances à mon plan
+                </button>
+                <p className="text-xs text-center" style={{ color: "var(--muted2)" }}>Une fois ajoutées, tu pourras les glisser d'un jour à l'autre.</p>
+              </div>
             )}
           </div>
         );
@@ -7285,6 +7305,7 @@ function App() {
             )}
             {tab === "reglages" && (
               <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+                <p className="text-xs lg:col-span-2" style={{ ...MONO, color: "var(--muted)" }}>Version de l'appli : {APP_VERSION}</p>
                 <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
                     Affichage
