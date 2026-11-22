@@ -4953,7 +4953,7 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "13 · 22 nov. · thèmes";
+const APP_VERSION = "14 · 22 nov. · coach Gemini gratuit";
 
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
@@ -5690,16 +5690,57 @@ const COACH_SUGGESTIONS = [
 ];
 
 function CoachTab({ getState, setSessions }) {
-  const [key, setKey] = useState(() => (window.TCP ? window.TCP.getLocal().anthropicKey || "" : ""));
+  const [prov, setProv] = useState(() => (window.TCP && window.TCP.coach ? window.TCP.coach.fournisseur() : "claude"));
+  const keyName = prov === "gemini" ? "geminiKey" : "anthropicKey";
+  const [key, setKey] = useState(() => (window.TCP ? window.TCP.getLocal()[keyName] || "" : ""));
   const [keyInput, setKeyInput] = useState("");
-  const [history, setHistory] = useState(() => (window.TCP && window.TCP.coach ? window.TCP.coach.loadHistory() : []));
+  const [history, setHistory] = useState(() => (window.TCP && window.TCP.coach ? window.TCP.coach.historique() : []));
+  const changeProv = (p) => {
+    window.TCP.setLocal({ coachProvider: p }); setProv(p);
+    setKey(window.TCP.getLocal()[p === "gemini" ? "geminiKey" : "anthropicKey"] || "");
+    setHistory(window.TCP.coach.historique()); setChanges([]); setCout(null); setErr("");
+  };
+  const provToggle = (
+    <div className="flex gap-1 rounded-lg p-0.5" style={{ background: "var(--surface2)" }}>
+      {[["gemini", "Gemini · gratuit"], ["claude", "Claude · payant"]].map(([k, l]) => (
+        <button key={k} onClick={() => changeProv(k)} className="px-2.5 py-1 rounded-md text-xs"
+          style={{ background: prov === k ? "var(--accent)" : "transparent", color: prov === k ? "var(--bg)" : "var(--muted2)" }}>{l}</button>
+      ))}
+    </div>
+  );
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [live, setLive] = useState("");
   const [tool, setTool] = useState("");
   const [changes, setChanges] = useState([]);
   const [err, setErr] = useState("");
+  const [cout, setCout] = useState(null);
+  const [mode, setMode] = useState(() => (window.TCP && window.TCP.coach ? window.TCP.coach.modeCoach() : "complet"));
+  const [copie, setCopie] = useState("");
   const endRef = React.useRef(null);
+  const changeMode = (m) => { window.TCP.setLocal({ coachMode: m }); setMode(m); };
+  const copierPourClaude = async () => {
+    try {
+      const txt = window.TCP.coach.exportPourClaude({ getState, setSessions, uid });
+      await navigator.clipboard.writeText(txt);
+      setCopie("Copié ! Colle-le dans l'appli Claude puis écris ta question à la fin.");
+    } catch (e) { setCopie("Copie impossible sur cet appareil."); }
+    setTimeout(() => setCopie(""), 6000);
+  };
+  const fmtCout = usd => usd < 0.01 ? `${(usd * 100).toFixed(2).replace(".", ",")} ct` : `${(usd * 100).toFixed(1).replace(".", ",")} ct`;
+  const copierCard = (
+    <div className="rounded-xl p-4 space-y-2" style={cardStyle}>
+      <p className="text-sm" style={{ color: "var(--text)" }}>Gratuit avec ton abonnement Claude</p>
+      <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+        Copie ton état de forme, tes volumes, tes données Garmin et tes séances, puis colle-les dans l'appli Claude avec ta question.
+        Le coach de l'appli reste utile pour modifier ton plan directement.
+      </p>
+      <button onClick={copierPourClaude} className="w-full rounded-lg py-2 text-sm" style={{ background: "var(--surface2)", color: "var(--text)" }}>
+        Copier mes données pour Claude
+      </button>
+      {copie && <p className="text-xs" style={{ color: "var(--green)" }}>{copie}</p>}
+    </div>
+  );
 
   useEffect(() => { endRef.current && endRef.current.scrollIntoView({ block: "end" }); }, [history, live]);
 
@@ -5712,48 +5753,61 @@ function CoachTab({ getState, setSessions }) {
   const send = async (text) => {
     const q = (text ?? input).trim();
     if (!q || busy) return;
-    setBusy(true); setErr(""); setInput(""); setLive(""); setChanges([]);
+    setBusy(true); setErr(""); setInput(""); setLive(""); setChanges([]); setCout(null);
     setHistory(h => h.concat([{ role: "user", content: q }]));
     try {
       const msgs = await window.TCP.coach.ask(q, { getState, setSessions, uid }, {
         onText: t => setLive(v => v + t),
         onToolStart: n => setTool(TOOL_LABEL[n] || n),
         onChange: c => setChanges(v => v.concat([c])),
+        onCost: c => setCout(c),
       });
       setHistory(msgs);
     } catch (e) {
       const m = e && (e.message || String(e));
-      setErr(/401|authentication|invalid x-api-key/i.test(m) ? "Clé API refusée : vérifie-la dans les réglages du coach."
+      setErr(/401|authentication|invalid x-api-key/i.test(m) && prov === "claude" ? "Clé API refusée : vérifie-la dans les réglages du coach."
         : /Failed to fetch|NetworkError|import/i.test(m) ? "Connexion impossible (hors ligne ?)." : m);
-      setHistory(window.TCP.coach.loadHistory());
+      setHistory(window.TCP.coach.historique());
     }
     setLive(""); setTool(""); setBusy(false);
   };
 
   const saveKey = () => {
-    window.TCP.setLocal({ anthropicKey: keyInput.trim() });
+    window.TCP.setLocal({ [keyName]: keyInput.trim() });
     setKey(keyInput.trim()); setKeyInput("");
   };
 
   if (!key) {
     return (
-      <div className="rounded-xl p-4 space-y-3 lg:max-w-xl" style={cardStyle}>
+      <div className="space-y-3 lg:max-w-xl">
+      <div className="rounded-xl p-4 space-y-3" style={cardStyle}>
         <CardTitle>Coach IA</CardTitle>
         <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>
-          Le coach (Claude) lit tes séances importées et ton analyse de forme, répond à tes questions et ajuste ton plan.
+          Le coach lit tes séances importées, ton analyse de forme et tes données Garmin, répond à tes questions et ajuste ton plan.
         </p>
-        <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
-          Il faut une clé API Anthropic : crée-la sur{" "}
-          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--accent)" }}>console.anthropic.com</a>
-          {" "}(facturation à l'usage, quelques centimes par échange). Elle reste enregistrée sur cet appareil uniquement,
-          jamais dans la synchro. Ne la partage pas.
-        </p>
-        <input value={keyInput} onChange={e => setKeyInput(e.target.value)} placeholder="sk-ant-…" type="password"
+        {provToggle}
+        {prov === "gemini" ? (
+          <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+            Gratuit : crée une clé sur{" "}
+            <a href="https://aistudio.google.com/apikey" target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--accent)" }}>aistudio.google.com/apikey</a>
+            {" "}(compte Google, sans carte bancaire). Quota quotidien limité. En version gratuite, Google peut lire et utiliser tes échanges pour améliorer ses produits.
+            La clé reste sur cet appareil uniquement, jamais dans la synchro.
+          </p>
+        ) : (
+          <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+            Il faut une clé API Anthropic : crée-la sur{" "}
+            <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="underline" style={{ color: "var(--accent)" }}>console.anthropic.com</a>
+            {" "}(facturation à l'usage, ~5 centimes par question, ~0,2 en mode éco). Elle reste sur cet appareil uniquement, jamais dans la synchro.
+          </p>
+        )}
+        <input value={keyInput} onChange={e => setKeyInput(e.target.value)} placeholder={prov === "gemini" ? "AIza…" : "sk-ant-…"} type="password"
           className="w-full rounded-lg px-3 py-2 text-sm" style={{ ...fieldStyle, fontFamily: "'JetBrains Mono', monospace" }} />
-        <button onClick={saveKey} disabled={!keyInput.trim().startsWith("sk-")} className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
+        <button onClick={saveKey} disabled={prov === "gemini" ? keyInput.trim().length < 20 : !keyInput.trim().startsWith("sk-")} className="w-full rounded-lg py-2.5 text-sm font-medium disabled:opacity-40"
           style={{ background: "var(--accent)", color: "var(--bg)" }}>
           Activer le coach
         </button>
+      </div>
+      {copierCard}
       </div>
     );
   }
@@ -5764,10 +5818,25 @@ function CoachTab({ getState, setSessions }) {
         <div className="flex items-center justify-between">
           <CardTitle>Coach IA</CardTitle>
           <div className="flex gap-3">
-            <button onClick={() => { window.TCP.coach.clearHistory(); setHistory([]); setChanges([]); }} className="text-xs underline" style={{ color: "var(--muted2)" }}>Nouvelle conversation</button>
-            <button onClick={() => { window.TCP.setLocal({ anthropicKey: "" }); setKey(""); }} className="text-xs underline" style={{ color: "var(--muted)" }}>Retirer la clé</button>
+            <button onClick={() => { window.TCP.coach.effacer(); setHistory([]); setChanges([]); setCout(null); }} className="text-xs underline" style={{ color: "var(--muted2)" }}>Nouvelle conversation</button>
+            <button onClick={() => { window.TCP.setLocal({ [keyName]: "" }); setKey(""); }} className="text-xs underline" style={{ color: "var(--muted)" }}>Retirer la clé</button>
           </div>
         </div>
+        {provToggle}
+        {prov === "gemini" ? (
+          <p className="text-xs" style={{ ...MONO, color: "var(--muted)" }}>gratuit · {(window.TCP.getLocal() || {}).geminiModel || "Gemini Flash"} · quota quotidien limité</p>
+        ) : <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex gap-1 rounded-lg p-0.5" style={{ background: "var(--surface2)" }}>
+            {[["complet", "Complet · ~5 ct"], ["eco", "Éco · ~0,2 ct"]].map(([k, l]) => (
+              <button key={k} onClick={() => changeMode(k)} className="px-2.5 py-1 rounded-md text-xs"
+                style={{ background: mode === k ? "var(--accent)" : "transparent", color: mode === k ? "var(--bg)" : "var(--muted2)" }}>{l}</button>
+            ))}
+          </div>
+          <span className="text-xs" style={{ ...MONO, color: "var(--muted)" }}>
+            {(() => { const d = (window.TCP.getLocal() || {}).coachSpend; const m = window.TCP.toISO(new Date()).slice(0, 7);
+              return d && d.mois === m ? `ce mois : ${d.n} question${d.n > 1 ? "s" : ""} · ${fmtCout(d.usd)}` : "ce mois : 0 €"; })()}
+          </span>
+        </div>}
 
         {bubbles.length === 0 && !busy && (
           <div className="space-y-2">
@@ -5803,6 +5872,11 @@ function CoachTab({ getState, setSessions }) {
             </div>
           )}
           {err && <p className="text-xs" style={{ color: "var(--accent2)" }}>{err}</p>}
+          {cout && !busy && (
+            <p className="text-[0.65rem] text-right" style={{ ...MONO, color: "var(--muted)" }}>
+              {cout.gratuit ? `réponse gratuite · ${cout.modele}` : `cette réponse ≈ ${fmtCout(cout.usd)} · ${cout.modele}`}
+            </p>
+          )}
           <div ref={endRef} />
         </div>
       </div>
@@ -5818,8 +5892,9 @@ function CoachTab({ getState, setSessions }) {
         </button>
       </div>
       <p className="text-[0.65rem]" style={{ color: "var(--muted)" }}>
-        Le coach peut se tromper : garde ton jugement, et consulte en cas de douleur. Modèle : {window.TCP.coach.MODEL}.
+        Le coach peut se tromper : garde ton jugement, et consulte en cas de douleur.
       </p>
+      {copierCard}
     </div>
   );
 }

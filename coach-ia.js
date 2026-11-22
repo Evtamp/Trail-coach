@@ -9,6 +9,27 @@
   "use strict";
 
   const MODEL = "claude-opus-5-5";
+  // Deux niveaux : le coach complet, et un mode éco environ 40 fois moins cher.
+  // Prix en $ par million de tokens : entrée, sortie, lecture et écriture du cache.
+  const MODELES = {
+    complet: { id: "claude-opus-5-5", label: "Complet (Opus 5.5)", prix: { in: 4, out: 20, read: 0.2, write: 5 }, fallback: true },
+    eco: { id: "claude-haiku-5-5", label: "Éco (Haiku 5.5)", prix: { in: 0.1, out: 0.5, read: 0.01, write: 0.125 }, fallback: false },
+  };
+  function modeCoach() { const m = (window.TCP.getLocal() || {}).coachMode; return MODELES[m] ? m : "complet"; }
+  function coutUsd(u, prix) {
+    if (!u) return 0;
+    return ((u.input_tokens || 0) * prix.in + (u.output_tokens || 0) * prix.out
+      + (u.cache_read_input_tokens || 0) * prix.read + (u.cache_creation_input_tokens || 0) * prix.write) / 1e6;
+  }
+  /** Cumul du mois, sur cet appareil. */
+  function ajouterDepense(usd) {
+    const mois = window.TCP.toISO(new Date()).slice(0, 7);
+    const d = (window.TCP.getLocal() || {}).coachSpend || {};
+    const total = (d.mois === mois ? d.usd || 0 : 0) + usd;
+    const n = (d.mois === mois ? d.n || 0 : 0) + 1;
+    window.TCP.setLocal({ coachSpend: { mois, usd: total, n } });
+    return { mois, usd: total, n };
+  }
   const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@1.12.0/+esm";
   const HISTORY_KEY = "trailcoach:coach-history";
   const MAX_STEPS = 10;
@@ -273,19 +294,25 @@
     let messages = loadHistory().concat([{ role: "user", content: userText }]);
     const today = window.TCP.toISO(new Date());
 
+    const mode = MODELES[modeCoach()];
+    let usd = 0;
     for (let step = 0; step < MAX_STEPS; step++) {
-      const stream = client.beta.messages.stream({
-        model: MODEL,
+      const params = {
+        model: mode.id,
         max_tokens: 16000,
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
         output_config: { effort: "medium" },
+        // mise en cache automatique : consignes, outils et début de conversation
+        // ne sont facturés plein tarif qu'une fois par question
+        cache_control: { type: "ephemeral" },
         system: sysPrompt(today),
         tools: TOOLS,
         messages,
-      });
+      };
+      if (mode.fallback) { params.betas = ["server-side-fallback-2026-07-01"]; params.fallbacks = "default"; }
+      const stream = client.beta.messages.stream(params);
       stream.on("text", t => handlers.onText && handlers.onText(t));
       const msg = await stream.finalMessage();
+      usd += coutUsd(msg.usage, mode.prix);
 
       // Le contenu est renvoyé tel quel (blocs de réflexion compris)
       messages = messages.concat([{ role: "assistant", content: msg.content }]);
@@ -317,14 +344,126 @@
       handlers.onText && handlers.onText("\n");
     }
     messages = saveHistory(messages);
+    const cumul = ajouterDepense(usd);
+    handlers.onCost && handlers.onCost({ usd, cumul, modele: mode.label });
     handlers.onDone && handlers.onDone(messages);
     return messages;
+  }
+
+  // ---------------------------------------------------------------------
+  // Variante gratuite : Gemini (Google AI Studio), mêmes outils
+  // ---------------------------------------------------------------------
+  const GEMINI_HISTORY_KEY = "trailcoach:coach-history-gemini";
+  const GEMINI_API = "https://generativelanguage.googleapis.com/v1beta";
+  function fournisseur() { return (window.TCP.getLocal() || {}).coachProvider === "gemini" ? "gemini" : "claude"; }
+  function loadGemini() { try { return JSON.parse(localStorage.getItem(GEMINI_HISTORY_KEY) || "[]"); } catch (e) { return []; } }
+  function saveGemini(contents) {
+    let c = contents;
+    if (c.length > 60) {
+      let i = c.length - 60;
+      while (i < c.length && !(c[i].role === "user" && c[i].parts && c[i].parts[0] && c[i].parts[0].text != null)) i++;
+      c = c.slice(i);
+    }
+    try { localStorage.setItem(GEMINI_HISTORY_KEY, JSON.stringify(c)); } catch (e) {}
+    return c;
+  }
+  // Schéma des outils au format Gemini (sous-ensemble OpenAPI : pas d'additionalProperties)
+  function geminiSchema(sch) {
+    if (Array.isArray(sch)) return sch.map(geminiSchema);
+    if (!sch || typeof sch !== "object") return sch;
+    const out = {};
+    Object.keys(sch).forEach(k => { if (k !== "additionalProperties") out[k] = geminiSchema(sch[k]); });
+    return out;
+  }
+  /**
+   * Les noms des modèles Gemini changent souvent : on demande la liste à
+   * Google et on prend le Flash (gratuit) le plus récent, mis en cache 1 jour.
+   */
+  async function geminiModele(key) {
+    const loc = window.TCP.getLocal() || {};
+    if (loc.geminiModel && loc.geminiModelAt && Date.now() - loc.geminiModelAt < 86400000) return loc.geminiModel;
+    let choix = "gemini-flash-latest";
+    try {
+      const r = await fetch(GEMINI_API + "/models?pageSize=200", { headers: { "x-goog-api-key": key } });
+      if (r.ok) {
+        const j = await r.json();
+        const ok = (j.models || []).filter(m => (m.supportedGenerationMethods || []).indexOf("generateContent") >= 0)
+          .map(m => m.name.replace(/^models\//, ""))
+          .filter(n => /^gemini-[\d.]+-flash$/.test(n) || /^gemini-[\d.]+-flash-\d{3}$/.test(n));
+        const ver = n => parseFloat((n.match(/gemini-([\d.]+)/) || [])[1] || 0);
+        ok.sort((a, b) => ver(b) - ver(a) || a.length - b.length);
+        if (ok.length) choix = ok[0];
+      }
+    } catch (e) {}
+    window.TCP.setLocal({ geminiModel: choix, geminiModelAt: Date.now() });
+    return choix;
+  }
+
+  async function askGemini(userText, ctx, handlers) {
+    const key = ((window.TCP.getLocal() || {}).geminiKey || "").trim();
+    if (!key) throw new Error("Ajoute ta clé Gemini dans les réglages du coach.");
+    const modele = await geminiModele(key);
+    const today = window.TCP.toISO(new Date());
+    let contents = loadGemini().concat([{ role: "user", parts: [{ text: userText }] }]);
+    const tools = [{ functionDeclarations: TOOLS.map(t => { const d = { name: t.name, description: t.description }; if (Object.keys(t.input_schema.properties || {}).length) d.parameters = geminiSchema(t.input_schema); return d; }) }];
+    for (let step = 0; step < MAX_STEPS; step++) {
+      const r = await fetch(GEMINI_API + "/models/" + modele + ":generateContent", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({ systemInstruction: { parts: [{ text: sysPrompt(today) }] }, contents, tools }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        const m = (j.error && j.error.message) || ("HTTP " + r.status);
+        if (r.status === 404) window.TCP.setLocal({ geminiModelAt: 0 });
+        if (r.status === 429) throw new Error("Quota gratuit Gemini atteint pour le moment : réessaie dans une minute (ou demain si c'est le quota du jour).");
+        if (r.status === 400 && /API key/i.test(m)) throw new Error("Clé Gemini refusée : vérifie-la dans les réglages du coach.");
+        throw new Error("Gemini : " + m);
+      }
+      const cand = (j.candidates || [])[0];
+      const parts = (cand && cand.content && cand.content.parts) || [];
+      // contenu renvoyé tel quel (signatures de réflexion comprises)
+      contents = contents.concat([{ role: "model", parts: parts.length ? parts : [{ text: "" }] }]);
+      parts.forEach(p => { if (p.text && !p.thought) handlers.onText && handlers.onText(p.text); });
+      const calls = parts.filter(p => p.functionCall);
+      if (!calls.length) {
+        if (!parts.some(p => p.text) && cand && cand.finishReason && cand.finishReason !== "STOP") handlers.onText && handlers.onText("(Gemini n'a pas pu répondre : " + cand.finishReason + ")");
+        break;
+      }
+      const reps = [];
+      for (const p of calls) {
+        const name = p.functionCall.name, input = p.functionCall.args || {};
+        handlers.onToolStart && handlers.onToolStart(name);
+        const err = validateInput(name, input);
+        let res;
+        if (err) res = { erreur: err };
+        else {
+          try { res = { resultat: runTool(name, input, Object.assign({}, ctx, { onChange: handlers.onChange })) }; }
+          catch (e) { res = { erreur: "Erreur : " + (e.message || e) }; }
+        }
+        reps.push({ functionResponse: { name, response: res } });
+      }
+      contents = contents.concat([{ role: "user", parts: reps }]);
+      handlers.onText && handlers.onText("\n");
+    }
+    contents = saveGemini(contents);
+    handlers.onCost && handlers.onCost({ usd: 0, gratuit: true, modele: modele });
+    handlers.onDone && handlers.onDone(contents);
+    return contents;
   }
 
   /** Transforme l'historique en bulles affichables (texte uniquement). */
   function toBubbles(messages) {
     const out = [];
     messages.forEach(m => {
+      if (m.parts) { // format Gemini
+        const text = m.parts.filter(p => p.text && !p.thought).map(p => p.text).join("").trim();
+        if (!text) return;
+        if (m.role === "user") { out.push({ role: "user", text }); return; }
+        const last = out[out.length - 1];
+        if (last && last.role === "assistant") last.text += "\n\n" + text; else out.push({ role: "assistant", text });
+        return;
+      }
       if (m.role === "user" && typeof m.content === "string") out.push({ role: "user", text: m.content });
       else if (m.role === "assistant" && Array.isArray(m.content)) {
         const text = m.content.filter(b => b.type === "text").map(b => b.text).join("").trim();
@@ -338,5 +477,21 @@
   }
 
   window.TCP = window.TCP || {};
-  window.TCP.coach = { ask, loadHistory, clearHistory, toBubbles, runTool, TOOLS, MODEL };
+  /** Texte à coller dans l'appli Claude (gratuit avec l'abonnement) : état + séances récentes et à venir. */
+  function exportPourClaude(ctx) {
+    const today = window.TCP.toISO(new Date());
+    const etat = runTool("lire_etat_athlete", {}, ctx);
+    const seances = runTool("lister_seances", { statut: "toutes", depuis: window.TCP.addDaysISO(today, -21), jusqu_a: window.TCP.addDaysISO(today, 14) }, ctx);
+    return "Tu es mon coach de trail. Voici mes données d'entraînement exportées de mon appli Trail Coach le " + today
+      + ". Appuie-toi sur ces chiffres pour me répondre.\n\nÉTAT (forme, volumes, Garmin, records, semaines proposées) :\n"
+      + JSON.stringify(etat) + "\n\nSÉANCES (3 dernières semaines et 2 à venir) :\n" + JSON.stringify(seances)
+      + "\n\nMa question : ";
+  }
+
+  // point d'entrée unique : Claude ou Gemini selon le réglage
+  function askAuto(q, ctx, h) { return fournisseur() === "gemini" ? askGemini(q, ctx, h) : ask(q, ctx, h); }
+  function historique() { return fournisseur() === "gemini" ? loadGemini() : loadHistory(); }
+  function effacer() { if (fournisseur() === "gemini") localStorage.removeItem(GEMINI_HISTORY_KEY); else clearHistory(); }
+
+  window.TCP.coach = { ask: askAuto, askClaude: ask, askGemini, fournisseur, historique, effacer, loadHistory, clearHistory, toBubbles, runTool, TOOLS, MODEL, MODELES, modeCoach, exportPourClaude };
 })();
