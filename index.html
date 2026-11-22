@@ -6600,7 +6600,12 @@ function AutoWeeksCard({ sessions, profile, onProfile, onAdopt, setTab }) {
             {!w.seances.length ? (
               <p className="text-xs" style={{ color: "var(--muted2)" }}>Rien de plus cette semaine : profite du repos.</p>
             ) : adopted ? (
-              <p className="text-xs" style={{ color: "var(--green)" }}>✓ Ajoutée à ton plan, plus bas : coche les séances au fur et à mesure.</p>
+              <div className="space-y-2">
+                <p className="text-xs" style={{ color: "var(--green)" }}>✓ Ajoutée à ton plan, plus bas : coche les séances au fur et à mesure.</p>
+                <button onClick={() => onAdopt(w)} className="w-full rounded-lg py-2 text-xs" style={{ background: "var(--surface2)", color: "var(--text)" }}>
+                  Remplacer les séances non faites par cette proposition
+                </button>
+              </div>
             ) : (
               <button onClick={() => onAdopt(w)} className="w-full rounded-lg py-2 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>
                 Ajouter ces séances à mon plan
