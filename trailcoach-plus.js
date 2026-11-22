@@ -434,6 +434,35 @@
     return stravaToActivity(a, laps);
   }
 
+  /**
+   * Récupère les activités Strava récentes absentes de l'historique.
+   * Les tours ne sont demandés que pour les nouvelles activités de course
+   * (2 appels chacune, 25 au plus) : on reste loin de la limite Strava.
+   * Renvoie { added: [séances], total, lines: [{a, status}] }.
+   */
+  async function stravaSyncNew(sessions, days, uid, onProgress) {
+    const recent = await stravaRecent(days, 100);
+    const known = sessions.slice();
+    const fresh = recent.filter(a => !isDuplicate(known, a));
+    const lines = recent.filter(a => fresh.indexOf(a) < 0).map(a => ({ a, status: "déjà présente" }));
+    const added = [];
+    const CROSS_T = { renfo: 1, velo: 1, natation: 1, autre: 1 };
+    for (let i = 0; i < fresh.length; i++) {
+      let a = fresh[i];
+      if (i < 25 && !CROSS_T[a.type]) {
+        onProgress && onProgress("Détail des tours " + (i + 1) + "/" + Math.min(25, fresh.length) + "…");
+        try { a = await stravaWithLaps(a.stravaId); } catch (e) { /* on garde le résumé */ }
+      }
+      const s = activityToSession(a, uid);
+      known.push(s); added.push(s); lines.push({ a, status: "ajoutée" });
+    }
+    const strava = Object.assign({}, getLocal().strava, { lastSync: Date.now() });
+    setLocal({ strava });
+    return { added, total: recent.length, lines };
+  }
+
+  function stravaConnected() { return !!(getLocal().strava || {}).refreshToken; }
+
   // ---------------------------------------------------------------------
   // Fusion des activités importées dans les séances Trail Coach
   // ---------------------------------------------------------------------
@@ -594,7 +623,7 @@
   window.TCP = {
     toISO, addDaysISO, mondayISO, decodeFit, parseActivityFile, parseFitFile, parseGpxText, parseTcxText,
     buildActivity, guessType, getLocal, setLocal,
-    stravaAuthorizeUrl, stravaHandleRedirect, stravaRecent, stravaWithLaps, stravaRedirectUri,
+    stravaAuthorizeUrl, stravaHandleRedirect, stravaRecent, stravaWithLaps, stravaRedirectUri, stravaSyncNew, stravaConnected,
     isDuplicate, activityToSession, sessionLoad, loadSeries, formState, recentUltra, weeklyStats, estimateVma, analyse, kmEffort,
   };
 })();
