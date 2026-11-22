@@ -6394,6 +6394,59 @@ const CROSS_PROPOSES = {
   ],
 };
 
+
+// Jours de course conseillés selon le nombre de sorties (0 = lundi, repos)
+const JOURS_COURSE = { 1: [6], 2: [2, 5], 3: [1, 3, 6], 4: [1, 2, 4, 6], 5: [1, 2, 3, 5, 6], 6: [1, 2, 3, 4, 5, 6], 7: [0, 1, 2, 3, 4, 5, 6] };
+const PRIO_COURSE = { longue: 0, fractionne: 1, cotes: 1, seuil: 1, fonda: 2, recup: 3 };
+const JOURS_FR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+
+/**
+ * Place les séances d'une semaine sur des jours précis : sortie longue le
+ * dimanche, intensité en début de semaine, lundi au repos (+ un 2e jour de
+ * repos en récupération), home trainer sur les jours libres, renfo seul
+ * ou après un footing facile. Pour la semaine en cours, seuls les jours
+ * restants sont utilisés.
+ */
+function scheduleWeek(wk, runs, cross, phase, doneDates) {
+  const today = toISO(new Date());
+  const dates = [0, 1, 2, 3, 4, 5, 6].map(i => toISO(addDays(wk + "T12:00:00", i)));
+  // jours passés ou déjà courus : on ne propose rien de plus
+  const avail = [0, 1, 2, 3, 4, 5, 6].filter(i => dates[i] >= today && !(doneDates || []).includes(dates[i]));
+  let restCount = phase === "recup" ? 2 : 1;
+  restCount = Math.max(0, restCount - (7 - avail.length));
+  const cap = Math.max(0, avail.length - restCount);
+  // trop de sorties pour les jours restants : on garde les plus importantes
+  let keep = [...runs].sort((a, b) => (PRIO_COURSE[a.type] ?? 2) - (PRIO_COURSE[b.type] ?? 2)).slice(0, cap);
+  keep = runs.filter(r => keep.includes(r)).sort((a, b) => (a.type === "longue") - (b.type === "longue") || (a.order ?? 0) - (b.order ?? 0));
+  const n = keep.length;
+  let runDays = (JOURS_COURSE[n] || []).filter(i => avail.includes(i));
+  for (const i of [...avail].reverse()) { if (runDays.length >= n) break; if (!runDays.includes(i)) runDays.push(i); }
+  runDays = runDays.slice(0, n).sort((a, b) => a - b);
+  const out = keep.map((r, k) => ({ ...r, date: dates[runDays[k]], order: runDays[k] }));
+  let free = avail.filter(i => !runDays.includes(i));
+  const rest = [];
+  for (const i of [0, 4, 3, 2, 5, 1, 6]) { if (rest.length >= restCount) break; if (free.includes(i)) rest.push(i); }
+  free = free.filter(i => !rest.includes(i));
+  const crossSorted = [...cross].sort((a, b) => (a.type === "renfo") - (b.type === "renfo"));
+  crossSorted.forEach(c => {
+    if (c.type === "velo" && phase !== "recup" && free.length === 0) return;
+    if (free.length) {
+      // home trainer au milieu des jours libres, renfo plutôt en début de semaine
+      const i = c.type === "renfo" ? free[0] : free[Math.floor(free.length / 2)];
+      free = free.filter(x => x !== i);
+      out.push({ ...c, date: dates[i], order: i + 0.5 });
+      return;
+    }
+    if (c.type !== "renfo") return; // pas de place : on n'empile pas de home trainer
+    const easy = out.filter(r => (r.type === "recup" || r.type === "fonda") && !out.some(x => x !== r && x.date === r.date && isCross(x.type)));
+    const host = easy[0] || out.find(r => r.type !== "longue");
+    if (host) out.push({ ...c, date: host.date, order: host.order + 0.5, notes: "Le même jour, après le footing. " + c.notes });
+  });
+  out.sort((a, b) => a.date.localeCompare(b.date) || a.order - b.order);
+  const jours = avail.map(i => ({ date: dates[i], label: `${JOURS_FR[i]} ${Number(dates[i].slice(8))}`, seances: out.filter(x => x.date === dates[i]), repos: rest.includes(i) || !out.some(x => x.date === dates[i]) }));
+  return { seances: out, jours };
+}
+
 /**
  * Semaine en cours + semaine suivante proposées sans objectif.
  * Renvoie { profil, phases, semaines: [{ weekStart, phase, seances, km, dplus, min }] }.
@@ -6410,17 +6463,22 @@ function autoPlan(sessions) {
   };
   const { valeurs: cal } = calibrationFromHistory(sessions, p.vma);
   const course = generatePlan(goal, cal);
+  // En récupération : 3 sorties au plus, le reste en activités sans impact
+  const courseRecup = recupWeeks > 0 ? generatePlan({ ...goal, daysPerWeek: Math.min(goal.daysPerWeek, 4) }, cal) : course;
   const semaines = [0, 1].map(i => {
     const wk = toISO(addDays(isoWeekStart(new Date()), i * 7));
-    const runs = course.filter(s => s.weekStart === wk);
-    const phase = runs[0]?.phase || (i < recupWeeks ? "recup" : "maintien");
+    const phase0 = i < recupWeeks ? "recup" : "maintien";
+    const runs = (phase0 === "recup" ? courseRecup : course).filter(s => s.weekStart === wk);
+    const phase = runs[0]?.phase || phase0;
     const cross = (CROSS_PROPOSES[phase] || CROSS_PROPOSES.maintien).map((c, j) => ({
       id: `auto-${wk}-x${j}`, type: c.type, date: null, order: 10 + j, distance: null, dplus: null, duree: c.duree,
       notes: c.notes, done: false, actual: null, generated: true, auto: true, phase, weekStart: wk,
     }));
-    const seances = [...runs.map((s, j) => ({ ...s, id: `auto-${wk}-${j}`, auto: true })), ...cross];
+    const doneDates = sessions.filter(x => x.done && x.date && !isCross(x.type)).map(x => x.date);
+    const { seances, jours } = scheduleWeek(wk, runs.map((s, j) => ({ ...s, id: `auto-${wk}-${j}`, auto: true })), cross, phase, doneDates);
+    // la cible de la semaine reste celle de la semaine complète
     const sum = k => runs.reduce((a, s) => a + (s[k] || 0), 0);
-    return { weekStart: wk, phase, seances, km: Math.round(sum("distance")), dplus: Math.round(sum("dplus")), min: Math.round(sum("duree")) };
+    return { weekStart: wk, phase, seances, jours, km: Math.round(sum("distance")), dplus: Math.round(sum("dplus")), min: Math.round(sum("duree")) };
   });
   const u = p.ultra;
   const periode = recupWeeks > 0 && u
@@ -6463,24 +6521,32 @@ function AutoWeeksCard({ sessions, onAdopt, setTab }) {
             <p className="text-sm" style={{ ...MONO, color: "var(--accent)" }}>
               Course : {w.km} km{w.dplus ? ` · ${w.dplus} m D+` : ""} · {fmtDuree(w.min)}
             </p>
-            {w.seances.map(s => {
-              const t = TYPES[s.type] || { label: s.type, color: "var(--muted)" };
-              return (
-                <div key={s.id} className="flex items-start gap-2 py-1.5" style={{ borderTop: "1px solid var(--border)" }}>
-                  <span className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ background: t.color }} />
-                  <div className="min-w-0">
-                    <p className="text-sm" style={{ color: "var(--text)" }}>
-                      {s.type === "velo" ? "Home trainer" : t.label}
-                      <span className="ml-2 text-xs" style={{ ...MONO, color: "var(--muted2)" }}>
-                        {s.distance ? `${String(s.distance).replace(".", ",")} km · ` : ""}{s.dplus ? `${s.dplus} m · ` : ""}{fmtDuree(s.duree)}
-                      </span>
-                    </p>
-                    {s.notes && <p className="text-xs leading-relaxed" style={{ color: "var(--muted)" }}>{s.notes}</p>}
-                  </div>
+            {w.jours.map(j => (
+              <div key={j.date} className="flex gap-3 py-1.5" style={{ borderTop: "1px solid var(--border)" }}>
+                <p className="w-12 shrink-0 text-xs pt-0.5" style={{ ...MONO, color: j.date === toISO(new Date()) ? "var(--accent)" : "var(--muted2)" }}>{j.label}</p>
+                <div className="min-w-0 flex-1 space-y-1">
+                  {j.repos && !j.seances.length && <p className="text-sm" style={{ color: "var(--muted)" }}>Repos</p>}
+                  {j.seances.map(s => {
+                    const t = TYPES[s.type] || { label: s.type, color: "var(--muted)" };
+                    return (
+                      <div key={s.id}>
+                        <p className="text-sm flex items-center gap-2" style={{ color: "var(--text)" }}>
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
+                          {s.type === "velo" ? "Home trainer" : t.label}
+                          <span className="text-xs" style={{ ...MONO, color: "var(--muted2)" }}>
+                            {s.distance ? `${String(s.distance).replace(".", ",")} km · ` : ""}{s.dplus ? `${s.dplus} m · ` : ""}{fmtDuree(s.duree)}
+                          </span>
+                        </p>
+                        {s.notes && <p className="text-xs leading-relaxed ml-4" style={{ color: "var(--muted)" }}>{s.notes}</p>}
+                      </div>
+                    );
+                  })}
                 </div>
-              );
-            })}
-            {adopted ? (
+              </div>
+            ))}
+            {!w.seances.length ? (
+              <p className="text-xs" style={{ color: "var(--muted2)" }}>Rien de plus cette semaine : profite du repos.</p>
+            ) : adopted ? (
               <p className="text-xs" style={{ color: "var(--green)" }}>✓ Ajoutée à ton plan, plus bas : coche les séances au fur et à mesure.</p>
             ) : (
               <button onClick={() => onAdopt(w)} className="w-full rounded-lg py-2 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>
@@ -6898,7 +6964,7 @@ function App() {
 
   // Le coach lit toujours l'état le plus récent (y compris ses propres modifs)
   const stateRef = React.useRef({});
-  stateRef.current = { goal, sessions, evaluations, profile, propositions: !goal ? (() => { try { const ap = autoPlan(sessions); return ap && { periode: ap.periode, reference: { kmSemaine: ap.profil.volume, dplusSemaine: ap.profil.dplus, sortiesParSemaine: ap.profil.jours }, semaines: ap.semaines.map(w => ({ semaine: w.weekStart, phase: w.phase, km: w.km, dplus: w.dplus, min: w.min, seances: w.seances.map(x => ({ type: x.type, km: x.distance, dplus: x.dplus, min: x.duree })) })) }; } catch (e) { return null; } })() : null, garmin: window.TCP ? window.TCP.garminResume(garmin) : null };
+  stateRef.current = { goal, sessions, evaluations, profile, propositions: !goal ? (() => { try { const ap = autoPlan(sessions); return ap && { periode: ap.periode, reference: { kmSemaine: ap.profil.volume, dplusSemaine: ap.profil.dplus, sortiesParSemaine: ap.profil.jours }, semaines: ap.semaines.map(w => ({ semaine: w.weekStart, phase: w.phase, km: w.km, dplus: w.dplus, min: w.min, seances: w.seances.map(x => ({ jour: x.date, type: x.type, km: x.distance, dplus: x.dplus, min: x.duree })) })) }; } catch (e) { return null; } })() : null, garmin: window.TCP ? window.TCP.garminResume(garmin) : null };
   const getState = React.useCallback(() => stateRef.current, []);
   const setSessionsForCoach = React.useCallback((fn) => {
     setSessions(prev => { const next = fn(prev); stateRef.current = { ...stateRef.current, sessions: next }; return next; });
