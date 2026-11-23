@@ -5015,7 +5015,7 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "18 · 23 nov. · doublons Strava";
+const APP_VERSION = "19 · 23 nov. · stats : tout l'historique";
 
 /** Connexion Google : tes données sous ton compte, inaccessibles aux autres. */
 function GoogleAccount() {
@@ -5348,6 +5348,8 @@ const fmtH = fmtDuree;
 function Stats({ sessions }) {
   const [gran, setGran] = useState("month");
   const [metric, setMetric] = useState("km");
+  const [decal, setDecal] = useState(0); // nombre de fenêtres en arrière
+  useEffect(() => setDecal(0), [gran]);
 
   const g = GRANULARITIES.find(x => x.key === gran);
   const m = METRICS.find(x => x.key === metric);
@@ -5356,8 +5358,26 @@ function Stats({ sessions }) {
   // Les séances à venir créent des périodes futures : on s'arrête à
   // aujourd'hui, sinon le graphique afficherait le plan au lieu du réalisé.
   const nowKey = periodKey(toISO(new Date()), gran);
-  const past = all.filter(e => e.key <= nowKey);
-  const rows = past.slice(-g.count);
+  const pastData = all.filter(e => e.key <= nowKey);
+  // Périodes continues (les semaines ou mois sans activité comptent pour 0),
+  // du premier import jusqu'à aujourd'hui.
+  const past = useMemo(() => {
+    if (!pastData.length) return [];
+    const byKey = new Map(pastData.map(e => [e.key, e]));
+    const vide = k => ({ key: k, runKm: 0, runD: 0, runMin: 0, runN: 0, crossKm: 0, crossMin: 0, crossN: 0, planKm: 0, byType: {} });
+    const out = [];
+    let k = pastData[0].key, garde = 0;
+    while (k <= nowKey && garde++ < 2000) {
+      out.push(byKey.get(k) || vide(k));
+      if (gran === "year") k = String(Number(k) + 1);
+      else if (gran === "month") { const [y, m] = k.split("-").map(Number); k = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`; }
+      else k = toISO(addDays(k, 7));
+    }
+    return out;
+  }, [all, nowKey, gran]);
+  const nbFenetres = Math.max(1, Math.ceil(past.length / g.count));
+  const fin = past.length - decal * g.count;
+  const rows = past.slice(Math.max(0, fin - g.count), Math.max(0, fin));
 
   const pick = e => metric === "km" ? e.runKm : metric === "dplus" ? e.runD : e.runMin / 60;
   const pickCross = e => metric === "km" ? e.crossKm : metric === "dplus" ? 0 : e.crossMin / 60;
@@ -5433,6 +5453,17 @@ function Stats({ sessions }) {
           ))}
         </div>
 
+        {past.length > g.count && (
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <button onClick={() => setDecal(d => Math.min(nbFenetres - 1, d + 1))} disabled={decal >= nbFenetres - 1}
+              className="px-3 py-1 rounded-lg text-xs disabled:opacity-30" style={{ background: "var(--surface2)", color: "var(--muted2)" }}>‹ plus ancien</button>
+            <span className="text-xs text-center" style={{ ...MONO, color: "var(--muted)" }}>
+              {rows.length ? `${periodLabel(rows[0].key, gran)} → ${periodLabel(rows[rows.length - 1].key, gran)}` : ""}
+            </span>
+            <button onClick={() => setDecal(d => Math.max(0, d - 1))} disabled={decal === 0}
+              className="px-3 py-1 rounded-lg text-xs disabled:opacity-30" style={{ background: "var(--surface2)", color: "var(--muted2)" }}>plus récent ›</button>
+          </div>
+        )}
         {chartData.length === 0 ? (
           <p className="text-sm text-center py-6" style={{ color: "var(--muted)" }}>
             Aucune séance enregistrée pour l'instant.
@@ -5453,7 +5484,7 @@ function Stats({ sessions }) {
             <ResponsiveContainer>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={cssVar("--border")} vertical={false} />
-                <XAxis dataKey="label" stroke={cssVar("--muted")} fontSize={10} interval={0} angle={gran === "week" ? -35 : 0} textAnchor={gran === "week" ? "end" : "middle"} height={gran === "week" ? 45 : 25} />
+                <XAxis dataKey="label" stroke={cssVar("--muted")} fontSize={10} interval={0} angle={gran === "year" ? 0 : -40} textAnchor={gran === "year" ? "middle" : "end"} height={gran === "year" ? 25 : 45} />
                 <YAxis stroke={cssVar("--muted")} fontSize={10} />
                 <Tooltip contentStyle={{ background: cssVar("--surface"), border: "1px solid " + cssVar("--border"), color: cssVar("--text") }} />
                 <Bar dataKey="course" fill={cssVar("--accent")} radius={[3, 3, 0, 0]} name={`Course (${m.unit})`} />
