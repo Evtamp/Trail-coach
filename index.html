@@ -224,10 +224,15 @@ const TYPES = {
   seuil:      { label: "Seuil / allure course", color: "var(--accent2)" },
   fonda:      { label: "Endurance fondamentale",color: "var(--green)" },
   recup:      { label: "Récupération",          color: "var(--blue)" },
+  trail:      { label: "Trail",                 color: "var(--accent3)" },
+  course:     { label: "Course sur route",      color: "var(--green)" },
   repos:      { label: "Repos",                 color: "var(--muted)" },
   // Activités complémentaires : comptées à part du volume course
   renfo:      { label: "Renforcement",          color: "var(--cross1)", cross: true },
   velo:       { label: "Vélo",                  color: "var(--cross2)", cross: true },
+  hometrainer:{ label: "Home trainer",          color: "var(--cross2)", cross: true },
+  basket:     { label: "Basketball",            color: "var(--cross1)", cross: true },
+  pickleball: { label: "Pickleball",            color: "var(--cross3)", cross: true },
   natation:   { label: "Natation",              color: "var(--cross3)", cross: true },
   autre:      { label: "Autre sport",           color: "var(--cross4)", cross: true },
 };
@@ -1537,9 +1542,12 @@ function Ring({ value, target, unit, label, color, format }) {
   );
 }
 
-function WeekRings({ sessions, profile }) {
+function WeekRings({ sessions, profile, offset: offsetProp, onOffset }) {
   // offset en semaines par rapport à aujourd'hui : 0 = semaine en cours
-  const [offset, setOffset] = useState(0);
+  // (piloté de l'extérieur dans l'onglet Plan, pour suivre la semaine affichée)
+  const [offsetLocal, setOffsetLocal] = useState(0);
+  const offset = offsetProp ?? offsetLocal;
+  const setOffset = (f) => { const v = typeof f === "function" ? f(offset) : f; onOffset ? onOffset(v) : setOffsetLocal(v); };
   const wk = toISO(isoWeekStart(addDays(new Date(), offset * 7)));
   const isCurrent = offset === 0;
 
@@ -4953,7 +4961,55 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "14 · 22 nov. · coach Gemini gratuit";
+const APP_VERSION = "15 · 23 nov. · plan semaine par semaine";
+
+const TYPES_AJOUT = ["trail", "course", "velo", "hometrainer", "renfo", "basket", "pickleball"];
+
+/** Ajout manuel d'une séance prévue sur un jour donné. */
+function AjoutSeance({ date, onAdd, onClose }) {
+  const [type, setType] = useState("trail");
+  const [duree, setDuree] = useState("");
+  const [km, setKm] = useState("");
+  const [dp, setDp] = useState("");
+  const [notes, setNotes] = useState("");
+  const avecKm = !isCross(type) || type === "velo";
+  const valider = () => {
+    onAdd({
+      id: uid(), type, date, weekStart: toISO(isoWeekStart(date)),
+      duree: Number(duree) || null, distance: avecKm ? (Number(String(km).replace(",", ".")) || null) : null,
+      dplus: avecKm ? (Number(dp) || null) : null, notes: notes.trim(), done: false, actual: null, generated: false, manual: true,
+    });
+    onClose();
+  };
+  return (
+    <div className="rounded-xl p-3 space-y-2 mb-1" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+      <div className="flex flex-wrap gap-1.5">
+        {TYPES_AJOUT.map(k => (
+          <button key={k} onClick={() => setType(k)} className="px-2.5 py-1 rounded-full text-xs"
+            style={{ background: type === k ? "var(--accent)" : "var(--surface)", color: type === k ? "var(--bg)" : "var(--text)", border: "1px solid var(--border)" }}>
+            {TYPES[k].label}
+          </button>
+        ))}
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        <label className="text-xs" style={{ color: "var(--muted2)" }}>Durée (min)
+          <input type="number" inputMode="numeric" value={duree} onChange={e => setDuree(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-sm mt-0.5" style={fieldStyle} />
+        </label>
+        {avecKm && <label className="text-xs" style={{ color: "var(--muted2)" }}>Distance (km)
+          <input type="text" inputMode="decimal" value={km} onChange={e => setKm(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-sm mt-0.5" style={fieldStyle} />
+        </label>}
+        {avecKm && <label className="text-xs" style={{ color: "var(--muted2)" }}>D+ (m)
+          <input type="number" inputMode="numeric" value={dp} onChange={e => setDp(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-sm mt-0.5" style={fieldStyle} />
+        </label>}
+      </div>
+      <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Note (facultatif)" className="w-full rounded-lg px-2 py-1.5 text-sm" style={fieldStyle} />
+      <div className="flex gap-2">
+        <button onClick={valider} className="flex-1 rounded-lg py-1.5 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>Ajouter le {fmtDate(date)}</button>
+        <button onClick={onClose} className="rounded-lg px-3 py-1.5 text-sm" style={{ background: "var(--surface)", color: "var(--muted2)" }}>Annuler</button>
+      </div>
+    </div>
+  );
+}
 
 const JOURS_COURTS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
@@ -4993,8 +5049,10 @@ function useDayDrag(onMove) {
   return { drag, handle };
 }
 
-function PlanView({ sessions, evaluations, onToggle, onDelete, onMove, onSaveNotes, vma, products }) {
+function PlanView({ sessions, evaluations, onToggle, onDelete, onMove, onSaveNotes, vma, products, onlyWeek, bandeau, onAdd }) {
+  const [ajout, setAjout] = useState(null);
   const weeks = useMemo(() => {
+    if (onlyWeek) return [[onlyWeek, sessions.filter(s => sessionWeek(s) === onlyWeek)]];
     const map = new Map();
     sessions.forEach(s => {
       const wk = sessionWeek(s);
@@ -5007,7 +5065,7 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onMove, onSaveNot
     const cur = toISO(isoWeekStart(new Date()));
     return [...map.entries()].filter(([wk, l]) => l.some(s => !s.done) || (wk === cur && l.some(s => s.generated || s.auto)))
       .sort(([a], [b]) => a.localeCompare(b));
-  }, [sessions]);
+  }, [sessions, onlyWeek]);
   const { drag, handle } = useDayDrag(onMove || (() => {}));
   const todayISO = toISO(new Date());
   const dragged = drag && sessions.find(s => s.id === drag.id);
@@ -5030,10 +5088,10 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onMove, onSaveNot
   };
 
   return (
-    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start">
+    <div className={onlyWeek ? "lg:max-w-2xl" : "space-y-4 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:items-start"}>
       {weeks.map(([weekStart, weekSessions]) => {
         const isPast = addDays(weekStart, 7) <= new Date();
-        if (isPast && weekSessions.every(s => s.done || !s.generated)) return null; // masque semaines passées complètes
+        if (!onlyWeek && isPast && weekSessions.every(s => s.done || !s.generated)) return null; // masque semaines passées complètes
         const phase = weekSessions.find(s => s.generated)?.phase;
         const adjustedFrom = Object.entries(evaluations).find(([wk, e]) => toISO(addDays(wk, 7)) === weekStart && e.multiplier !== 1);
         const prevus = weekSessions.filter(x => !x.done || x.generated || x.auto);
@@ -5067,6 +5125,7 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onMove, onSaveNot
               </div>
               <p className="text-xs shrink-0 text-right" style={{ color: "var(--muted)" }}>⠿ glisse pour<br />changer de jour</p>
             </div>
+            {bandeau}
             {adjustedFrom && (
               <div className="rounded-lg px-3 py-2 mb-2 text-xs" style={{ background: "var(--warnbg)", color: "var(--accent2)", border: "1px solid var(--warnborder)" }}>
                 {adjustedFrom[1].reason}
@@ -5088,8 +5147,15 @@ function PlanView({ sessions, evaluations, onToggle, onDelete, onMove, onSaveNot
                       <p className="text-xs w-16 shrink-0" style={{ ...MONO, color: auj ? "var(--accent)" : "var(--muted2)", fontWeight: auj ? 600 : 400 }}>
                         {JOURS_COURTS[i]} {Number(d.slice(8))}{auj ? " ·auj." : ""}
                       </p>
-                      {!list.length && <p className="text-xs" style={{ color: "var(--muted)" }}>Repos</p>}
+                      {!list.length && <p className="text-xs flex-1" style={{ color: "var(--muted)" }}>Repos</p>}
+                      {onAdd && (
+                        <button onClick={() => setAjout(a => a === d ? null : d)} aria-label={`Ajouter une séance le ${fmtDate(d)}`}
+                          className="ml-auto text-xs rounded-full px-2 py-0.5 shrink-0" style={{ border: "1px solid var(--border2)", color: "var(--muted2)" }}>
+                          {ajout === d ? "✕" : "+ séance"}
+                        </button>
+                      )}
                     </div>
+                    {ajout === d && <AjoutSeance date={d} onAdd={onAdd} onClose={() => setAjout(null)} />}
                     {list.length > 0 && <div className="space-y-2 pb-1">{list.map(row)}</div>}
                   </div>
                 );
@@ -6748,7 +6814,7 @@ function autoPlan(sessions, profile) {
 const PHASE_AUTO = { recup: "récupération", maintien: "entretien" };
 
 /** Onglet Plan sans objectif : la période et les deux semaines proposées. */
-function AutoWeeksCard({ sessions, profile, onProfile, onAdopt, setTab }) {
+function AutoWeeksCard({ sessions, profile, onProfile, onAdopt, setTab, periodeSeule }) {
   const ap = useMemo(() => autoPlan(sessions, profile), [sessions, profile]);
   const [ouvertes, setOuvertes] = useState({});
   if (!ap) {
@@ -6777,7 +6843,7 @@ function AutoWeeksCard({ sessions, profile, onProfile, onAdopt, setTab }) {
           {profile?.autoVolume && <button onClick={() => onProfile(prev => ({ ...prev, autoVolume: null }))} className="text-xs underline" style={{ color: "var(--muted2)" }}>auto ({p.volumeAuto})</button>}
         </div>
       </div>
-      {ap.semaines.map((w, i) => {
+      {!periodeSeule && ap.semaines.map((w, i) => {
         const adopted = sessions.some(s => s.auto && s.weekStart === w.weekStart);
         // Une semaine déjà ajoutée se règle dans le plan plus bas (jours
         // déplaçables) : on la replie ici pour ne pas l'afficher deux fois.
@@ -7155,6 +7221,21 @@ function App() {
 
   const [confirmStop, setConfirmStop] = useState(false);
   const [histLimit, setHistLimit] = useState(50);
+  const [planOffset, setPlanOffset] = useState(0);
+  const autoPlanCur = useMemo(() => (goal ? null : (() => { try { return autoPlan(sessions, profile); } catch (e) { return null; } })()), [goal, sessions, profile]);
+  // Ajoute la semaine proposée puis applique l'action demandée sur la séance correspondante
+  const adoptThen = (w, protoId, action, arg) => {
+    const stamp = Date.now().toString(36);
+    setSessions(prev => {
+      let next = [...prev.filter(s => !(s.auto && !s.done && s.weekStart === w.weekStart)), ...w.seances.map(x => ({ ...x, id: x.id + "-" + stamp }))];
+      const nid = protoId + "-" + stamp;
+      if (action === "delete") next = next.filter(s => s.id !== nid);
+      if (action === "toggle") next = next.map(s => s.id === nid ? { ...s, ...arg } : s);
+      if (action === "move") next = next.map(s => s.id === nid ? { ...s, date: arg, weekStart: arg ? toISO(isoWeekStart(arg)) : s.weekStart } : s);
+      return next;
+    });
+    return true;
+  };
   const adoptWeek = (w) => setSessions(prev => [
     ...prev.filter(s => !(s.auto && !s.done && s.weekStart === w.weekStart)),
     ...w.seances.map(x => ({ ...x, id: uid() })),
@@ -7365,7 +7446,7 @@ function App() {
             {tab === "accueil" && <HomeTab sessions={sessions} profile={profile} setTab={setTab} garmin={garmin} />}
             {tab === "plan" && (
               <>
-                {!goal && <AutoWeeksCard sessions={sessions} profile={profile} onProfile={setProfile} onAdopt={adoptWeek} setTab={setTab} />}
+                {!goal && <AutoWeeksCard sessions={sessions} profile={profile} onProfile={setProfile} onAdopt={adoptWeek} setTab={setTab} periodeSeule />}
                 {goal && <div className="flex items-center gap-2 flex-wrap">
                   <button onClick={refreshFuture} className="text-xs px-3 py-1.5 rounded-lg"
                     style={{ background: "var(--border)", color: "var(--text)" }}>
@@ -7373,9 +7454,37 @@ function App() {
                   </button>
                   {refreshMsg && <span className="text-xs" style={{ color: "var(--green)" }}>{refreshMsg}</span>}
                 </div>}
-                <WeekRings sessions={sessions} profile={profile} />
-                <PlanView sessions={sessions} evaluations={evaluations} onToggle={toggleSession} onDelete={deleteSession} onMove={moveSession}
-                onSaveNotes={saveNotes} vma={goal?.vma} products={products} />
+                <WeekRings sessions={sessions} profile={profile} offset={planOffset} onOffset={setPlanOffset} />
+                {(() => {
+                  // Une seule semaine affichée (flèches ci-dessus). Sans séances
+                  // ajoutées, on montre la proposition : la glisser l'ajoute au plan.
+                  const wk = toISO(isoWeekStart(addDays(new Date(), planOffset * 7)));
+                  const inPlan = sessions.filter(s => sessionWeek(s) === wk && (s.generated || s.auto || !s.done));
+                  const prop = !goal && autoPlanCur ? autoPlanCur.semaines.find(w => w.weekStart === wk) : null;
+                  const showProp = prop && prop.seances.length && !inPlan.some(s => s.auto || s.generated);
+                  const list = showProp ? [...sessions.filter(s => sessionWeek(s) === wk && !s.auto && !s.generated), ...prop.seances] : sessions;
+                  const bandeau = showProp ? (
+                    <div className="rounded-lg px-3 py-2 mb-2 space-y-2" style={{ background: "var(--surface)", border: "1px dashed var(--border2)" }}>
+                      <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+                        Proposition de la semaine{prop.note ? ` · ${prop.note}` : ""}. Glisse une séance ⠿ pour la changer de jour : la semaine s'ajoute alors à ton plan.
+                      </p>
+                      <button onClick={() => adoptWeek(prop)} className="w-full rounded-lg py-1.5 text-xs font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>Ajouter telle quelle à mon plan</button>
+                    </div>
+                  ) : prop && prop.seances.length ? (
+                    <p className="text-xs px-1 mb-2" style={{ color: "var(--muted)" }}>
+                      Semaine dans ton plan ·{" "}
+                      <button onClick={() => adoptWeek(prop)} className="underline">remplacer les séances non faites par la proposition actuelle</button>
+                    </p>
+                  ) : null;
+                  const viaProp = fn => (id, ...a) => (showProp && prop.seances.some(x => x.id === id) ? adoptThen(prop, id, fn, ...a) : null);
+                  return (
+                    <PlanView sessions={list} onlyWeek={wk} bandeau={bandeau} evaluations={evaluations}
+                      onToggle={(id, patch) => viaProp("toggle")(id, patch) ?? toggleSession(id, patch)}
+                      onDelete={id => viaProp("delete")(id) ?? deleteSession(id)}
+                      onMove={(id, date) => viaProp("move")(id, date) ?? moveSession(id, date)}
+                      onAdd={addSession} onSaveNotes={saveNotes} vma={goal?.vma} products={products} />
+                  );
+                })()}
               </>
             )}
 

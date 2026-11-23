@@ -50,6 +50,9 @@
   /** Type de séance Trail Coach deviné à partir d'une activité réalisée. */
   function guessType(sport, a) {
     const s = String(sport || "").toLowerCase();
+    if (/virtualride|virtual_ride|indoor|trainer|home ?trainer/.test(s)) return "hometrainer";
+    if (/basket/.test(s)) return "basket";
+    if (/pickleball/.test(s)) return "pickleball";
     if (/ride|bike|cycl|vélo|velo|biking/.test(s)) return "velo";
     if (/swim|natation/.test(s)) return "natation";
     if (/weight|strength|training|workout|crossfit|yoga|renfo|fitness_equipment/.test(s)) return "renfo";
@@ -543,7 +546,7 @@
     const fresh = recent.filter(a => !isDuplicate(known, a)).sort((x, y) => (y.date || "").localeCompare(x.date || ""));
     const lines = recent.filter(a => fresh.indexOf(a) < 0).map(a => ({ a, status: "déjà présente" }));
     const added = [];
-    const CROSS_T = { renfo: 1, velo: 1, natation: 1, autre: 1 };
+    const CROSS_T = { renfo: 1, velo: 1, hometrainer: 1, natation: 1, basket: 1, pickleball: 1, autre: 1 };
     for (let i = 0; i < fresh.length; i++) {
       let a = fresh[i];
       if (i < 25 && !CROSS_T[a.type]) {
@@ -606,9 +609,11 @@
   // Liaison automatique : une activité importée (Strava, montre) le jour
   // d'une séance prévue devient la réalisation de cette séance.
   // ---------------------------------------------------------------------
-  const CROSS_L = { renfo: 1, velo: 1, natation: 1, autre: 1 };
+  const CROSS_L = { renfo: 1, velo: 1, hometrainer: 1, natation: 1, basket: 1, pickleball: 1, autre: 1 };
+  const VELO = { velo: 1, hometrainer: 1 };
   function memeFamille(a, b) {
     if (a === "repos" || b === "repos") return false;
+    if (VELO[a] && VELO[b]) return true;
     if (CROSS_L[a] || CROSS_L[b]) return a === b || (a === "autre" || b === "autre") && !!(CROSS_L[a] && CROSS_L[b]);
     return true; // deux séances de course
   }
@@ -664,8 +669,8 @@
   // ---------------------------------------------------------------------
   // Analyse de charge
   // ---------------------------------------------------------------------
-  const CROSS = { renfo: 1, velo: 1, natation: 1, autre: 1 };
-  const TYPE_RPE = { recup: 2, fonda: 3, longue: 4, seuil: 6, fractionne: 7, cotes: 6.5, renfo: 4, velo: 3, natation: 3, autre: 4 };
+  const CROSS = { renfo: 1, velo: 1, hometrainer: 1, natation: 1, basket: 1, pickleball: 1, autre: 1 };
+  const TYPE_RPE = { recup: 2, fonda: 3, longue: 4, seuil: 6, fractionne: 7, cotes: 6.5, trail: 4, course: 3.5, renfo: 4, velo: 3, hometrainer: 3, natation: 3, basket: 6, pickleball: 4.5, autre: 4 };
 
   function val(s, k) { return s.actual && s.actual[k] != null ? s.actual[k] : s[k]; }
   function kmEffort(s) { return (val(s, "distance") || 0) + (val(s, "dplus") || 0) / 100; }

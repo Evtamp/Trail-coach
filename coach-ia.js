@@ -63,7 +63,7 @@
   // ---------------------------------------------------------------------
   // Outils mis à disposition du coach
   // ---------------------------------------------------------------------
-  const TYPE_ENUM = ["longue", "fractionne", "cotes", "seuil", "fonda", "recup", "repos", "renfo", "velo", "natation", "autre"];
+  const TYPE_ENUM = ["longue", "fractionne", "cotes", "seuil", "fonda", "recup", "trail", "course", "repos", "renfo", "velo", "hometrainer", "natation", "basket", "pickleball", "autre"];
 
   const TOOLS = [
     {
