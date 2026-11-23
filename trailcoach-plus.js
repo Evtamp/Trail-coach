@@ -595,6 +595,46 @@
     });
   }
 
+  /**
+   * Doublons d'import : même identifiant externe (Strava importé deux fois),
+   * ou deux activités importées le même jour quasi identiques (même distance
+   * à 2 % près et même durée à 2 min près). Renvoie { remove: [ids], groupes }.
+   * On garde la séance la plus riche : liée au plan, puis avec trace/détail.
+   */
+  function findDuplicates(sessions) {
+    const score = s => (s.linked || s.generated || s.auto ? 100 : 0) + (s.actual && s.actual.trace ? 10 : 0)
+      + (s.actual && s.actual.detail ? 5 : 0) + (s.actual && s.actual.laps && s.actual.laps.length ? 3 : 0) + (s.actual && s.actual.feeling ? 2 : 0) + (s.notes ? 1 : 0);
+    const remove = new Set();
+    let groupes = 0;
+    const garder = list => {
+      if (list.length < 2) return;
+      groupes++;
+      const best = list.slice().sort((a, b) => score(b) - score(a))[0];
+      list.forEach(s => { if (s !== best) remove.add(s.id); });
+    };
+    const parExt = {};
+    sessions.forEach(s => { if (s.done && s.externalId) (parExt[s.externalId] = parExt[s.externalId] || []).push(s); });
+    Object.values(parExt).forEach(garder);
+    const parJour = {};
+    sessions.forEach(s => { if (s.done && s.source && s.date && !remove.has(s.id)) (parJour[s.date] = parJour[s.date] || []).push(s); });
+    Object.values(parJour).forEach(list => {
+      const vus = new Set();
+      list.forEach((a, i) => {
+        if (vus.has(a.id)) return;
+        const pareil = [a].concat(list.slice(i + 1).filter(b => {
+          if (vus.has(b.id) || b.externalId === a.externalId) return false;
+          const d1 = (a.actual && a.actual.distance) || 0, d2 = (b.actual && b.actual.distance) || 0;
+          const t1 = (a.actual && a.actual.duree) || 0, t2 = (b.actual && b.actual.duree) || 0;
+          const memeDist = d1 > 0 ? Math.abs(d1 - d2) / d1 < 0.02 : d2 === 0;
+          return memeDist && t1 > 0 && Math.abs(t1 - t2) <= 2 && (!!CROSS_L[a.type] === !!CROSS_L[b.type]);
+        }));
+        pareil.forEach(x => vus.add(x.id));
+        garder(pareil);
+      });
+    });
+    return { remove: [...remove], groupes };
+  }
+
   /** Transforme une activité importée en séance réalisée de l'historique. */
   function activityToSession(act, uid) {
     return {
@@ -883,6 +923,6 @@
     stravaAuthorizeUrl, stravaHandleRedirect, stravaRecent, stravaWithLaps, stravaRedirectUri, stravaSyncNew, stravaConnected,
     stravaBackfill, decodePolyline, encodePolyline, records, RECORD_DIST,
     haConfig, haConnected, garminFetch, garminCache, garminResume, STATUT_FR, VFC_FR,
-    isDuplicate, activityToSession, linkPlanned, unlinkSession, sessionLoad, loadSeries, formState, recentUltra, weeklyStats, estimateVma, analyse, kmEffort,
+    isDuplicate, findDuplicates, activityToSession, linkPlanned, unlinkSession, sessionLoad, loadSeries, formState, recentUltra, weeklyStats, estimateVma, analyse, kmEffort,
   };
 })();
