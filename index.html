@@ -5015,7 +5015,7 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "19 · 23 nov. · stats : tout l'historique";
+const APP_VERSION = "20 · 23 nov. · stats sur 6 périodes";
 
 /** Connexion Google : tes données sous ton compte, inaccessibles aux autres. */
 function GoogleAccount() {
@@ -5281,8 +5281,8 @@ function cssVar(name) {
 }
 
 const GRANULARITIES = [
-  { key: "week",  label: "Semaine", count: 12 },
-  { key: "month", label: "Mois",    count: 12 },
+  { key: "week",  label: "Semaine", count: 6 },
+  { key: "month", label: "Mois",    count: 6 },
   { key: "year",  label: "Année",   count: 5 },
 ];
 
