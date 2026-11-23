@@ -94,6 +94,29 @@ window.getSyncCode = getSyncCode;
 window.setSyncCode = setSyncCode;
 
 let STORAGE_REASON = "";
+let AUTH_USER = null, AUTH_ERROR = "", MIGRATED = false;
+window.AUTH_USER = () => AUTH_USER;
+window.AUTH_ERROR = () => AUTH_ERROR;
+window.MIGRATED = () => MIGRATED;
+/* Connexion Google : fenêtre surgissante, ou redirection si elle est bloquée
+   (appli installée sur téléphone). Recharge ensuite l'appli sur ton espace. */
+window.googleSignIn = async function () {
+  if (typeof firebase === "undefined" || !FIREBASE_CONFIG.databaseURL) throw new Error("Firebase indisponible");
+  if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+  const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+  try {
+    await firebase.auth().signInWithPopup(provider);
+  } catch (e) {
+    if (/popup|operation-not-supported|web-storage/.test(e.code || "")) return firebase.auth().signInWithRedirect(provider);
+    throw e;
+  }
+  location.reload();
+};
+window.googleSignOut = async function () {
+  try { await firebase.auth().signOut(); } catch (e) {}
+  location.reload();
+};
 
 async function initStorage() {
   STORAGE_REASON = "";
@@ -105,16 +128,46 @@ async function initStorage() {
     STORAGE_REASON = "databaseURL est vide dans FIREBASE_CONFIG, en haut de index.html";
     return;
   }
-  const code = getSyncCode();
-  if (!code) { STORAGE_REASON = "Aucun code de synchro saisi"; return; }
   try {
     if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
   } catch (e) {
     STORAGE_REASON = "Config invalide : " + (e.message || e);
     return;
   }
+  // Compte Google : session mémorisée par Firebase sur l'appareil
+  const auth = firebase.auth();
+  try { await auth.getRedirectResult(); } catch (e) { AUTH_ERROR = e.code || e.message || String(e); }
+  const user = await new Promise(res => { const off = auth.onAuthStateChanged(u => { off(); res(u); }); });
+  if (user && !user.isAnonymous) {
+    try {
+      _fbRef = firebase.database().ref("users/" + user.uid);
+      await _fbRef.child("__ping").set(Date.now());
+      // Première connexion : on recopie (sans rien effacer) les données de
+      // l'ancien espace « code de synchro », sinon celles de cet appareil.
+      const deja = await _fbRef.child("appstate").get();
+      if (!deja.exists()) {
+        let src = null;
+        const code = getSyncCode();
+        if (code) { try { const old = await firebase.database().ref("trailcoach/" + code + "/appstate").get(); if (old.exists()) src = old.val(); } catch (e) {} }
+        if (!src) src = localStorage.getItem("trailcoach:appstate");
+        if (src) { await _fbRef.child("appstate").set(src); MIGRATED = true; }
+      }
+      STORAGE_MODE = "firebase";
+      AUTH_USER = { email: user.email, name: user.displayName, uid: user.uid };
+      return;
+    } catch (e) {
+      _fbRef = null;
+      STORAGE_REASON = (e.code === "PERMISSION_DENIED" || /permission/i.test(e.message || ""))
+        ? "Accès refusé à ton espace : colle les nouvelles règles dans Realtime Database > Règles"
+        : "Base : " + (e.message || e);
+      AUTH_USER = { email: user.email, name: user.displayName, uid: user.uid };
+      return;
+    }
+  }
+  const code = getSyncCode();
+  if (!code) { STORAGE_REASON = "Pas connecté (ni compte Google, ni code de synchro)"; return; }
   try {
-    await firebase.auth().signInAnonymously();
+    if (!auth.currentUser) await auth.signInAnonymously();
   } catch (e) {
     STORAGE_REASON = e.code === "auth/operation-not-allowed"
       ? "Connexion anonyme non activee : Firebase > Authentication > Sign-in method > Anonyme"
@@ -4962,7 +5015,48 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "16 · 23 nov. · récap de la semaine";
+const APP_VERSION = "17 · 23 nov. · connexion Google";
+
+/** Connexion Google : tes données sous ton compte, inaccessibles aux autres. */
+function GoogleAccount() {
+  const u = window.AUTH_USER ? window.AUTH_USER() : null;
+  const [msg, setMsg] = useState("");
+  const raison = window.STORAGE_REASON ? window.STORAGE_REASON() : "";
+  const login = async () => {
+    setMsg("Connexion…");
+    try { await window.googleSignIn(); }
+    catch (e) {
+      const c = e.code || "";
+      setMsg(c === "auth/unauthorized-domain" ? "Domaine non autorisé : ajoute evtamp.github.io dans Firebase > Authentication > Paramètres > Domaines autorisés."
+        : c === "auth/operation-not-allowed" ? "Connexion Google non activée : Firebase > Authentication > Méthodes de connexion > Google."
+        : c === "auth/popup-closed-by-user" ? "Fenêtre fermée avant la fin." : "Échec : " + (c || e.message || e));
+    }
+  };
+  if (u) {
+    return (
+      <div className="rounded-lg p-3 space-y-1" style={{ background: "var(--surface2)" }}>
+        <p className="text-sm" style={{ color: "var(--text)" }}>🔒 Connecté avec Google</p>
+        <p className="text-xs" style={{ ...MONO, color: "var(--muted2)" }}>{u.email}</p>
+        {window.STORAGE_MODE && window.STORAGE_MODE() === "firebase"
+          ? <p className="text-xs" style={{ color: "var(--green)" }}>Données synchronisées dans ton espace privé{window.MIGRATED && window.MIGRATED() ? " (anciennes données recopiées)" : ""}.</p>
+          : <p className="text-xs" style={{ color: "var(--accent2)" }}>{raison}</p>}
+        <button onClick={() => window.googleSignOut()} className="text-xs underline" style={{ color: "var(--muted2)" }}>Se déconnecter</button>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+        Connecte-toi avec ton compte Google sur chaque appareil : tes données sont rangées sous ton compte et personne d'autre ne peut les lire.
+        Tes données actuelles sont recopiées automatiquement à la première connexion.
+      </p>
+      <button onClick={login} className="w-full rounded-lg py-2.5 text-sm font-medium flex items-center justify-center gap-2" style={{ background: "var(--text)", color: "var(--bg)" }}>
+        <span style={{ fontWeight: 700 }}>G</span> Se connecter avec Google
+      </button>
+      {(msg || (window.AUTH_ERROR && window.AUTH_ERROR())) && <p className="text-xs" style={{ color: "var(--accent2)" }}>{msg || ("Échec : " + window.AUTH_ERROR())}</p>}
+    </div>
+  );
+}
 
 const TYPES_AJOUT = ["trail", "course", "velo", "hometrainer", "renfo", "basket", "pickleball"];
 
@@ -7636,8 +7730,11 @@ function App() {
                 )}
                 <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
                   <p className="text-sm uppercase tracking-wider" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>
-                    Synchronisation entre appareils
+                    Compte et synchronisation
                   </p>
+                  <GoogleAccount />
+                  {!(window.AUTH_USER && window.AUTH_USER()) && <>
+                  <p className="text-xs uppercase tracking-wider pt-2" style={{ ...MONO, color: "var(--muted)" }}>Ancienne méthode : code de synchro</p>
                   <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
                     Saisis le <span style={{ color: "var(--text)" }}>même code</span> sur ton téléphone et
                     ton ordinateur : ils partageront alors les mêmes données. Sans code, tout reste
@@ -7657,6 +7754,7 @@ function App() {
                     Choisis un code long et peu devinable : toute personne connaissant l'adresse du
                     site et ce code pourrait accéder à tes données.
                   </p>
+                  </>}
                 </div>
 
                 <div className="rounded-xl p-4 space-y-3" style={{ background: "var(--surface)", border: "1px solid var(--border)" }}>
