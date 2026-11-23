@@ -278,6 +278,7 @@ function fmtDate(d) { return new Date(d).toLocaleDateString("fr-FR", { day: "2-d
 // décalait toutes les étiquettes de semaine d'un jour en arrière.
 // Une durée s'affiche en h/min dès qu'elle dépasse l'heure : « 1h45 »
 // se lit bien plus vite que « 105 min ».
+function fmtKm(km) { const r = Math.round((km || 0) * 10) / 10; return (r >= 20 ? String(Math.round(r)) : String(r)).replace(".", ","); }
 function fmtDuree(min) {
   if (min == null || isNaN(min)) return "—";
   const m = Math.round(min);
@@ -4961,7 +4962,7 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "15 · 23 nov. · plan semaine par semaine";
+const APP_VERSION = "16 · 23 nov. · récap de la semaine";
 
 const TYPES_AJOUT = ["trail", "course", "velo", "hometrainer", "renfo", "basket", "pickleball"];
 
@@ -6337,6 +6338,70 @@ function VolumeSparkCard({ sessions, onOpen }) {
   );
 }
 
+/** Accueil : récap de la semaine par activité, sans notion d'objectif. */
+function WeekRecap({ sessions, onOpen }) {
+  const [offset, setOffset] = useState(0);
+  const wk = toISO(isoWeekStart(addDays(new Date(), offset * 7)));
+  const prev4 = [1, 2, 3, 4].map(i => toISO(addDays(wk, -7 * i)));
+  const v = (s, k) => s.actual?.[k] ?? s[k] ?? 0;
+  const done = sessions.filter(s => s.done && s.type !== "repos");
+  const of = w => done.filter(s => sessionWeek(s) === w);
+  const cur = of(wk), avant = done.filter(s => prev4.includes(sessionWeek(s)));
+  const sum = (l, f) => l.reduce((a, s) => a + (f(s) || 0), 0);
+  const isRun = s => !isCross(s.type);
+  const isVelo = s => s.type === "velo" || s.type === "hometrainer";
+  const lignes = [
+    { k: "run", label: "Course / trail", color: "var(--accent)", f: isRun, val: l => `${fmtKm(sum(l, s => v(s, "distance")))} km`, n: true, moy: l => `${Math.round(sum(l, s => v(s, "distance")) / 4)} km` },
+    { k: "dplus", label: "Dénivelé", color: "var(--amber)", f: isRun, val: l => `${Math.round(sum(l, s => v(s, "dplus")))} m`, moy: l => `${Math.round(sum(l, s => v(s, "dplus")) / 4)} m` },
+    { k: "velo", label: "Vélo / home trainer", color: "var(--cross2)", f: isVelo, val: l => `${fmtDuree(sum(l, s => v(s, "duree")))}${sum(l, s => v(s, "distance")) ? ` · ${fmtKm(sum(l, s => v(s, "distance")))} km` : ""}`, n: true, moy: l => fmtDuree(sum(l, s => v(s, "duree")) / 4) },
+    { k: "basket", label: "Basketball", color: "var(--cross1)", f: s => s.type === "basket", val: l => fmtDuree(sum(l, s => v(s, "duree"))), n: true, moy: l => fmtDuree(sum(l, s => v(s, "duree")) / 4) },
+    { k: "pickleball", label: "Pickleball", color: "var(--cross3)", f: s => s.type === "pickleball", val: l => fmtDuree(sum(l, s => v(s, "duree"))), n: true, moy: l => fmtDuree(sum(l, s => v(s, "duree")) / 4) },
+    { k: "renfo", label: "Renforcement", color: "var(--cross4)", f: s => s.type === "renfo", val: l => fmtDuree(sum(l, s => v(s, "duree"))), n: true, optionnel: true, moy: l => fmtDuree(sum(l, s => v(s, "duree")) / 4) },
+    { k: "autre", label: "Autres sports", color: "var(--muted2)", f: s => ["natation", "autre"].includes(s.type), val: l => fmtDuree(sum(l, s => v(s, "duree"))), n: true, optionnel: true, moy: l => fmtDuree(sum(l, s => v(s, "duree")) / 4) },
+  ];
+  const total = sum(cur, s => v(s, "duree")), totalMoy = sum(avant, s => v(s, "duree")) / 4;
+  const titre = offset === 0 ? "Cette semaine" : offset === -1 ? "Semaine dernière" : `Semaine du ${fmtDate(wk)}`;
+  return (
+    <div className="rounded-2xl p-4" style={cardStyle}>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <button onClick={() => setOffset(o => o - 1)} aria-label="Semaine précédente" className="px-3 py-1.5 rounded-lg text-lg" style={{ background: "var(--surface2)", color: "var(--muted2)" }}>‹</button>
+        <button onClick={() => setOffset(0)} className="text-center flex-1 min-w-0">
+          <p className="text-sm uppercase tracking-wider" style={{ ...MONO, color: "var(--green)" }}>{titre}</p>
+          <p className="text-xs" style={{ ...MONO, color: "var(--muted)" }}>{fmtDate(wk)} — {fmtDate(addDays(wk, 6))} · {cur.length} activité{cur.length > 1 ? "s" : ""}</p>
+        </button>
+        <button onClick={() => setOffset(o => Math.min(0, o + 1))} disabled={offset === 0} aria-label="Semaine suivante" className="px-3 py-1.5 rounded-lg text-lg disabled:opacity-30" style={{ background: "var(--surface2)", color: "var(--muted2)" }}>›</button>
+      </div>
+      <div onClick={onOpen} className="cursor-pointer">
+        {lignes.map(L => {
+          const l = cur.filter(L.f), la = avant.filter(L.f);
+          if (L.optionnel && !l.length) return null;
+          const vide = !l.length || (L.k === "dplus" && !sum(l, s => v(s, "dplus")));
+          return (
+            <div key={L.k} className="flex items-center gap-3 py-2" style={{ borderTop: "1px solid var(--border)" }}>
+              <span className="w-1 self-stretch rounded-full shrink-0" style={{ background: L.color, opacity: vide ? 0.3 : 1 }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm" style={{ color: vide ? "var(--muted)" : "var(--text)" }}>{L.label}</p>
+                {la.length > 0 && <p className="text-[0.7rem]" style={{ ...MONO, color: "var(--muted)" }}>moy. 4 sem. : {L.moy(la)}</p>}
+              </div>
+              <p className="text-right shrink-0" style={{ ...MONO, color: vide ? "var(--muted)" : "var(--text)" }}>
+                <span className="text-base">{vide ? "—" : L.val(l)}</span>
+                {L.n && l.length > 0 && <span className="block text-[0.7rem]" style={{ color: "var(--muted2)" }}>{l.length} séance{l.length > 1 ? "s" : ""}</span>}
+              </p>
+            </div>
+          );
+        })}
+        <div className="flex items-center gap-3 pt-2 mt-1" style={{ borderTop: "2px solid var(--border2)" }}>
+          <div className="flex-1">
+            <p className="text-sm font-medium" style={{ color: "var(--text)" }}>Temps d'activité total</p>
+            {totalMoy > 0 && <p className="text-[0.7rem]" style={{ ...MONO, color: "var(--muted)" }}>moy. 4 sem. : {fmtDuree(totalMoy)}</p>}
+          </div>
+          <p className="text-lg" style={{ ...HEAD, color: "var(--accent)" }}>{total ? fmtDuree(total) : "—"}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HomeTab({ sessions, profile, setTab, garmin }) {
   // Sans séance prévue : on montre la prochaine séance proposée automatiquement
   const withAuto = useMemo(() => {
@@ -6357,7 +6422,7 @@ function HomeTab({ sessions, profile, setTab, garmin }) {
           {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })}
         </span>
       </p>
-      <div className="lg:col-span-2"><WeekRings sessions={sessions} profile={profile} /></div>
+      <div className="lg:col-span-2"><WeekRecap sessions={sessions} onOpen={() => setTab("stats")} /></div>
       {garmin && garmin.now && <div className="lg:col-span-2"><RecoveryCard garmin={garmin} onOpen={() => setTab("stats")} /></div>}
       <div className="space-y-3">
         <NextSessionCard sessions={withAuto} onOpen={() => setTab("plan")} />
