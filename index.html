@@ -5015,7 +5015,7 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "17 · 23 nov. · connexion Google";
+const APP_VERSION = "18 · 23 nov. · doublons Strava";
 
 /** Connexion Google : tes données sous ton compte, inaccessibles aux autres. */
 function GoogleAccount() {
@@ -7431,7 +7431,22 @@ function App() {
   const addSession = (s) => setSessions(prev => [...prev, s]);
   // Les activités importées le jour d'une séance prévue la valident d'office
   const linkAll = (list) => (window.TCP && window.TCP.linkPlanned ? window.TCP.linkPlanned(list).sessions : list);
-  const addMany = (list) => setSessions(prev => linkAll([...prev, ...list]));
+  // Ne jamais ajouter une activité déjà présente : deux synchros Strava
+  // lancées en même temps (ouverture + « Tout l'historique ») créaient des doublons.
+  const addMany = (list) => setSessions(prev => {
+    const known = prev.slice(), fresh = [];
+    list.forEach(a => {
+      const act = { externalId: a.externalId, date: a.date, actual: a.actual || {} };
+      if (window.TCP && window.TCP.isDuplicate(known, act)) return;
+      known.push(a); fresh.push(a);
+    });
+    return fresh.length ? linkAll([...prev, ...fresh]) : prev;
+  });
+  const doublons = useMemo(() => (window.TCP && window.TCP.findDuplicates ? window.TCP.findDuplicates(sessions) : { remove: [], groupes: 0 }), [sessions]);
+  const supprimerDoublons = () => {
+    const ids = new Set(doublons.remove);
+    setSessions(prev => prev.filter(s => !ids.has(s.id)));
+  };
   useEffect(() => { if (loaded) setSessions(prev => linkAll(prev)); }, [loaded]);
   const moveSession = (id, date) => setSessions(prev => prev.map(s => s.id !== id || s.done ? s
     : { ...s, date, weekStart: date ? toISO(isoWeekStart(date)) : s.weekStart, noAutoLink: undefined }));
@@ -7472,8 +7487,14 @@ function App() {
     const m = Math.round((Date.now() - t) / 60000);
     return m < 1 ? "Strava · à l'instant" : m < 60 ? `Strava · il y a ${m} min` : m < 1440 ? `Strava · il y a ${Math.round(m / 60)} h` : `Strava · il y a ${Math.round(m / 1440)} j`;
   };
+  const syncBusy = React.useRef(false);
   const syncStrava = React.useCallback(async () => {
     if (!window.TCP || !window.TCP.stravaConnected()) { setSyncState(null); return; }
+    if (syncBusy.current) return;
+    syncBusy.current = true;
+    try { await syncStravaRun(); } finally { syncBusy.current = false; }
+  }, []);
+  const syncStravaRun = async () => {
     const last = (window.TCP.getLocal().strava || {}).lastSync;
     const days = last ? Math.min(60, Math.ceil((Date.now() - last) / 86400000) + 2) : 30;
     setSyncState({ busy: true, label: syncLabel() });
@@ -7486,7 +7507,7 @@ function App() {
     } catch (e) {
       setSyncState({ busy: false, error: true, label: "Strava : échec" });
     }
-  }, []);
+  };
   useEffect(() => {
     if (!loaded || !window.TCP || !window.TCP.stravaConnected()) return;
     const last = (window.TCP.getLocal().strava || {}).lastSync || 0;
@@ -7794,6 +7815,18 @@ function App() {
             {tab === "coach" && <CoachTab getState={getState} setSessions={setSessionsForCoach} />}
             {tab === "historique" && (
               <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
+                {doublons.remove.length > 0 && (
+                  <div className="rounded-xl p-3 space-y-2 lg:col-span-2" style={{ background: "var(--warnbg)", border: "1px solid var(--warnborder)" }}>
+                    <p className="text-sm" style={{ color: "var(--text)" }}>{doublons.remove.length} doublon{doublons.remove.length > 1 ? "s" : ""} d'import détecté{doublons.remove.length > 1 ? "s" : ""}</p>
+                    <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+                      Même activité Strava importée plusieurs fois, ou deux activités identiques le même jour (même distance et même durée).
+                      Pour chacune, je garde l'exemplaire le plus complet (lié au plan, avec trace GPS, tours, ressenti).
+                    </p>
+                    <button onClick={supprimerDoublons} className="w-full rounded-lg py-2 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>
+                      Supprimer les {doublons.remove.length} doublon{doublons.remove.length > 1 ? "s" : ""}
+                    </button>
+                  </div>
+                )}
                 {past.length === 0 && <p className="text-sm text-center py-6 lg:col-span-2" style={{ color: "var(--muted)" }}>Pas encore de séance réalisée.</p>}
                 {past.slice(0, histLimit).map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} products={products} />)}
                 {past.length > histLimit && (
