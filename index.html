@@ -5172,7 +5172,7 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "24 · 24 nov. · zones FC détaillées";
+const APP_VERSION = "25 · 24 nov. · cumuls de l'année";
 
 /** Connexion Google : tes données sous ton compte, inaccessibles aux autres. */
 function GoogleAccount() {
@@ -5575,7 +5575,12 @@ function Stats({ sessions }) {
   const run = done.filter(s => !isCross(s.type));
   const cross = done.filter(s => isCross(s.type));
   const sum = (arr, f) => arr.reduce((a, s) => a + (s.actual?.[f] ?? s[f] ?? 0), 0);
-  const totKm = sum(run, "distance"), totD = sum(run, "dplus"), totMin = sum(run, "duree");
+  // cumuls de l'année en cours, comparés à la même date l'an dernier
+  const annee = new Date().getFullYear(), auj = toISO(new Date());
+  const runAn = run.filter(s => (s.date || "").startsWith(String(annee)));
+  const runAvant = run.filter(s => (s.date || "").startsWith(String(annee - 1)) && (s.date || "").slice(5) <= auj.slice(5));
+  const totKm = sum(runAn, "distance"), totD = sum(runAn, "dplus"), totMin = sum(runAn, "duree");
+  const avKm = sum(runAvant, "distance"), avD = sum(runAvant, "dplus"), avMin = sum(runAvant, "duree");
 
   // Période en cours et précédente, pour situer la tendance
   const cur = past[past.length - 1], prev = past[past.length - 2];
@@ -5604,15 +5609,20 @@ function Stats({ sessions }) {
 
       {/* ---------- cumuls ---------- */}
       <div className="grid grid-cols-3 gap-3 lg:col-span-2">
-        {[["Distance", Math.round(totKm), "km"],
-          ["Dénivelé", Math.round(totD), "m D+"],
-          ["Temps", fmtH(totMin), ""]].map(([l, v, u]) => (
-          <div key={l} className="rounded-xl p-3 text-center" style={cardStyle}>
-            <p className="text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{v}</p>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>{u}</p>
-            <p className="text-xs mt-1" style={{ color: "var(--green)" }}>{l} · course</p>
-          </div>
-        ))}
+        {[["Distance", Math.round(totKm), "km", totKm, avKm],
+          ["Dénivelé", Math.round(totD), "m D+", totD, avD],
+          ["Temps", fmtH(totMin), "", totMin, avMin]].map(([l, v, u, a, b]) => {
+          const t = b > 0 ? Math.round((a - b) / b * 100) : null;
+          return (
+            <div key={l} className="rounded-xl p-3 text-center" style={cardStyle}>
+              <p className="text-2xl" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--text)" }}>{v}</p>
+              <p className="text-xs" style={{ color: "var(--muted)" }}>{u}</p>
+              <p className="text-xs mt-1" style={{ color: "var(--green)" }}>{l} · {annee}</p>
+              {t !== null && <p className="text-[0.7rem]" style={{ fontFamily: "'JetBrains Mono', monospace", color: "var(--muted)" }}>{t >= 0 ? "+" : ""}{t} % vs {annee - 1}</p>}
+            </div>
+          );
+        })}
+        <p className="col-span-3 text-xs text-center -mt-1" style={{ color: "var(--muted)" }}>Course et trail depuis le 1er janvier ; comparaison à la même date l'an dernier.</p>
       </div>
 
       {/* ---------- graphique ---------- */}
