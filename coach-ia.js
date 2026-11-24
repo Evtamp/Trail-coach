@@ -65,6 +65,16 @@
   // ---------------------------------------------------------------------
   const TYPE_ENUM = ["longue", "fractionne", "cotes", "seuil", "fonda", "recup", "trail", "course", "repos", "renfo", "velo", "hometrainer", "natation", "basket", "pickleball", "autre"];
 
+  function exosValides(l) {
+    if (!Array.isArray(l) || !l.length) return null;
+    const num = v => (typeof v === "number" && v > 0 && v < 10000 ? Math.round(v) : undefined);
+    const out = l.slice(0, 20).filter(e => e && typeof e.nom === "string" && e.nom.trim()).map(e => ({
+      nom: e.nom.trim().slice(0, 80), series: num(e.series), reps: num(e.reps), duree_s: num(e.duree_s),
+      par_cote: e.par_cote === true || undefined, repos_s: num(e.repos_s), consigne: typeof e.consigne === "string" ? e.consigne.slice(0, 200) : undefined,
+    }));
+    return out.length ? out : null;
+  }
+
   const TOOLS = [
     {
       name: "lire_etat_athlete",
@@ -92,7 +102,7 @@
     },
     {
       name: "modifier_seance",
-      description: "Modifie une séance À VENIR (non réalisée) du plan : type, distance (km), D+ (m), durée (min), date, notes. Indique toujours la raison, elle est affichée à l'athlète.",
+      description: "Modifie une séance À VENIR (non réalisée) du plan : type, distance (km), D+ (m), durée (min), date, notes, et pour le renforcement la liste des exercices (séries, répétitions ou secondes, repos). Indique toujours la raison, elle est affichée à l'athlète.",
       input_schema: {
         type: "object",
         properties: {
@@ -103,6 +113,25 @@
           duree: { type: "number", description: "minutes" },
           date: { type: "string", description: "AAAA-MM-JJ, ou chaîne vide pour laisser le jour libre" },
           notes: { type: "string", description: "Consignes de séance (allures, structure)." },
+          exercices: {
+            type: "array",
+            description: "Pour une séance de renforcement : la liste précise des exercices (remplace le modèle par défaut).",
+            items: {
+              type: "object",
+              properties: {
+                nom: { type: "string" },
+                series: { type: "number" },
+                reps: { type: "number", description: "répétitions (ou utiliser duree_s)" },
+                duree_s: { type: "number", description: "durée de maintien en secondes (gainage…)" },
+                par_cote: { type: "boolean" },
+                repos_s: { type: "number" },
+                consigne: { type: "string" },
+              },
+              required: ["nom"],
+              additionalProperties: false,
+            },
+          },
+          renfo_titre: { type: "string", description: "Titre court de la séance de renforcement." },
           raison: { type: "string", description: "Pourquoi ce changement, en une phrase." },
         },
         required: ["id", "raison"],
@@ -122,6 +151,25 @@
           dplus: { type: "number" },
           duree: { type: "number" },
           notes: { type: "string" },
+          exercices: {
+            type: "array",
+            description: "Pour une séance de renforcement : la liste précise des exercices (remplace le modèle par défaut).",
+            items: {
+              type: "object",
+              properties: {
+                nom: { type: "string" },
+                series: { type: "number" },
+                reps: { type: "number", description: "répétitions (ou utiliser duree_s)" },
+                duree_s: { type: "number", description: "durée de maintien en secondes (gainage…)" },
+                par_cote: { type: "boolean" },
+                repos_s: { type: "number" },
+                consigne: { type: "string" },
+              },
+              required: ["nom"],
+              additionalProperties: false,
+            },
+          },
+          renfo_titre: { type: "string", description: "Titre court de la séance de renforcement." },
           raison: { type: "string" },
         },
         required: ["type", "semaine", "raison"],
@@ -217,7 +265,7 @@
       case "detail_seance": {
         const s = find(input.id);
         if (!s) return { erreur: "Séance introuvable : " + input.id };
-        return Object.assign(compact(s), { meilleursTempsSec: (s.actual && s.actual.best) || undefined, traceGps: !!(s.actual && s.actual.trace), tours: (s.actual && s.actual.laps) || [], ravitaillement: s.actual && s.actual.fueling ? s.actual.fueling : undefined, notesCompletes: s.notes || "" });
+        return Object.assign(compact(s), { meilleursTempsSec: (s.actual && s.actual.best) || undefined, traceGps: !!(s.actual && s.actual.trace), tours: (s.actual && s.actual.laps) || [], ravitaillement: s.actual && s.actual.fueling ? s.actual.fueling : undefined, notesCompletes: s.notes || "", exercices: s.exercices || undefined, modeleRenfo: s.renfoId || undefined });
       }
       case "modifier_seance": {
         const s = find(input.id);
@@ -231,6 +279,8 @@
           else if (isoOk(input.date)) { patch.date = input.date; patch.weekStart = window.TCP.mondayISO(input.date); }
         }
         if (typeof input.notes === "string") patch.notes = input.notes;
+        const ex = exosValides(input.exercices);
+        if (ex) { patch.exercices = ex; patch.renfoTitre = input.renfo_titre ? String(input.renfo_titre).slice(0, 80) : null; }
         patch.coachNote = String(input.raison || "").slice(0, 300);
         patch.coachEdited = true;
         ctx.setSessions(prev => prev.map(x => x.id === s.id ? Object.assign({}, x, patch) : x));
@@ -247,6 +297,7 @@
           dplus: typeof input.dplus === "number" ? input.dplus : null,
           duree: typeof input.duree === "number" ? input.duree : null,
           notes: input.notes || "", done: false, actual: null, generated: false,
+          exercices: exosValides(input.exercices) || undefined, renfoTitre: input.renfo_titre ? String(input.renfo_titre).slice(0, 80) : undefined,
           coachNote: String(input.raison || "").slice(0, 300), coachEdited: true,
         };
         ctx.setSessions(prev => prev.concat([s]));
