@@ -5172,7 +5172,7 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "23 · 24 nov. · mes zones, texte plus grand";
+const APP_VERSION = "24 · 24 nov. · zones FC détaillées";
 
 /** Connexion Google : tes données sous ton compte, inaccessibles aux autres. */
 function GoogleAccount() {
@@ -6390,12 +6390,14 @@ const ZONES_ALLURE = [
   { nom: "VMA courte", de: 1, a: 1.05, color: "var(--accent2)", usage: "30/30, 200-400 m" },
 ];
 const ZONES_FC = [
-  { nom: "Z1 · Récupération", de: 0.5, a: 0.6, color: "var(--muted2)" },
-  { nom: "Z2 · Endurance", de: 0.6, a: 0.7, color: "var(--green)" },
-  { nom: "Z3 · Tempo", de: 0.7, a: 0.8, color: "var(--blue)" },
-  { nom: "Z4 · Seuil", de: 0.8, a: 0.9, color: "var(--amber)" },
-  { nom: "Z5 · VMA", de: 0.9, a: 1, color: "var(--accent)" },
+  { nom: "Z1 · Récupération", de: 0.5, a: 0.6, color: "var(--muted2)", usage: "Footing de récup, échauffement, marche active" },
+  { nom: "Z2 · Endurance", de: 0.6, a: 0.7, color: "var(--green)", usage: "Footings, sortie longue, montées en trail" },
+  { nom: "Z3 · Tempo", de: 0.7, a: 0.8, color: "var(--blue)", usage: "Endurance active, allure marathon" },
+  { nom: "Z4 · Seuil", de: 0.8, a: 0.9, color: "var(--amber)", usage: "Blocs au seuil, côtes longues" },
+  { nom: "Z5 · VMA", de: 0.9, a: 1, color: "var(--accent)", usage: "Fractionné court, sprints en côte" },
 ];
+// sans FC de repos : % de FC max (zones Garmin par défaut)
+const ZONES_FC_MAX = [0.5, 0.6, 0.7, 0.8, 0.9, 1];
 
 const fmtAllure = kmh => {
   if (!kmh) return "—";
@@ -6419,8 +6421,9 @@ function ZonesTab({ sessions, profile, onProfile, goal, garmin }) {
   const runs = useMemo(() => sessions.filter(s => s.done && s.actual && !isCross(s.type) && s.date), [sessions]);
   const an = toISO(addDays(new Date(), -365));
   const fcMaxVue = useMemo(() => runs.filter(s => s.date >= an).reduce((m, s) => Math.max(m, s.actual.fcMax || 0), 0) || null, [runs]);
-  const fcMax = p.fcMax || null, fcRepos = p.fcRepos || gn.fcRepos7j || gn.fcRepos || null;
-  const karvo = (f) => Math.round(fcRepos + f * (fcMax - fcRepos));
+  const fcMax = p.fcMax || fcMaxVue || null, fcRepos = p.fcRepos || gn.fcRepos7j || gn.fcRepos || null;
+  const reserve = fcMax && fcRepos && fcMax > fcRepos;
+  const bpm = (f) => Math.round(reserve ? fcRepos + f * (fcMax - fcRepos) : f * fcMax);
 
   // cadence : moyenne pondérée par la durée, 8 dernières semaines et par mois
   const cad = useMemo(() => {
@@ -6502,20 +6505,27 @@ function ZonesTab({ sessions, profile, onProfile, goal, garmin }) {
           </button>
         )}
         {!p.fcRepos && fcRepos && <p className="text-xs" style={{ color: "var(--muted)" }}>FC repos reprise de Garmin : {fcRepos} bpm.</p>}
-        {fcMax && fcRepos && fcMax > fcRepos ? (
+        {fcMax ? (
           <>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>Méthode Karvonen (% de la FC de réserve), proche de celle de Garmin.</p>
+            <p className="text-xs" style={{ color: "var(--muted)" }}>
+              {reserve ? `Méthode Karvonen (% de ta FC de réserve, entre ${fcRepos} et ${fcMax} bpm), proche de celle de Garmin.`
+                : `En % de ta FC max (${fcMax} bpm). Ajoute ta FC de repos pour des zones plus justes.`}
+              {!p.fcMax && " FC max prise sur tes sorties : corrige-la si tu connais la vraie."}
+            </p>
             {[...ZONES_FC].reverse().map(z => (
               <div key={z.nom} className="flex items-center gap-3 py-2" style={{ borderTop: "1px solid var(--border)" }}>
                 <span className="w-1 self-stretch rounded-full shrink-0" style={{ background: z.color }} />
-                <p className="flex-1 text-sm" style={{ color: "var(--text)" }}>{z.nom}</p>
-                <p className="text-sm" style={num}>{karvo(z.de)} – {karvo(z.a)} bpm</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm" style={{ color: "var(--text)" }}>{z.nom} <span className="text-xs" style={{ color: "var(--muted)" }}>{Math.round(z.de * 100)}-{Math.round(z.a * 100)} %</span></p>
+                  <p className="text-xs" style={{ color: "var(--muted)" }}>{z.usage}</p>
+                </div>
+                <p className="text-sm shrink-0" style={num}>{bpm(z.de)} – {bpm(z.a)} bpm</p>
               </div>
             ))}
             {gn.fcSeuil && <p className="text-xs pt-1" style={{ color: "var(--muted2)" }}>FC au seuil lactique (Garmin) : <span style={MONO}>{gn.fcSeuil} bpm</span>.</p>}
           </>
         ) : (
-          <p className="text-xs" style={{ color: "var(--muted2)" }}>Renseigne ta FC max et ta FC de repos (visibles dans Garmin Connect) pour voir tes zones.</p>
+          <p className="text-xs" style={{ color: "var(--muted2)" }}>Renseigne ta FC max (et ta FC de repos, visibles dans Garmin Connect) pour voir tes zones.</p>
         )}
       </div>
 
