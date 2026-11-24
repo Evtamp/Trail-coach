@@ -26,6 +26,12 @@
   :root { --bg: #14201C; --surface: #182420; --surface2: #1C2B24; --surface3: #22302A; --border: #2C3A32; --border2: #3A4A40; --muted: #5A6259; --muted2: #9CAA9E; --text: #EDE7D9; --accent: #C1622B; --accent2: #D9793C; --accent3: #B8562A; --green: #7A8B5E; --blue: #5C7A99; --amber: #B0863C; --red: #C0522B; --warnbg: #2A2018; --warnborder: #3A2C1C; --cross1: #A8845C; --cross2: #4F7A8C; --cross3: #5C8C9E; --cross4: #6E7A6B; }
   [data-theme="light"] { --bg: #F4F1E8; --surface: #FFFFFF; --surface2: #F0EBDF; --surface3: #E7E1D2; --border: #D5CEBE; --border2: #BFB7A4; --muted: #7C776B; --muted2: #4A4840; --text: #1E2A25; --accent: #A24E1C; --accent2: #B85F26; --accent3: #8C4218; --green: #4E5F35; --blue: #3A566F; --amber: #7E5A18; --red: #93351C; --warnbg: #FAEFDF; --warnborder: #E4D2B4; --cross1: #8A6538; --cross2: #376076; --cross3: #3E6E7E; --cross4: #525E4F; }
   [data-theme="eink"] { --bg: #FFFFFF; --surface: #FFFFFF; --surface2: #F4F4F4; --surface3: #E9E9E9; --border: #9A9A9A; --border2: #7A7A7A; --muted: #4F4F4F; --muted2: #2B2B2B; --text: #000000; --accent: #7A3000; --accent2: #7A3000; --accent3: #5E2400; --green: #2C4A0F; --blue: #16375E; --amber: #5C3F00; --red: #7A0000; --warnbg: #F0F0F0; --warnborder: #9A9A9A; --cross1: #4A3A20; --cross2: #16375E; --cross3: #16375E; --cross4: #3A3A3A; }
+  /* Texte de base plus grand (demande du 24/11) : hors calque Tailwind, ces règles l'emportent */
+  .text-\[0\.65rem\] { font-size: 0.75rem; }
+  .text-\[0\.7rem\] { font-size: 0.8rem; }
+  .text-xs { font-size: 0.86rem; line-height: 1.3rem; }
+  .text-sm { font-size: 0.98rem; line-height: 1.45rem; }
+  .text-base { font-size: 1.08rem; }
   html, body { background: var(--bg); color: var(--text); margin: 0; }
   * { font-family: 'IBM Plex Sans', sans-serif; }
   input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.7); }
@@ -5166,7 +5172,7 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "22 · 24 nov. · séance ajoutée = faite";
+const APP_VERSION = "23 · 24 nov. · mes zones, texte plus grand";
 
 /** Connexion Google : tes données sous ton compte, inaccessibles aux autres. */
 function GoogleAccount() {
@@ -5659,8 +5665,8 @@ function Stats({ sessions }) {
             <ResponsiveContainer>
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={cssVar("--border")} vertical={false} />
-                <XAxis dataKey="label" stroke={cssVar("--muted")} fontSize={10} interval={0} angle={gran === "year" ? 0 : -40} textAnchor={gran === "year" ? "middle" : "end"} height={gran === "year" ? 25 : 45} />
-                <YAxis stroke={cssVar("--muted")} fontSize={10} />
+                <XAxis dataKey="label" stroke={cssVar("--muted")} fontSize={12} interval={0} angle={gran === "year" ? 0 : -40} textAnchor={gran === "year" ? "middle" : "end"} height={gran === "year" ? 25 : 45} />
+                <YAxis stroke={cssVar("--muted")} fontSize={12} />
                 <Tooltip contentStyle={{ background: cssVar("--surface"), border: "1px solid " + cssVar("--border"), color: cssVar("--text") }} />
                 <Bar dataKey="course" fill={cssVar("--accent")} radius={[3, 3, 0, 0]} name={`Course (${m.unit})`} />
                 {metric !== "dplus" && (
@@ -5988,14 +5994,14 @@ function ChargeCard({ sessions, profile }) {
           <ResponsiveContainer>
             <LineChart data={data} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
-              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--muted)" }} interval={14} />
-              <YAxis tick={{ fontSize: 10, fill: "var(--muted)" }} />
-              <Tooltip contentStyle={{ background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 12 }} />
+              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "var(--muted)" }} interval={14} />
+              <YAxis tick={{ fontSize: 12, fill: "var(--muted)" }} />
+              <Tooltip contentStyle={{ background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 14 }} />
               {ReferenceLine && <ReferenceLine y={0} stroke="var(--muted)" />}
               <Line type="monotone" dataKey="forme" name="Forme" stroke="var(--blue)" dot={false} strokeWidth={2} />
               <Line type="monotone" dataKey="fatigue" name="Fatigue" stroke="var(--accent2)" dot={false} strokeWidth={1.5} />
               <Line type="monotone" dataKey="fraicheur" name="Fraîcheur" stroke="var(--green)" dot={false} strokeWidth={1.5} strokeDasharray="4 3" />
-              {Legend && <Legend wrapperStyle={{ fontSize: 11 }} />}
+              {Legend && <Legend wrapperStyle={{ fontSize: 13 }} />}
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -6010,9 +6016,9 @@ function ChargeCard({ sessions, profile }) {
           <ResponsiveContainer>
             <BarChart data={weeks} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--muted)" }} interval={1} />
-              <YAxis tick={{ fontSize: 10, fill: "var(--muted)" }} />
-              <Tooltip contentStyle={{ background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 12 }} />
+              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "var(--muted)" }} interval={1} />
+              <YAxis tick={{ fontSize: 12, fill: "var(--muted)" }} />
+              <Tooltip contentStyle={{ background: "var(--surface2)", border: "1px solid var(--border)", fontSize: 14 }} />
               <Bar dataKey="km" name="km" stackId="a" fill="var(--accent)" />
               <Bar dataKey="effort" name="équivalent D+" stackId="a" fill="var(--accent3)" />
             </BarChart>
@@ -6358,11 +6364,13 @@ const ICONS = {
   nutrition: "M7 3v8a3 3 0 0 0 6 0V3|M10 3v18|M17 3c-2 2-2 6 0 8v10",
   reglages: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z|M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z",
   objectif: "M5 21V4|M5 4h11l-2 4 2 4H5",
+  zones: "M3 20h18|M6 20V12|M11 20V8|M16 20V4|M21 20V10",
   sync: "M21 12a9 9 0 0 1-15.5 6.2L3 16|M3 12a9 9 0 0 1 15.5-6.2L21 8|M21 3v5h-5|M3 21v-5h5",
 };
 
 const MAIN_TABS = [["accueil", "Accueil"], ["plan", "Plan"], ["coach", "Coach"], ["stats", "Stats"]];
 const MORE_TABS = [
+  ["zones", "Mes zones", "VMA, allures, fréquence cardiaque, cadence"],
   ["objectif", "Objectif", "Préparer une course, bloc de maintien, ou rien"],
   ["historique", "Historique", "Toutes tes séances réalisées"],
   ["ajouter", "Ajouter / importer", "Strava, fichiers de montre, saisie manuelle"],
@@ -6370,11 +6378,189 @@ const MORE_TABS = [
   ["reglages", "Réglages", "Synchro, sauvegarde, affichage"],
 ];
 
+// ======================================================================
+// Mes zones : VMA, allures, fréquence cardiaque, cadence
+// ======================================================================
+const ZONES_ALLURE = [
+  { nom: "Récupération", de: 0.55, a: 0.65, color: "var(--muted2)", usage: "Footing de récup, retour au calme" },
+  { nom: "Endurance fondamentale", de: 0.65, a: 0.75, color: "var(--green)", usage: "Footings, sortie longue sur le plat" },
+  { nom: "Endurance active", de: 0.75, a: 0.85, color: "var(--blue)", usage: "Allure marathon, fin de sortie longue" },
+  { nom: "Seuil", de: 0.85, a: 0.9, color: "var(--amber)", usage: "Blocs au seuil (10-20 min)" },
+  { nom: "VMA longue", de: 0.9, a: 1, color: "var(--accent)", usage: "Fractionné 2-5 min, côtes" },
+  { nom: "VMA courte", de: 1, a: 1.05, color: "var(--accent2)", usage: "30/30, 200-400 m" },
+];
+const ZONES_FC = [
+  { nom: "Z1 · Récupération", de: 0.5, a: 0.6, color: "var(--muted2)" },
+  { nom: "Z2 · Endurance", de: 0.6, a: 0.7, color: "var(--green)" },
+  { nom: "Z3 · Tempo", de: 0.7, a: 0.8, color: "var(--blue)" },
+  { nom: "Z4 · Seuil", de: 0.8, a: 0.9, color: "var(--amber)" },
+  { nom: "Z5 · VMA", de: 0.9, a: 1, color: "var(--accent)" },
+];
+
+const fmtAllure = kmh => {
+  if (!kmh) return "—";
+  const m = 60 / kmh; let mi = Math.floor(m), s = Math.round((m - mi) * 60);
+  if (s === 60) { mi++; s = 0; }
+  return `${mi}:${String(s).padStart(2, "0")}`;
+};
+const fmtKmh = v => String(Math.round(v * 10) / 10).replace(".", ",");
+// Strava et certaines montres donnent la cadence d'une seule jambe (≈ 85) : on la double
+const cadencePas = c => (c && c < 130 ? c * 2 : c) || null;
+
+function ZonesTab({ sessions, profile, onProfile, goal, garmin }) {
+  const p = profile || {};
+  const set = (k, v) => onProfile({ ...p, [k]: v === "" || v == null ? null : Number(String(v).replace(",", ".")) });
+  const est = useMemo(() => (window.TCP ? window.TCP.estimateVma(sessions, p.fcMax) : null), [sessions, p.fcMax]);
+  const gn = (garmin && garmin.now) || {};
+  const vo2 = gn.vo2max ? Math.round(gn.vo2max / 3.5 * 10) / 10 : null;
+  const vma = p.vma || goal?.vma || est?.vma || null;
+  const source = p.vma ? "saisie par toi" : goal?.vma ? "celle de ton objectif" : est ? `estimée sur un effort du ${fmtDate(est.date)}` : null;
+
+  const runs = useMemo(() => sessions.filter(s => s.done && s.actual && !isCross(s.type) && s.date), [sessions]);
+  const an = toISO(addDays(new Date(), -365));
+  const fcMaxVue = useMemo(() => runs.filter(s => s.date >= an).reduce((m, s) => Math.max(m, s.actual.fcMax || 0), 0) || null, [runs]);
+  const fcMax = p.fcMax || null, fcRepos = p.fcRepos || gn.fcRepos7j || gn.fcRepos || null;
+  const karvo = (f) => Math.round(fcRepos + f * (fcMax - fcRepos));
+
+  // cadence : moyenne pondérée par la durée, 8 dernières semaines et par mois
+  const cad = useMemo(() => {
+    const l = runs.map(s => ({ s, c: cadencePas(s.actual.cadence), d: s.actual.duree || s.duree || 30 })).filter(x => x.c && x.c > 120 && x.c < 230);
+    const moy = arr => { const t = arr.reduce((a, x) => a + x.d, 0); return t ? Math.round(arr.reduce((a, x) => a + x.c * x.d, 0) / t) : null; };
+    const depuis = toISO(addDays(new Date(), -56));
+    const recent = l.filter(x => x.s.date >= depuis);
+    const mois = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+      const k = toISO(d).slice(0, 7);
+      const m = moy(l.filter(x => x.s.date.slice(0, 7) === k));
+      mois.push({ k, label: d.toLocaleDateString("fr-FR", { month: "short" }), v: m });
+    }
+    const parType = [["Footings / récup", ["fonda", "recup", "course"]], ["Sorties longues / trail", ["longue", "trail"]], ["Fractionné / seuil / côtes", ["fractionne", "seuil", "cotes"]]]
+      .map(([nom, types]) => ({ nom, v: moy(recent.filter(x => types.includes(x.s.type))), n: recent.filter(x => types.includes(x.s.type)).length }))
+      .filter(x => x.v);
+    return { moy: moy(recent), n: recent.length, mois, parType };
+  }, [runs]);
+  const maxMois = Math.max(...cad.mois.map(m => m.v || 0), 1), minMois = Math.min(...cad.mois.filter(m => m.v).map(m => m.v), maxMois);
+
+  const num = { ...MONO, color: "var(--text)" };
+  const champ = (k, val, ph) => (
+    <input type="text" inputMode="decimal" defaultValue={val ?? ""} placeholder={ph} onBlur={e => set(k, e.target.value)}
+      className="w-full rounded-lg px-3 py-2 text-sm" style={fieldStyle} />
+  );
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl p-4 space-y-3" style={cardStyle}>
+        <CardTitle>VMA</CardTitle>
+        <div className="flex items-end gap-3">
+          <p className="text-4xl" style={num}>{vma ? fmtKmh(vma) : "—"}</p>
+          <p className="text-sm pb-1" style={{ color: "var(--muted2)" }}>km/h{vma ? ` · ${fmtAllure(vma)} /km` : ""}</p>
+        </div>
+        {source && <p className="text-xs" style={{ color: "var(--muted)" }}>VMA {source}</p>}
+        <div className="text-xs space-y-0.5" style={{ color: "var(--muted2)" }}>
+          {est && <p>Estimation d'après tes tours rapides des 4 derniers mois : {fmtKmh(est.vma)} km/h ({fmtDate(est.date)}).</p>}
+          {vo2 && <p>D'après ta VO2max Garmin ({gn.vo2max}) : environ {fmtKmh(vo2)} km/h.</p>}
+          {!est && !vo2 && !p.vma && <p>Pas encore assez de données pour l'estimer : un test (6 min à fond, ou ton meilleur 5 km ÷ 0,9 en vitesse) ou ta valeur connue suffit.</p>}
+        </div>
+        <label className="block text-xs" style={{ color: "var(--muted)" }}>Ta VMA (km/h), si tu la connais
+          {champ("vma", p.vma, est ? fmtKmh(est.vma) : "ex. 15")}
+        </label>
+      </div>
+
+      {vma && (
+        <div className="rounded-2xl p-4" style={cardStyle}>
+          <CardTitle>Zones d'allure</CardTitle>
+          <p className="text-xs mb-2" style={{ color: "var(--muted)" }}>En % de VMA, sur le plat. En trail, fie-toi plutôt à la FC et à l'effort ressenti.</p>
+          {[...ZONES_ALLURE].reverse().map(z => (
+            <div key={z.nom} className="flex items-center gap-3 py-2" style={{ borderTop: "1px solid var(--border)" }}>
+              <span className="w-1 self-stretch rounded-full shrink-0" style={{ background: z.color }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm" style={{ color: "var(--text)" }}>{z.nom} <span className="text-xs" style={{ color: "var(--muted)" }}>{Math.round(z.de * 100)}-{Math.round(z.a * 100)} %</span></p>
+                <p className="text-xs" style={{ color: "var(--muted)" }}>{z.usage}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-sm" style={num}>{fmtAllure(vma * z.a)} – {fmtAllure(vma * z.de)}</p>
+                <p className="text-xs" style={{ ...MONO, color: "var(--muted2)" }}>{fmtKmh(vma * z.de)}-{fmtKmh(vma * z.a)} km/h</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-2xl p-4 space-y-2" style={cardStyle}>
+        <CardTitle>Zones de fréquence cardiaque</CardTitle>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-xs" style={{ color: "var(--muted)" }}>FC max
+            {champ("fcMax", p.fcMax, fcMaxVue ? String(fcMaxVue) : "")}
+          </label>
+          <label className="text-xs" style={{ color: "var(--muted)" }}>FC repos
+            {champ("fcRepos", p.fcRepos, gn.fcRepos7j || gn.fcRepos ? String(gn.fcRepos7j || gn.fcRepos) : "")}
+          </label>
+        </div>
+        {!p.fcMax && fcMaxVue && (
+          <button onClick={() => set("fcMax", fcMaxVue)} className="text-xs underline" style={{ color: "var(--accent)" }}>
+            Utiliser {fcMaxVue} bpm (la plus haute vue sur tes sorties des 12 derniers mois)
+          </button>
+        )}
+        {!p.fcRepos && fcRepos && <p className="text-xs" style={{ color: "var(--muted)" }}>FC repos reprise de Garmin : {fcRepos} bpm.</p>}
+        {fcMax && fcRepos && fcMax > fcRepos ? (
+          <>
+            <p className="text-xs" style={{ color: "var(--muted)" }}>Méthode Karvonen (% de la FC de réserve), proche de celle de Garmin.</p>
+            {[...ZONES_FC].reverse().map(z => (
+              <div key={z.nom} className="flex items-center gap-3 py-2" style={{ borderTop: "1px solid var(--border)" }}>
+                <span className="w-1 self-stretch rounded-full shrink-0" style={{ background: z.color }} />
+                <p className="flex-1 text-sm" style={{ color: "var(--text)" }}>{z.nom}</p>
+                <p className="text-sm" style={num}>{karvo(z.de)} – {karvo(z.a)} bpm</p>
+              </div>
+            ))}
+            {gn.fcSeuil && <p className="text-xs pt-1" style={{ color: "var(--muted2)" }}>FC au seuil lactique (Garmin) : <span style={MONO}>{gn.fcSeuil} bpm</span>.</p>}
+          </>
+        ) : (
+          <p className="text-xs" style={{ color: "var(--muted2)" }}>Renseigne ta FC max et ta FC de repos (visibles dans Garmin Connect) pour voir tes zones.</p>
+        )}
+      </div>
+
+      <div className="rounded-2xl p-4 space-y-2" style={cardStyle}>
+        <CardTitle>Cadence</CardTitle>
+        {cad.moy ? (
+          <>
+            <div className="flex items-end gap-3">
+              <p className="text-4xl" style={num}>{cad.moy}</p>
+              <p className="text-sm pb-1" style={{ color: "var(--muted2)" }}>pas/min · moyenne des 8 dernières semaines ({cad.n} sorties)</p>
+            </div>
+            {cad.parType.map(x => (
+              <div key={x.nom} className="flex justify-between text-sm py-1.5" style={{ borderTop: "1px solid var(--border)" }}>
+                <span style={{ color: "var(--text)" }}>{x.nom} <span className="text-xs" style={{ color: "var(--muted)" }}>· {x.n}</span></span>
+                <span style={num}>{x.v}</span>
+              </div>
+            ))}
+            <div className="flex items-end gap-2 pt-2" style={{ height: 90 }}>
+              {cad.mois.map(m => (
+                <div key={m.k} className="flex-1 flex flex-col items-center justify-end h-full">
+                  <span className="text-[0.65rem]" style={{ ...MONO, color: "var(--muted2)" }}>{m.v || ""}</span>
+                  <div className="w-full rounded-t" style={{ height: m.v ? 12 + 40 * (m.v - minMois + 1) / (maxMois - minMois + 1) : 2, background: m.v ? "var(--blue)" : "var(--border)" }} />
+                  <span className="text-[0.65rem] mt-0.5" style={{ color: "var(--muted)" }}>{m.label}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs leading-relaxed" style={{ color: "var(--muted2)" }}>
+              {cad.moy < 165
+                ? "Cadence plutôt basse : gagner 5 % (quelques pas de plus par minute, foulée plus courte) réduit l'impact à chaque pas, surtout en descente."
+                : "Bonne cadence. Elle baisse naturellement en montée et en endurance lente : c'est normal."}
+            </p>
+          </>
+        ) : (
+          <p className="text-xs" style={{ color: "var(--muted2)" }}>Pas encore de cadence dans tes sorties récentes. Elle arrive avec la synchro Strava ou les fichiers de ta montre.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Barre d'onglets fixée en bas, avec « ⋯ Plus » pour les onglets secondaires. */
 function BottomNav({ tab, setTab }) {
   const [open, setOpen] = useState(false);
   const inMore = MORE_TABS.some(([k]) => k === tab);
-  const moreLabel = inMore ? MORE_TABS.find(([k]) => k === tab)[1].split(" ")[0] : "Plus";
+  const moreLabel = tab === "zones" ? "Zones" : inMore ? MORE_TABS.find(([k]) => k === tab)[1].split(" ")[0] : "Plus";
   const go = k => { setTab(k); setOpen(false); window.scrollTo({ top: 0 }); };
   return (
     <>
@@ -7150,6 +7336,7 @@ function sortiesSemaine(wk, phase, kmCible, p, reprise, f) {
  */
 function autoPlan(sessions, profile) {
   const p0 = autoProfile(sessions);
+  if (p0 && profile && profile.vma) p0.vma = Number(profile.vma);
   if (!p0) return null;
   const u = p0.ultra;
   const auto = Math.round((u ? 0.8 : 1) * p0.volume / 5) * 5;
@@ -7877,7 +8064,7 @@ function App() {
                       onToggle={(id, patch) => viaProp("toggle")(id, patch) ?? toggleSession(id, patch)}
                       onDelete={id => viaProp("delete")(id) ?? deleteSession(id)}
                       onMove={(id, date) => viaProp("move")(id, date) ?? moveSession(id, date)}
-                      onAdd={addSession} onSaveNotes={saveNotes} vma={goal?.vma} products={products} />
+                      onAdd={addSession} onSaveNotes={saveNotes} vma={goal?.vma || profile?.vma} products={products} />
                   );
                 })()}
               </>
@@ -8027,6 +8214,7 @@ function App() {
                 <Stats sessions={sessions} />
               </div>
             )}
+            {tab === "zones" && <ZonesTab sessions={sessions} profile={profile} onProfile={setProfile} goal={goal} garmin={garmin} />}
             {tab === "coach" && <CoachTab getState={getState} setSessions={setSessionsForCoach} />}
             {tab === "historique" && (
               <div className="space-y-3 lg:space-y-0 lg:grid lg:grid-cols-2 lg:gap-3 lg:items-start">
@@ -8043,7 +8231,7 @@ function App() {
                   </div>
                 )}
                 {past.length === 0 && <p className="text-sm text-center py-6 lg:col-span-2" style={{ color: "var(--muted)" }}>Pas encore de séance réalisée.</p>}
-                {past.slice(0, histLimit).map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma} products={products} />)}
+                {past.slice(0, histLimit).map(s => <SessionRow key={s.id} s={s} onToggle={toggleSession} onDelete={deleteSession} onSaveNotes={saveNotes} vma={goal?.vma || profile?.vma} products={products} />)}
                 {past.length > histLimit && (
                   <button onClick={() => setHistLimit(n => n + 50)} className="w-full rounded-lg py-2.5 text-sm lg:col-span-2" style={{ background: "var(--surface2)", color: "var(--text)" }}>
                     Voir 50 séances de plus ({past.length - histLimit} restantes)
