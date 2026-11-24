@@ -5166,7 +5166,7 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "21 · 24 nov. · renfo détaillé";
+const APP_VERSION = "22 · 24 nov. · séance ajoutée = faite";
 
 /** Connexion Google : tes données sous ton compte, inaccessibles aux autres. */
 function GoogleAccount() {
@@ -5219,12 +5219,19 @@ function AjoutSeance({ date, onAdd, onClose }) {
   const [dp, setDp] = useState("");
   const [notes, setNotes] = useState("");
   const [rid, setRid] = useState("posterieure");
+  const auj = toISO(new Date());
+  // un jour passé : c'est une séance déjà faite ; aujourd'hui : au choix
+  const [fait, setFait] = useState(date < auj);
   const avecKm = !isCross(type) || type === "velo";
   const valider = () => {
+    const vals = {
+      duree: Number(duree) || (type === "renfo" ? RENFO[rid].duree : null), distance: avecKm ? (Number(String(km).replace(",", ".")) || null) : null,
+      dplus: avecKm ? (Number(dp) || null) : null,
+    };
+    const ok = fait && date <= auj;
     onAdd({
       id: uid(), type, date, weekStart: toISO(isoWeekStart(date)), ...(type === "renfo" ? { renfoId: rid } : {}),
-      duree: Number(duree) || (type === "renfo" ? RENFO[rid].duree : null), distance: avecKm ? (Number(String(km).replace(",", ".")) || null) : null,
-      dplus: avecKm ? (Number(dp) || null) : null, notes: notes.trim(), done: false, actual: null, generated: false, manual: true,
+      ...vals, notes: notes.trim(), done: ok, actual: ok ? { ...vals } : null, generated: false, manual: true,
     });
     onClose();
   };
@@ -5259,9 +5266,15 @@ function AjoutSeance({ date, onAdd, onClose }) {
           <input type="number" inputMode="numeric" value={dp} onChange={e => setDp(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-sm mt-0.5" style={fieldStyle} />
         </label>}
       </div>
+      {date <= auj && (
+        <label className="flex items-center gap-2 text-sm" style={{ color: "var(--text)" }}>
+          <input type="checkbox" checked={fait} onChange={e => setFait(e.target.checked)} />
+          Séance déjà faite (compte dans le récap de la semaine)
+        </label>
+      )}
       <input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Note (facultatif)" className="w-full rounded-lg px-2 py-1.5 text-sm" style={fieldStyle} />
       <div className="flex gap-2">
-        <button onClick={valider} className="flex-1 rounded-lg py-1.5 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>Ajouter le {fmtDate(date)}</button>
+        <button onClick={valider} className="flex-1 rounded-lg py-1.5 text-sm font-medium" style={{ background: "var(--accent)", color: "var(--bg)" }}>{fait && date <= auj ? "Enregistrer (faite)" : "Ajouter"} le {fmtDate(date)}</button>
         <button onClick={onClose} className="rounded-lg px-3 py-1.5 text-sm" style={{ background: "var(--surface)", color: "var(--muted2)" }}>Annuler</button>
       </div>
     </div>
