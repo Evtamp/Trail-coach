@@ -307,6 +307,155 @@ const SESSION_ADVICE = {
   repos: "Repos complet ou activité très légère (marche, étirements). Essentiel pour absorber la charge des jours précédents.",
 };
 
+/**
+ * Séances de renforcement détaillées (poids du corps, une marche, une chaise ;
+ * élastique ou haltères en option). r = répétitions, s = secondes,
+ * cote = « par côté », repos en secondes.
+ */
+const RENFO = {
+  mobilite: {
+    titre: "Mobilité et gainage doux", duree: 25, pour: "Récupération",
+    echauffement: "3 min de marche sur place et cercles de bras, de hanches et de chevilles.",
+    retour: "5 min d'étirements doux : ischios, psoas, mollets, 30 s chacun sans forcer.",
+    exos: [
+      { nom: "Mobilité de hanche 90/90", series: 2, r: 8, cote: true, repos: 15, conseil: "Lentement, buste droit, sans élan." },
+      { nom: "Chat-vache (à quatre pattes)", series: 2, r: 10, repos: 15, conseil: "Enroule puis creuse le dos vertèbre par vertèbre." },
+      { nom: "Pont fessier", series: 3, r: 12, repos: 30, conseil: "Serre les fessiers 2 s en haut, sans cambrer." },
+      { nom: "Planche ventrale sur les avant-bras", series: 3, s: 30, repos: 30, conseil: "Corps aligné, ventre rentré, respire." },
+      { nom: "Planche latérale", series: 2, s: 20, cote: true, repos: 20 },
+      { nom: "Bird-dog", series: 2, r: 8, cote: true, repos: 20, conseil: "Bras et jambe opposés, tiens 2 s, le bassin ne bouge pas." },
+      { nom: "Montées sur les pointes de pieds", series: 2, r: 15, repos: 30, conseil: "Lentes, sans rebond." },
+    ],
+  },
+  posterieure: {
+    titre: "Chaîne postérieure et mollets", duree: 35, pour: "Entretien",
+    echauffement: "5 min : montées de genoux, talons-fesses, 10 squats légers, 10 fentes sans charge.",
+    retour: "3 min d'étirements : mollets, ischios, fessiers.",
+    exos: [
+      { nom: "Pont fessier sur une jambe", series: 3, r: 10, cote: true, repos: 45, conseil: "Bassin bien horizontal." },
+      { nom: "Soulevé de terre sur une jambe", series: 3, r: 8, cote: true, repos: 45, conseil: "À vide ou avec un poids léger, dos plat, genou d'appui légèrement fléchi." },
+      { nom: "Glissade ischios au sol (serviette sous les talons)", series: 3, r: 8, repos: 60, conseil: "Bassin levé, ramène les talons puis repousse lentement." },
+      { nom: "Mollets sur une marche (excentrique)", series: 3, r: 12, cote: true, repos: 45, conseil: "Monte sur 2 pieds, descends sur 1 pied en 3 s." },
+      { nom: "Mollets genoux fléchis (soléaire)", series: 3, r: 15, repos: 30 },
+      { nom: "Planche ventrale", series: 3, s: 45, repos: 30 },
+      { nom: "Planche latérale", series: 2, s: 30, cote: true, repos: 30 },
+    ],
+  },
+  descentes: {
+    titre: "Stabilité et descentes", duree: 35, pour: "Entretien",
+    echauffement: "5 min : corde à sauter ou petits sauts sur place, 10 squats, 10 fentes arrière.",
+    retour: "3 min d'étirements : quadriceps, fessiers, mollets.",
+    exos: [
+      { nom: "Squat lent", series: 3, r: 12, repos: 45, conseil: "3 s pour descendre, remonte normalement." },
+      { nom: "Fente arrière", series: 3, r: 10, cote: true, repos: 45, conseil: "Genou avant dans l'axe du pied." },
+      { nom: "Descente de marche contrôlée", series: 3, r: 8, cote: true, repos: 45, conseil: "Debout sur une marche, descends le talon libre vers le sol en 3 s : c'est le geste des descentes de trail." },
+      { nom: "Chaise contre un mur", series: 3, s: 45, repos: 45 },
+      { nom: "Équilibre sur une jambe, yeux fermés", series: 3, s: 30, cote: true, repos: 15 },
+      { nom: "Marche latérale (élastique) ou abduction allongé", series: 3, r: 15, cote: true, repos: 30 },
+      { nom: "Dead bug", series: 3, r: 10, cote: true, repos: 30, conseil: "Bas du dos plaqué au sol." },
+    ],
+  },
+  force: {
+    titre: "Force et pliométrie trail", duree: 45, pour: "Entretien (bien reposé)",
+    echauffement: "8 min : 5 min de trot ou corde à sauter, puis 10 squats, 10 fentes, 10 montées de genoux.",
+    retour: "5 min de marche puis étirements doux.",
+    exos: [
+      { nom: "Squat sauté", series: 3, r: 8, repos: 60, conseil: "Réception souple et silencieuse." },
+      { nom: "Fente bulgare (pied arrière sur une chaise)", series: 3, r: 8, cote: true, repos: 60, conseil: "Avec un sac lesté ou des haltères si c'est facile." },
+      { nom: "Montée sur une chaise ou un banc", series: 3, r: 10, cote: true, repos: 45, conseil: "Pousse sur le talon, monte le genou opposé en haut." },
+      { nom: "Sauts de mollets (pogo)", series: 3, r: 20, repos: 45, conseil: "Genoux presque tendus, contacts très courts." },
+      { nom: "Soulevé de terre jambes tendues", series: 3, r: 10, repos: 60, conseil: "Sac lesté ou haltères, dos plat." },
+      { nom: "Mollets sur une marche (excentrique)", series: 3, r: 12, cote: true, repos: 45 },
+      { nom: "Planche avec touches d'épaule", series: 3, r: 16, repos: 30, conseil: "Le bassin ne tourne pas." },
+      { nom: "Planche latérale avec rotation", series: 2, r: 10, cote: true, repos: 30 },
+    ],
+  },
+  express: {
+    titre: "Gainage express", duree: 20, pour: "Quand tu manques de temps", circuit: 3,
+    echauffement: "2 min : mobilité du dos et des hanches.",
+    retour: "2 min d'étirements.",
+    exos: [
+      { nom: "Planche ventrale", s: 40 },
+      { nom: "Planche latérale", s: 25, cote: true },
+      { nom: "Pont fessier", r: 15 },
+      { nom: "Dead bug", r: 10, cote: true },
+      { nom: "Superman (allongé sur le ventre)", r: 12 },
+      { nom: "Montées sur les pointes de pieds", r: 20 },
+    ],
+  },
+};
+const RENFO_ORDRE = ["mobilite", "posterieure", "descentes", "force", "express"];
+
+/** Séance de renfo proposée selon la phase, en alternant d'une semaine à l'autre. */
+function renfoPour(phase, wk, reprise) {
+  if (phase === "recup") return "mobilite";
+  const choix = reprise ? ["posterieure", "descentes"] : ["posterieure", "descentes", "force"];
+  const n = Math.floor(Date.parse(wk + "T12:00:00") / (7 * 86400000));
+  return choix[((n % choix.length) + choix.length) % choix.length];
+}
+
+/** Exercices à afficher : ceux écrits par le coach, sinon le modèle choisi. */
+function renfoDe(s) {
+  if (Array.isArray(s.exercices) && s.exercices.length) {
+    return {
+      titre: s.renfoTitre || "Séance du coach", duree: s.duree, echauffement: "", retour: "",
+      exos: s.exercices.map(e => ({ nom: e.nom, series: e.series, r: e.reps ?? e.r, s: e.duree_s ?? e.s, cote: e.par_cote ?? e.cote, repos: e.repos_s ?? e.repos, conseil: e.consigne ?? e.conseil })),
+    };
+  }
+  return RENFO[s.renfoId] || RENFO[s.phase === "recup" ? "mobilite" : "posterieure"];
+}
+
+function fmtExo(e) {
+  const qte = e.r ? `${e.r} rép.` : e.s ? (e.s >= 60 && e.s % 60 === 0 ? `${e.s / 60} min` : `${e.s} s`) : "";
+  return `${e.series ? `${e.series} × ` : ""}${qte}${e.cote ? " par côté" : ""}`;
+}
+
+function RenfoSeance({ s, onUpdate, compact }) {
+  const r = renfoDe(s);
+  const [choix, setChoix] = useState(false);
+  if (!r) return null;
+  const perso = Array.isArray(s.exercices) && s.exercices.length;
+  return (
+    <div className="rounded-lg p-3 space-y-2" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm" style={{ fontFamily: "'Space Grotesk', sans-serif", color: "var(--accent)" }}>{r.titre} · {fmtDuree(r.duree || s.duree)}</p>
+        {onUpdate && !s.done && !compact && (
+          <button onClick={() => setChoix(v => !v)} className="text-xs px-2 py-1 rounded-lg shrink-0" style={{ background: "var(--surface)", color: "var(--muted2)", border: "1px solid var(--border)" }}>
+            {choix ? "Fermer" : "Changer"}
+          </button>
+        )}
+      </div>
+      {choix && (
+        <div className="flex flex-wrap gap-1.5">
+          {RENFO_ORDRE.map(k => (
+            <button key={k} onClick={() => { onUpdate({ renfoId: k, exercices: null, renfoTitre: null, duree: RENFO[k].duree }); setChoix(false); }}
+              className="px-2.5 py-1 rounded-full text-xs"
+              style={{ background: !perso && s.renfoId === k ? "var(--accent)" : "var(--surface)", color: !perso && s.renfoId === k ? "var(--bg)" : "var(--text)", border: "1px solid var(--border)" }}>
+              {RENFO[k].titre} · {RENFO[k].duree} min
+            </button>
+          ))}
+        </div>
+      )}
+      {r.echauffement && !compact && <p className="text-xs" style={{ color: "var(--muted2)" }}><b>Échauffement :</b> {r.echauffement}</p>}
+      {r.circuit && <p className="text-xs" style={{ color: "var(--muted2)" }}><b>Circuit :</b> {r.circuit} tours, enchaîne les exercices avec 15 s de transition, 1 min de pause entre les tours.</p>}
+      <ol className="space-y-1.5">
+        {r.exos.map((e, i) => (
+          <li key={i} className="text-sm" style={{ color: "var(--text)" }}>
+            <div className="flex justify-between gap-2">
+              <span>{i + 1}. {e.nom}</span>
+              <span className="text-xs shrink-0 text-right" style={{ ...MONO, color: "var(--blue)" }}>
+                {fmtExo(e)}{e.repos ? <><br /><span style={{ color: "var(--muted)" }}>repos {e.repos} s</span></> : null}
+              </span>
+            </div>
+            {e.conseil && !compact && <p className="text-xs" style={{ color: "var(--muted)" }}>{e.conseil}</p>}
+          </li>
+        ))}
+      </ol>
+      {r.retour && !compact && <p className="text-xs" style={{ color: "var(--muted2)" }}><b>Retour au calme :</b> {r.retour}</p>}
+    </div>
+  );
+}
+
 const SPORT_IMPACT = {
   "Basket":     0.7, "Football":  0.7, "Badminton": 0.6, "Tennis": 0.5,
   "Vélo":       0.2, "Natation":  0.1, "Musculation": 0.3, "Autre": 0.4,
@@ -4111,7 +4260,7 @@ function SessionRow({ s, onToggle, onDelete, onSaveNotes, vma, products }) {
       )}
       {showActual && <ActualForm defaults={s} onSubmit={complete} onCancel={() => setShowActual(false)} products={products} />}
       {expanded && (
-        <SessionDetail s={s} vma={vma} onSaveNotes={onSaveNotes} onClose={() => setExpanded(false)} products={products} />
+        <SessionDetail s={s} vma={vma} onSaveNotes={onSaveNotes} onUpdate={patch => onToggle(s.id, patch)} onClose={() => setExpanded(false)} products={products} />
       )}
     </div>
   );
@@ -4736,7 +4885,7 @@ function SessionReport({ s, vma }) {
   );
 }
 
-function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
+function SessionDetail({ s, onClose, onSaveNotes, onUpdate, vma, products }) {
   const [notes, setNotes] = useState(s.notes || "");
   const [saved, setSaved] = useState(false);
   const [exportMsg, setExportMsg] = useState("");
@@ -4781,6 +4930,8 @@ function SessionDetail({ s, onClose, onSaveNotes, vma, products }) {
           <p className="text-xs uppercase tracking-wider mb-1" style={{ color: "var(--green)", fontFamily: "'JetBrains Mono', monospace" }}>Comment exécuter</p>
           <p className="text-sm leading-relaxed" style={{ color: "var(--text)" }}>{SESSION_ADVICE[s.type]}</p>
         </div>
+
+        {s.type === "renfo" && <RenfoSeance s={s} onUpdate={onUpdate} />}
 
         {workout && (
           <div className="rounded-lg p-3 space-y-3" style={{ background: "var(--surface2)", border: "1px solid var(--border)" }}>
@@ -5015,7 +5166,7 @@ function VolumeExplain({ goal, sessions }) {
 }
 
 // À changer à chaque mise en ligne, pour vérifier que le téléphone a bien la dernière version
-const APP_VERSION = "20 · 23 nov. · stats sur 6 périodes";
+const APP_VERSION = "21 · 24 nov. · renfo détaillé";
 
 /** Connexion Google : tes données sous ton compte, inaccessibles aux autres. */
 function GoogleAccount() {
@@ -5067,11 +5218,12 @@ function AjoutSeance({ date, onAdd, onClose }) {
   const [km, setKm] = useState("");
   const [dp, setDp] = useState("");
   const [notes, setNotes] = useState("");
+  const [rid, setRid] = useState("posterieure");
   const avecKm = !isCross(type) || type === "velo";
   const valider = () => {
     onAdd({
-      id: uid(), type, date, weekStart: toISO(isoWeekStart(date)),
-      duree: Number(duree) || null, distance: avecKm ? (Number(String(km).replace(",", ".")) || null) : null,
+      id: uid(), type, date, weekStart: toISO(isoWeekStart(date)), ...(type === "renfo" ? { renfoId: rid } : {}),
+      duree: Number(duree) || (type === "renfo" ? RENFO[rid].duree : null), distance: avecKm ? (Number(String(km).replace(",", ".")) || null) : null,
       dplus: avecKm ? (Number(dp) || null) : null, notes: notes.trim(), done: false, actual: null, generated: false, manual: true,
     });
     onClose();
@@ -5086,6 +5238,16 @@ function AjoutSeance({ date, onAdd, onClose }) {
           </button>
         ))}
       </div>
+      {type === "renfo" && (
+        <div className="flex flex-wrap gap-1.5">
+          {RENFO_ORDRE.map(k => (
+            <button key={k} onClick={() => setRid(k)} className="px-2.5 py-1 rounded-full text-xs"
+              style={{ background: rid === k ? "var(--blue)" : "var(--surface)", color: rid === k ? "var(--bg)" : "var(--text)", border: "1px solid var(--border)" }}>
+              {RENFO[k].titre} · {RENFO[k].duree} min
+            </button>
+          ))}
+        </div>
+      )}
       <div className="grid grid-cols-3 gap-2">
         <label className="text-xs" style={{ color: "var(--muted2)" }}>Durée (min)
           <input type="number" inputMode="numeric" value={duree} onChange={e => setDuree(e.target.value)} className="w-full rounded-lg px-2 py-1.5 text-sm mt-0.5" style={fieldStyle} />
@@ -6985,10 +7147,14 @@ function autoPlan(sessions, profile) {
     const wk = toISO(addDays(isoWeekStart(new Date()), i * 7));
     const fs = facteurSemaine(wk, u);
     const runs = sortiesSemaine(wk, fs.phase, habituel * fs.f, p, fs.reprise, fs.f);
-    const cross = (CROSS_PROPOSES[fs.phase] || CROSS_PROPOSES.maintien).map((c, j) => ({
-      id: `auto-${wk}-x${j}`, type: c.type, date: null, order: 10 + j, distance: null, dplus: null, duree: c.duree,
-      notes: c.notes, done: false, actual: null, generated: true, auto: true, phase: fs.phase, weekStart: wk,
-    }));
+    const cross = (CROSS_PROPOSES[fs.phase] || CROSS_PROPOSES.maintien).map((c, j) => {
+      const rid = c.type === "renfo" ? renfoPour(fs.phase, wk, fs.reprise) : null;
+      return {
+        id: `auto-${wk}-x${j}`, type: c.type, date: null, order: 10 + j, distance: null, dplus: null,
+        duree: rid ? RENFO[rid].duree : c.duree, notes: rid ? `${RENFO[rid].titre} : ${RENFO[rid].exos.length} exercices détaillés.` : c.notes,
+        renfoId: rid || undefined, done: false, actual: null, generated: true, auto: true, phase: fs.phase, weekStart: wk,
+      };
+    });
     const { seances, jours } = scheduleWeek(wk, runs, cross, fs.phase, doneDates);
     // la cible de la semaine reste celle de la semaine complète
     const sum = k => runs.reduce((a, s) => a + (s[k] || 0), 0);
@@ -7072,7 +7238,12 @@ function AutoWeeksCard({ sessions, profile, onProfile, onAdopt, setTab, periodeS
                             {s.distance ? `${String(s.distance).replace(".", ",")} km · ` : ""}{s.dplus ? `${s.dplus} m · ` : ""}{fmtDuree(s.duree)}
                           </span>
                         </p>
-                        {s.notes && <p className="text-xs leading-relaxed ml-4" style={{ color: "var(--muted)" }}>{s.notes}</p>}
+                        {s.type === "renfo" ? (
+                          <details className="ml-4 mt-1">
+                            <summary className="text-xs cursor-pointer" style={{ color: "var(--muted)" }}>{s.notes || "Voir les exercices"}</summary>
+                            <div className="mt-1"><RenfoSeance s={s} compact /></div>
+                          </details>
+                        ) : s.notes && <p className="text-xs leading-relaxed ml-4" style={{ color: "var(--muted)" }}>{s.notes}</p>}
                       </div>
                     );
                   })}
